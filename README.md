@@ -8,7 +8,7 @@ The user designates a **server** language and a **client** language. Code is gen
 
 At runtime this gives the server language ownership over objects of the generated types, and the client language a familiar interface into the objects owned by the server language, without needing to serialize or copy the entire object.
 
-## Currently Supported Languages
+## Supported Languages
 
 IDLs:
 - Protobuf
@@ -21,6 +21,14 @@ Client languages:
 
 Direct type output:
 - (none)
+
+## Examples
+
+In `cli-examples` you can see various examples of running struct-ffi-gen. The output is checked in for your convenience, but you can run them yourself with `cargo run --example <example name>`.
+
+See the `main.rs` file in each example for the command line arguments it runs with.
+
+Note that these examples assume you are running with `cargo run --example <example name>`.
 
 ## Architecture
 

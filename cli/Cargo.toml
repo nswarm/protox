@@ -8,3 +8,5 @@ name = "struct-ffi-gen"
 path = "src/main.rs"
 
 [dependencies]
+log = "0.4.14"
+env_logger = "0.9.0"

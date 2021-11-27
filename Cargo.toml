@@ -1,9 +1,11 @@
 ﻿[workspace]
 default-members = [
     "cli",
+    "examples",
 ]
 members = [
     "core",
     "cli",
+    "examples",
     "protoc-plugin",
 ]
