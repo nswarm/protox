@@ -1,7 +1,6 @@
 use std::process::Command;
 use std::env;
 use log::error;
-use std::env::Args;
 
 fn main() {
     env_logger::init();

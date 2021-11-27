@@ -2,17 +2,11 @@
 <module type="CPP_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/cli-examples/examples" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cli-examples/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cli/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cli/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/core/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/protoc-plugin/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/tests/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/tests/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/examples/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/examples/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/protoc-plugin/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

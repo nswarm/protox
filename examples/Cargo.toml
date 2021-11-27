@@ -3,5 +3,11 @@ name = "examples"
 version = "0.1.0"
 edition = "2018"
 
+[lib]
+test = false
+doctest = false
+bench = false
+doc = false
+
 [dev-dependencies]
 cli = { path = "../cli" }
