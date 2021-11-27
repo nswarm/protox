@@ -1,0 +1,10 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2018"
+
+[[bin]]
+name = "struct-ffi-gen"
+path = "src/main.rs"
+
+[dependencies]

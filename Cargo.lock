@@ -3,5 +3,13 @@
 version = 3
 
 [[package]]
-name = "struct-ffi-gen"
+name = "cli"
+version = "0.1.0"
+
+[[package]]
+name = "core"
+version = "0.1.0"
+
+[[package]]
+name = "protoc-plugin"
 version = "0.1.0"
