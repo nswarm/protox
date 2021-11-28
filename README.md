@@ -24,11 +24,11 @@ Direct type output:
 
 ## Examples
 
-In `cli-examples` you can see various examples of running struct-ffi-gen. The output is checked in for your convenience, but you can run them yourself with `cargo run --example <example name>`.
+In `examples` you can see various examples of running struct-ffi-gen. Each example has an `input` and `output` folder. See the `main.rs` file in each example for the command line arguments it runs with.
 
-See the `main.rs` file in each example for the command line arguments it runs with.
+You can run all examples (and generate their `output`) with `cargo run --example all` or individually with `cargo run --example <example name>`.
 
-Note that these examples assume you are running with `cargo run --example <example name>`.
+Note that these examples assume you are running with `cargo run`.
 
 ## Architecture
 

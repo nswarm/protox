@@ -1,4 +1,4 @@
-use examples::examples_dir;
+use examples::examples_path;
 use std::fs;
 use std::process::Command;
 
@@ -7,7 +7,6 @@ fn main() {
     println!();
     println!("building all examples...");
     build_examples();
-    println!();
     for example in examples {
         run_example(&example);
     }
@@ -35,7 +34,7 @@ fn run_example(name: &str) {
 }
 
 fn find_all_examples() -> Vec<String> {
-    let examples_dir = examples_dir();
+    let examples_dir = examples_path();
     let dirs = fs::read_dir(examples_dir).unwrap();
     dirs.filter_map(|entry| match entry {
         Ok(entry) if entry.file_type().unwrap().is_dir() => {

@@ -1,6 +1,6 @@
+use log::info;
+use std::{env};
 use std::process::Command;
-use std::env;
-use log::error;
 
 fn main() {
     env_logger::init();
@@ -15,7 +15,7 @@ fn collect_protoc_args(args: &Vec<String>) -> Vec<String> {
 }
 
 fn protoc(args: &Vec<String>) {
-    error!("Running protoc with args: {:?}", args);
+    info!("running:\nprotoc {:?}", args.join(" "));
     let mut child = Command::new("protoc")
         .args(args)
         .spawn()
@@ -25,7 +25,7 @@ fn protoc(args: &Vec<String>) {
             if !status.success() {
                 println!("Exited with status {}", status);
             }
-        },
+        }
         Err(err) => println!("Exited with error {}", err),
     }
 }
