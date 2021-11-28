@@ -12,6 +12,8 @@ fn main() -> Result<()> {
     for proto_path in &proto_paths {
         args.push(proto_path.to_str().unwrap());
     }
+
     struct_ffi_gen(&args)?;
+
     Ok(())
 }
