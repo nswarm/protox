@@ -22,6 +22,12 @@ Client languages:
 Direct type output:
 - (none)
 
+Protobuf generated code:
+- All [supported protobuf languages](https://developers.google.com/protocol-buffers) via the protobuf compiler itself (protoc)
+- Rust via [prost](https://github.com/tokio-rs/prost)
+
+See the `protobuf` and `protobuf-rust` examples for usage.
+
 ## Examples
 
 In `examples` you can see various examples of running struct-ffi-gen. Each example has an `input` and `output` folder. See the `main.rs` file in each example for the command line arguments it runs with.
@@ -53,6 +59,8 @@ Other crates:
 #### Protobuf Compiler
 
 The way that **protoc**, the protobuf compiler, works is it is an executable that can run another executable as a plugin, passing it data on stdin and receiving results on stdout. For this to work inside of struct-ffi-gen, we have the **cli** executable call the protoc executable with our **protoc-plugin** executable. **protoc-plugin** then calls into our **core** library code.
+
+The **protoc** exe is located using the method build into the [prost](https://github.com/tokio-rs/prost) crate
 
 ## Background
 

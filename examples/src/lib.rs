@@ -57,14 +57,14 @@ pub fn output_dir() -> Result<String> {
     Ok(result)
 }
 
-pub fn find_all_with_extension(base_path: &Path, ext: &str) -> Result<Vec<PathBuf>> {
-    let results = fs::read_dir(base_path)?
+pub fn find_all_with_extension<P: AsRef<Path>>(base_path: P, ext: &str) -> Result<Vec<PathBuf>> {
+    let results = fs::read_dir(base_path.as_ref())?
         .filter_map(io::Result::ok)
         .filter_map(|entry: DirEntry| {
             let is_file = entry.file_type().unwrap().is_file();
             let is_proto = entry.path().file_name().unwrap().to_str().unwrap().ends_with(ext);
             if is_file && is_proto {
-                match entry.path().strip_prefix(base_path) {
+                match entry.path().strip_prefix(base_path.as_ref()) {
                     Err(_) => None,
                     Ok(path) => Some(path.to_path_buf()),
                 }

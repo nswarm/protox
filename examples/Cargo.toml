@@ -8,6 +8,3 @@ test = false
 doctest = false
 bench = false
 doc = false
-
-[dev-dependencies]
-cli = { path = "../cli" }
