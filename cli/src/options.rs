@@ -1,5 +1,5 @@
 use crate::idl::Idl;
-use anyhow::Result;
+use anyhow::{anyhow, Error, Result};
 use clap::{crate_version, App, Arg, ArgMatches};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -75,39 +75,43 @@ fn output_arg(name: &str) -> Arg {
 #[derive(Error, Debug)]
 enum ParseError {}
 
+#[derive(Default)]
 pub struct Options {
-    // todo prob make these pub (?)
-    idl: Idl,
-    input: PathBuf,
-    output_root: PathBuf,
+    pub idl: Idl,
+    pub input: PathBuf,
+    pub output_root: Option<PathBuf>,
 }
 
 impl Options {
-    pub fn new() -> Result<Self> {
+    pub fn from_cli() -> Result<Self> {
         let args = parse_cli_args();
         let options = Options::from_args(&args)?;
         Ok(options)
     }
 
-    pub fn idl(&self) -> &Idl {
-        &self.idl
-    }
-
-    pub fn input(&self) -> &PathBuf {
-        &self.input
-    }
-
-    pub fn output_root(&self) -> &PathBuf {
-        &self.output_root
-    }
-
-    fn from_args(args: &ArgMatches) -> Result<Self> {
+    pub fn from_args(args: &ArgMatches) -> Result<Self> {
         Ok(Self {
             idl: Idl::from_args(&args)?,
-            input: PathBuf::new(),
-            output_root: PathBuf::new(),
+            input: parse_input(&args)?,
+            output_root: parse_output_root(&args),
         })
     }
+}
+
+fn parse_input(args: &ArgMatches) -> Result<PathBuf> {
+    match args.value_of(INPUT) {
+        None => Err(error_missing_required_arg(INPUT)),
+        Some(input) => Ok(PathBuf::from(input)),
+    }
+}
+
+fn parse_output_root(args: &ArgMatches) -> Option<PathBuf> {
+    args.value_of(OUTPUT_ROOT)
+        .and_then(|value| Some(PathBuf::from(value)))
+}
+
+fn error_missing_required_arg(name: &str) -> Error {
+    anyhow!("Missing required argument '--{}'", name)
 }
 
 trait ArgExt {

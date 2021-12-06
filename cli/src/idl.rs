@@ -1,7 +1,9 @@
-use crate::options;
+use std::str::FromStr;
+
 use anyhow::{anyhow, Result};
 use clap::ArgMatches;
-use std::str::FromStr;
+
+use crate::options;
 
 #[derive(clap::ArgEnum, Clone, Debug, Eq, PartialEq)]
 pub enum Idl {
@@ -12,8 +14,14 @@ impl Idl {
     pub fn from_args(args: &ArgMatches) -> Result<Self> {
         let idl_str = args
             .value_of(options::IDL)
-            .expect("IDL missing default value.");
+            .ok_or(anyhow!("IDL missing default value."))?;
         Idl::from_str(idl_str)
+    }
+}
+
+impl Default for Idl {
+    fn default() -> Self {
+        Idl::Proto
     }
 }
 
@@ -33,15 +41,17 @@ impl Idl {
         match self {
             Idl::Proto => "proto",
         }
-        .to_string()
+            .to_string()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::idl::Idl;
-    use anyhow::Result;
     use std::str::FromStr;
+
+    use anyhow::Result;
+
+    use crate::idl::Idl;
 
     #[test]
     fn proto() -> Result<()> {
