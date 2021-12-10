@@ -1,8 +1,8 @@
+use anyhow::{anyhow, bail, Context, Result};
+use log::info;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-
-use anyhow::{anyhow, Context, Result};
-use log::info;
 
 use crate::Options;
 
@@ -19,9 +19,12 @@ impl Protoc {
 
     pub fn run(self) -> Result<()> {
         let protoc_path = protoc_path();
+        let args = self.collect_and_validate_args()?;
+
         info!("using protoc at path: {:?}", protoc_path);
-        let args = self.collect_args();
         info!("running:\nprotoc {:?}", args.join(" "));
+
+        // todo create output folder
 
         let mut child = Command::new(protoc_path)
             .args(args)
@@ -35,15 +38,26 @@ impl Protoc {
         }
     }
 
-    fn collect_args(&self) -> Vec<String> {
+    fn collect_and_validate_args(&self) -> Result<Vec<String>> {
         let mut args = Vec::new();
-        self.push_proto_path(&mut args);
-        args
+        self.collect_proto_path(&mut args)?;
+        Ok(args)
     }
 
-    fn push_proto_path(&self, args: &mut Vec<String>) {
+    fn collect_proto_path(&self, args: &mut Vec<String>) -> Result<()> {
+        if let Err(_) = fs::read_dir(&self.options.input) {
+            bail!(
+                "Invalid input: could not find the directory located at path '{:?}'.",
+                self.options.input
+            );
+        }
+        let input = match self.options.input.to_str() {
+            None => bail!("Invalid input: Could not parse path to string."),
+            Some(input) => input,
+        };
         args.push(PROTOC_ARG_PROTO_PATH.to_string());
-        args.push(self.options.input.to_str().unwrap().to_string());
+        args.push(input.to_string());
+        Ok(())
     }
 }
 
@@ -53,19 +67,33 @@ fn protoc_path() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use crate::runner::PROTOC_ARG_PROTO_PATH;
-    use crate::{Options, Protoc};
-    use std::path::PathBuf;
+    mod collect_and_validate_args {
+        use crate::runner::tests::assert_arg_pair_exists;
+        use crate::runner::PROTOC_ARG_PROTO_PATH;
+        use crate::{Options, Protoc};
+        use std::env;
+        use std::path::PathBuf;
 
-    #[test]
-    fn proto_path() {
-        let input = "test/input";
-        let mut options = Options::default();
-        options.input = PathBuf::from(input);
-        let protoc = Protoc::with_options(options);
-        let args = protoc.collect_args();
-        assert!(args.contains(&PROTOC_ARG_PROTO_PATH.to_string()));
-        assert_arg_pair_exists(&args, &PROTOC_ARG_PROTO_PATH, &input);
+        #[test]
+        fn proto_path() {
+            let input = env::current_dir().unwrap().to_str().unwrap().to_string();
+            let mut options = Options::default();
+            options.input = PathBuf::from(&input);
+            let protoc = Protoc::with_options(options);
+            let args = protoc.collect_and_validate_args();
+            assert!(args.contains(&PROTOC_ARG_PROTO_PATH.to_string()));
+            assert_arg_pair_exists(&args, &PROTOC_ARG_PROTO_PATH, &input);
+        }
+
+        #[test]
+        fn proto_path_missing() {
+            let input = "definitely/missing/path";
+            let mut options = Options::default();
+            options.input = PathBuf::from(input);
+            let protoc = Protoc::with_options(options);
+            let mut args = Vec::new();
+            assert!(protoc.collect_proto_path(&mut args).is_err());
+        }
     }
 
     fn assert_arg_pair_exists(args: &Vec<String>, first: &str, second: &str) {
