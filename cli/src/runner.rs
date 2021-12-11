@@ -24,8 +24,6 @@ impl Protoc {
         info!("using protoc at path: {:?}", protoc_path);
         info!("running:\nprotoc {:?}", args.join(" "));
 
-        // todo create output folder
-
         let mut child = Command::new(protoc_path)
             .args(args)
             .spawn()
@@ -71,18 +69,20 @@ mod tests {
         use crate::runner::tests::assert_arg_pair_exists;
         use crate::runner::PROTOC_ARG_PROTO_PATH;
         use crate::{Options, Protoc};
+        use anyhow::Result;
         use std::env;
         use std::path::PathBuf;
 
         #[test]
-        fn proto_path() {
+        fn proto_path() -> Result<()> {
             let input = env::current_dir().unwrap().to_str().unwrap().to_string();
             let mut options = Options::default();
             options.input = PathBuf::from(&input);
             let protoc = Protoc::with_options(options);
-            let args = protoc.collect_and_validate_args();
+            let args = protoc.collect_and_validate_args()?;
             assert!(args.contains(&PROTOC_ARG_PROTO_PATH.to_string()));
             assert_arg_pair_exists(&args, &PROTOC_ARG_PROTO_PATH, &input);
+            Ok(())
         }
 
         #[test]

@@ -4,6 +4,7 @@ use crate::runner::Protoc;
 use anyhow::Result;
 
 mod idl;
+mod lang;
 mod options;
 mod runner;
 

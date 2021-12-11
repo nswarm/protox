@@ -1,20 +1,25 @@
-use crate::idl::Idl;
+use std::path::PathBuf;
+use std::str::FromStr;
+
 use anyhow::{anyhow, Error, Result};
 use clap::{crate_version, App, Arg, ArgMatches};
-use std::path::PathBuf;
 use thiserror::Error;
+
+use crate::idl::Idl;
+use crate::lang::Lang;
 
 pub const IDL: &str = "idl";
 pub const INPUT: &str = "input";
-pub const OUTPUT_ROOT: &str = "output_root";
+pub const OUTPUT_ROOT: &str = "output-root";
 pub const PROTO: &str = "proto";
 pub const SERVER: &str = "server";
 pub const CLIENT: &str = "client";
 pub const DIRECT: &str = "direct";
 pub const OUTPUT_TYPES: [&str; 4] = [PROTO, SERVER, CLIENT, DIRECT];
-pub const OUTPUT_VALUE_NAMES: [&str; 2] = ["name", "output"];
+pub const OUTPUT_VALUE_NAME: &str = "NAME[=OUTPUT]";
+pub const OUTPUT_SEPARATOR: &str = "=";
 pub const PLUGIN_PROTO: &str = "plugin-proto";
-pub const OUTPUT_LONG_ABOUT: & str = "When OUTPUT is a relative path, it is evaluated to either OUTPUT_ROOT if set, or the current working directory otherwise.";
+pub const OUTPUT_LONG_ABOUT: & str = "If OUTPUT is a relative path, it is evaluated relative to OUTPUT_ROOT if set, or the current working directory otherwise.";
 pub const LONG_ABOUT_NEWLINE: &str = "\n\n";
 
 fn parse_cli_args() -> ArgMatches {
@@ -44,14 +49,13 @@ fn parse_cli_args() -> ArgMatches {
 
             output_arg(PROTO)
                 .display_order(100)
-                .about("")
-                .long_about(&[
-                    "Indicates protobuf code should be generated to file path OUTPUT.",
+                .long_about(&join_about(&[
+                    "Indicates protobuf code should be generated for language NAME to file path OUTPUT.",
+                    "If OUTPUT is not provided, it defaults to `proto_<NAME>`.",
                     OUTPUT_LONG_ABOUT,
-                    "NAME indicates the name of the language to generate code for.",
-                    &format!("Supported languages: All languages specified in your `protoc --help` as *_out args. Additionally 'rust' is supported. \
+                    &format!("Supported languages: All languages specified in your `protoc --help` as *_out args, where * is the language name (for example: csharp, cpp). Additionally 'rust' is supported. \
                     Custom support can be added via the used of {}.", PLUGIN_PROTO),
-                ].join(LONG_ABOUT_NEWLINE)),
+                ])),
 
             output_arg(SERVER)
                 .display_order(101),
@@ -69,17 +73,45 @@ fn output_arg(name: &str) -> Arg {
         .default_short()
         .long(name)
         .required_unless_present_any(&OUTPUT_TYPES)
-        .value_names(&OUTPUT_VALUE_NAMES)
+        .value_name(&OUTPUT_VALUE_NAME)
+}
+
+fn join_about(lines: &[&str]) -> String {
+    lines.join(LONG_ABOUT_NEWLINE).to_string()
 }
 
 #[derive(Error, Debug)]
 enum ParseError {}
+
+pub struct LangOption {
+    pub lang: Lang,
+    pub output: PathBuf,
+}
+
+impl LangOption {
+    pub fn from_config(config: &str, default_output_prefix: &str) -> Result<Self> {
+        Ok(match config.split_once(OUTPUT_SEPARATOR) {
+            None => LangOption::with_default_output(config, default_output_prefix)?,
+            Some((lang, output)) => LangOption {
+                lang: Lang::from_str(lang)?,
+                output: PathBuf::from(output),
+            },
+        })
+    }
+
+    fn with_default_output(config: &str, output_prefix: &str) -> Result<Self> {
+        let lang = Lang::from_str(config)?;
+        let output = PathBuf::from([output_prefix, config].join("_"));
+        Ok(Self { lang, output })
+    }
+}
 
 #[derive(Default)]
 pub struct Options {
     pub idl: Idl,
     pub input: PathBuf,
     pub output_root: Option<PathBuf>,
+    pub proto: Vec<LangOption>,
 }
 
 impl Options {
@@ -94,6 +126,7 @@ impl Options {
             idl: Idl::from_args(&args)?,
             input: parse_input(&args)?,
             output_root: parse_output_root(&args),
+            proto: parse_proto_outputs(&args)?,
         })
     }
 }
@@ -110,6 +143,18 @@ fn parse_output_root(args: &ArgMatches) -> Option<PathBuf> {
         .and_then(|value| Some(PathBuf::from(value)))
 }
 
+fn parse_proto_outputs(args: &ArgMatches) -> Result<Vec<LangOption>> {
+    let mut options = Vec::new();
+    let values = match args.values_of(PROTO) {
+        None => return Ok(options),
+        Some(values) => values,
+    };
+    for value in values {
+        options.push(LangOption::from_config(value, PROTO)?);
+    }
+    Ok(options)
+}
+
 fn error_missing_required_arg(name: &str) -> Error {
     anyhow!("Missing required argument '--{}'", name)
 }
@@ -122,5 +167,39 @@ impl ArgExt for Arg<'_> {
     fn default_short(self) -> Self {
         let short = self.get_name().chars().nth(0).unwrap();
         self.short(short)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    mod lang_option {
+        use crate::lang::Lang;
+        use crate::options::{LangOption, OUTPUT_SEPARATOR, PROTO};
+        use anyhow::Result;
+        use std::path::PathBuf;
+
+        #[test]
+        fn from_config_with_default_output() -> Result<()> {
+            let option = LangOption::from_config(&Lang::CSharp.as_config(), PROTO)?;
+            assert_eq!(option.lang, Lang::CSharp);
+            assert_eq!(option.output.as_path().to_str(), Some("proto_csharp"));
+            Ok(())
+        }
+
+        #[test]
+        fn from_config_with_explicit_output() -> Result<()> {
+            let output_path = PathBuf::from("path/to/output");
+            let config =
+                [&Lang::CSharp.as_config(), output_path.to_str().unwrap()].join(OUTPUT_SEPARATOR);
+            let option = LangOption::from_config(&config, PROTO)?;
+            assert_eq!(option.lang, Lang::CSharp);
+            assert_eq!(option.output, output_path);
+            Ok(())
+        }
+
+        #[test]
+        fn from_config_with_unsupported_lang() {
+            assert!(LangOption::from_config("blah unsupported lang", PROTO).is_err());
+        }
     }
 }
