@@ -1,20 +1,18 @@
 use crate::idl::Idl;
 use crate::options::Options;
-use crate::runner::Protoc;
 use anyhow::Result;
 
 mod idl;
 mod lang;
 mod options;
-mod runner;
+mod run;
 
 fn main() -> Result<()> {
     env_logger::init();
 
-    let opt = Options::from_cli()?;
-    let runner = match opt.idl {
-        Idl::Proto => Protoc::with_options(opt),
+    let options = Options::from_cli()?;
+    match options.idl {
+        Idl::Proto => run::protoc(&options)?,
     };
-    runner.run()?;
     Ok(())
 }
