@@ -1,12 +1,10 @@
-use std::path::PathBuf;
-use std::str::FromStr;
-
+use crate::idl::Idl;
+use crate::lang_option::LangOption;
 use anyhow::{anyhow, Error, Result};
 use clap::{crate_version, App, Arg, ArgMatches};
+use std::env;
+use std::path::PathBuf;
 use thiserror::Error;
-
-use crate::idl::Idl;
-use crate::lang::Lang;
 
 pub const IDL: &str = "idl";
 pub const INPUT: &str = "input";
@@ -83,29 +81,6 @@ fn join_about(lines: &[&str]) -> String {
 #[derive(Error, Debug)]
 enum ParseError {}
 
-pub struct LangOption {
-    pub lang: Lang,
-    pub output: PathBuf,
-}
-
-impl LangOption {
-    pub fn from_config(config: &str, default_output_prefix: &str) -> Result<Self> {
-        Ok(match config.split_once(OUTPUT_SEPARATOR) {
-            None => LangOption::with_default_output(config, default_output_prefix)?,
-            Some((lang, output)) => LangOption {
-                lang: Lang::from_str(lang)?,
-                output: PathBuf::from(output),
-            },
-        })
-    }
-
-    fn with_default_output(config: &str, output_prefix: &str) -> Result<Self> {
-        let lang = Lang::from_str(config)?;
-        let output = PathBuf::from([output_prefix, config].join("_"));
-        Ok(Self { lang, output })
-    }
-}
-
 #[derive(Default)]
 pub struct Options {
     pub idl: Idl,
@@ -122,11 +97,12 @@ impl Options {
     }
 
     pub fn from_args(args: &ArgMatches) -> Result<Self> {
+        let output_root = parse_output_root(&args);
         Ok(Self {
             idl: Idl::from_args(&args)?,
             input: parse_input(&args)?,
-            output_root: parse_output_root(&args),
-            proto: parse_proto_outputs(&args)?,
+            output_root: output_root.clone(),
+            proto: parse_proto_outputs(&args, output_root.as_ref())?,
         })
     }
 }
@@ -143,16 +119,19 @@ fn parse_output_root(args: &ArgMatches) -> Option<PathBuf> {
         .and_then(|value| Some(PathBuf::from(value)))
 }
 
-fn parse_proto_outputs(args: &ArgMatches) -> Result<Vec<LangOption>> {
-    let mut options = Vec::new();
+fn parse_proto_outputs(
+    args: &ArgMatches,
+    output_root: Option<&PathBuf>,
+) -> Result<Vec<LangOption>> {
+    let mut proto_outputs = Vec::new();
     let values = match args.values_of(PROTO) {
-        None => return Ok(options),
+        None => return Ok(proto_outputs),
         Some(values) => values,
     };
     for value in values {
-        options.push(LangOption::from_config(value, PROTO)?);
+        proto_outputs.push(LangOption::from_config(value, output_root, PROTO)?);
     }
-    Ok(options)
+    Ok(proto_outputs)
 }
 
 fn error_missing_required_arg(name: &str) -> Error {
@@ -167,39 +146,5 @@ impl ArgExt for Arg<'_> {
     fn default_short(self) -> Self {
         let short = self.get_name().chars().nth(0).unwrap();
         self.short(short)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    mod lang_option {
-        use crate::lang::Lang;
-        use crate::options::{LangOption, OUTPUT_SEPARATOR, PROTO};
-        use anyhow::Result;
-        use std::path::PathBuf;
-
-        #[test]
-        fn from_config_with_default_output() -> Result<()> {
-            let option = LangOption::from_config(&Lang::CSharp.as_config(), PROTO)?;
-            assert_eq!(option.lang, Lang::CSharp);
-            assert_eq!(option.output.as_path().to_str(), Some("proto_csharp"));
-            Ok(())
-        }
-
-        #[test]
-        fn from_config_with_explicit_output() -> Result<()> {
-            let output_path = PathBuf::from("path/to/output");
-            let config =
-                [&Lang::CSharp.as_config(), output_path.to_str().unwrap()].join(OUTPUT_SEPARATOR);
-            let option = LangOption::from_config(&config, PROTO)?;
-            assert_eq!(option.lang, Lang::CSharp);
-            assert_eq!(option.output, output_path);
-            Ok(())
-        }
-
-        #[test]
-        fn from_config_with_unsupported_lang() {
-            assert!(LangOption::from_config("blah unsupported lang", PROTO).is_err());
-        }
     }
 }

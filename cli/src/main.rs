@@ -4,6 +4,7 @@ use anyhow::Result;
 
 mod idl;
 mod lang;
+mod lang_option;
 mod options;
 mod run;
 

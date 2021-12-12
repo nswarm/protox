@@ -3,13 +3,20 @@ use std::str::FromStr;
 
 #[derive(clap::ArgEnum, Clone, Debug, Eq, PartialEq)]
 pub enum Lang {
-    Unsupported,
+    Cpp,
     CSharp,
+    Java,
+    Javascript,
+    Kotlin,
+    ObjectiveC,
+    Php,
+    Python,
+    Ruby,
 }
 
 impl Default for Lang {
     fn default() -> Self {
-        Lang::Unsupported
+        Lang::Cpp
     }
 }
 
@@ -17,18 +24,33 @@ impl FromStr for Lang {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &s.to_lowercase()[..] {
-            "csharp" => Ok(Lang::CSharp),
-            _ => Err(anyhow!("Unsupported Language: {}", s)),
-        }
+        Ok(match &s.to_lowercase()[..] {
+            "cpp" => Lang::Cpp,
+            "csharp" => Lang::CSharp,
+            "java" => Lang::Java,
+            "js" => Lang::Javascript,
+            "kotlin" => Lang::Kotlin,
+            "objc" => Lang::ObjectiveC,
+            "php" => Lang::Php,
+            "python" => Lang::Python,
+            "ruby" => Lang::Ruby,
+            _ => return Err(anyhow!("Unsupported Language: {}", s)),
+        })
     }
 }
 
 impl Lang {
     pub(crate) fn as_config(&self) -> String {
         match self {
+            Lang::Cpp => "cpp",
             Lang::CSharp => "csharp",
-            Lang::Unsupported => "unsupported",
+            Lang::Java => "java",
+            Lang::Javascript => "js",
+            Lang::Kotlin => "kotlin",
+            Lang::ObjectiveC => "objc",
+            Lang::Php => "php",
+            Lang::Python => "python",
+            Lang::Ruby => "ruby",
         }
         .to_string()
     }
