@@ -1,4 +1,3 @@
-use crate::lang::Lang;
 use crate::Options;
 use anyhow::{anyhow, bail, Context, Result};
 use log::info;
@@ -15,7 +14,7 @@ pub fn protoc(options: &Options) -> Result<()> {
     info!("using protoc at path: {:?}", protoc_path);
     info!("running:\nprotoc {:?}", args.join(" "));
 
-    // todo create_output_path
+    create_output_paths(options)?;
 
     let mut child = Command::new(protoc_path)
         .args(args)
@@ -63,14 +62,16 @@ fn collect_proto_outputs(options: &Options, args: &mut Vec<String>) -> Result<()
     Ok(())
 }
 
-fn create_output_path(output_path: &PathBuf, lang: &Lang) -> Result<()> {
-    fs::create_dir_all(output_path).with_context(|| {
-        format!(
-            "Failed to create directory at path {:?} for proto output '{}'",
-            output_path,
-            lang.as_config()
-        )
-    })?;
+fn create_output_paths(options: &Options) -> Result<()> {
+    for proto in &options.proto {
+        fs::create_dir_all(&proto.output).with_context(|| {
+            format!(
+                "Failed to create directory at path {:?} for proto output '{}'",
+                proto.output,
+                proto.lang.as_config()
+            )
+        })?;
+    }
     Ok(())
 }
 
@@ -88,11 +89,15 @@ mod tests {
         use crate::lang::Lang;
         use crate::lang_option::LangOption;
         use crate::run::tests::assert_arg_pair_exists;
-        use crate::run::{collect_and_validate_args, collect_proto_path, PROTOC_ARG_PROTO_PATH};
+        use crate::run::{
+            collect_and_validate_args, collect_proto_path, create_output_paths,
+            PROTOC_ARG_PROTO_PATH,
+        };
         use crate::Options;
         use anyhow::Result;
-        use std::env;
         use std::path::PathBuf;
+        use std::{env, fs};
+        use tempfile::tempdir;
 
         #[test]
         fn proto_path() -> Result<()> {
@@ -129,6 +134,26 @@ mod tests {
             let args = collect_and_validate_args(&options)?;
             assert_arg_pair_exists(&args, "cpp_out", "cpp/path");
             assert_arg_pair_exists(&args, "csharp_out", "csharp/path");
+            Ok(())
+        }
+
+        #[test]
+        fn creates_all_proto_output_dirs() -> Result<()> {
+            let tempdir = tempdir()?;
+            let mut options = Options::default();
+            let cpp_path = tempdir.path().join("cpp");
+            let csharp_path = tempdir.path().join("csharp");
+            options.proto.push(LangOption {
+                lang: Lang::Cpp,
+                output: cpp_path.clone(),
+            });
+            options.proto.push(LangOption {
+                lang: Lang::Cpp,
+                output: csharp_path.clone(),
+            });
+            create_output_paths(&options)?;
+            assert!(fs::read_dir(&cpp_path).is_ok());
+            assert!(fs::read_dir(&csharp_path).is_ok());
             Ok(())
         }
     }
