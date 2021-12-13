@@ -1,5 +1,6 @@
 use crate::idl::Idl;
-use crate::lang_option::LangOption;
+use crate::lang::Lang;
+use crate::lang_config::LangConfig;
 use anyhow::{anyhow, Error, Result};
 use clap::{crate_version, App, Arg, ArgMatches};
 use std::env;
@@ -19,6 +20,19 @@ pub const OUTPUT_SEPARATOR: &str = "=";
 pub const PLUGIN_PROTO: &str = "plugin-proto";
 pub const OUTPUT_LONG_ABOUT: & str = "If OUTPUT is a relative path, it is evaluated relative to OUTPUT_ROOT if set, or the current working directory otherwise.";
 pub const LONG_ABOUT_NEWLINE: &str = "\n\n";
+
+const PROTO_SUPPORTED_LANGUAGES: [Lang; 10] = [
+    Lang::Cpp,
+    Lang::CSharp,
+    Lang::Java,
+    Lang::Javascript,
+    Lang::Kotlin,
+    Lang::ObjectiveC,
+    Lang::Php,
+    Lang::Python,
+    Lang::Ruby,
+    Lang::Rust,
+];
 
 fn parse_cli_args() -> ArgMatches {
     App::new("struct-ffi-gen")
@@ -52,8 +66,8 @@ fn parse_cli_args() -> ArgMatches {
                     "Indicates protobuf code should be generated for language NAME to file path OUTPUT.",
                     "If OUTPUT is not provided, it defaults to `proto_<NAME>`.",
                     OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages: All languages specified in your `protoc --help` as *_out args, where * is the language name (for example: csharp, cpp). Additionally 'rust' is supported. \
-                    Custom support can be added via the used of {}.", PLUGIN_PROTO),
+                    &format!("Supported languages: {}. \
+                    Custom support can be added via the used of {}.", supported_languages(), PLUGIN_PROTO),
                 ])),
 
             output_arg(SERVER)
@@ -85,18 +99,18 @@ fn join_about(lines: &[&str]) -> String {
 enum ParseError {}
 
 #[derive(Default)]
-pub struct Options {
+pub struct Config {
     pub idl: Idl,
     pub input: PathBuf,
     pub output_root: Option<PathBuf>,
-    pub proto: Vec<LangOption>,
+    pub proto: Vec<LangConfig>,
 }
 
-impl Options {
+impl Config {
     pub fn from_cli() -> Result<Self> {
         let args = parse_cli_args();
-        let options = Options::from_args(&args)?;
-        Ok(options)
+        let config = Config::from_args(&args)?;
+        Ok(config)
     }
 
     pub fn from_args(args: &ArgMatches) -> Result<Self> {
@@ -125,20 +139,26 @@ fn parse_output_root(args: &ArgMatches) -> Option<PathBuf> {
 fn parse_proto_outputs(
     args: &ArgMatches,
     output_root: Option<&PathBuf>,
-) -> Result<Vec<LangOption>> {
+) -> Result<Vec<LangConfig>> {
     let mut proto_outputs = Vec::new();
     let values = match args.values_of(PROTO) {
         None => return Ok(proto_outputs),
         Some(values) => values,
     };
     for value in values {
-        proto_outputs.push(LangOption::from_config(value, output_root, PROTO)?);
+        proto_outputs.push(LangConfig::from_config(value, output_root, PROTO)?);
     }
     Ok(proto_outputs)
 }
 
 fn error_missing_required_arg(name: &str) -> Error {
     anyhow!("Missing required argument '--{}'", name)
+}
+
+fn supported_languages() -> String {
+    PROTO_SUPPORTED_LANGUAGES
+        .map(|lang| lang.as_config())
+        .join(", ")
 }
 
 trait ArgExt {

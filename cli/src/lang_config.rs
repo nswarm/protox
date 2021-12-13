@@ -1,17 +1,17 @@
+use crate::config::{OUTPUT_ROOT, OUTPUT_SEPARATOR};
 use crate::lang::Lang;
-use crate::options::{OUTPUT_ROOT, OUTPUT_SEPARATOR};
 use anyhow::{Context, Result};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub struct LangOption {
+pub struct LangConfig {
     pub lang: Lang,
     pub output: PathBuf,
     pub output_prefix: PathBuf,
 }
 
-impl LangOption {
+impl LangConfig {
     pub fn from_config(
         config: &str,
         output_root: Option<&PathBuf>,
@@ -22,7 +22,7 @@ impl LangOption {
             Some((lang, path)) => (lang, path.into()),
         };
         let output_path = parse_output_path(output_root, &path)?;
-        Ok(LangOption {
+        Ok(LangConfig {
             lang: Lang::from_str(lang)?,
             output: output_path.full(),
             output_prefix: output_path.prefix,
@@ -75,20 +75,20 @@ fn current_dir() -> Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    mod lang_option {
+    mod lang_config {
+        use crate::config::{OUTPUT_SEPARATOR, PROTO};
         use crate::lang::Lang;
-        use crate::lang_option::LangOption;
-        use crate::options::{OUTPUT_SEPARATOR, PROTO};
+        use crate::lang_config::LangConfig;
         use anyhow::Result;
         use std::path::PathBuf;
 
         #[test]
         fn from_config_with_default_output() -> Result<()> {
             let output_root = PathBuf::new();
-            let option =
-                LangOption::from_config(&Lang::CSharp.as_config(), Some(&output_root), PROTO)?;
-            assert_eq!(option.lang, Lang::CSharp);
-            assert_eq!(option.output.as_path().to_str(), Some("proto_csharp"));
+            let config =
+                LangConfig::from_config(&Lang::CSharp.as_config(), Some(&output_root), PROTO)?;
+            assert_eq!(config.lang, Lang::CSharp);
+            assert_eq!(config.output.as_path().to_str(), Some("proto_csharp"));
             Ok(())
         }
 
@@ -98,20 +98,20 @@ mod tests {
             let output_path = PathBuf::from("path/to/output");
             let config =
                 [&Lang::CSharp.as_config(), output_path.to_str().unwrap()].join(OUTPUT_SEPARATOR);
-            let option = LangOption::from_config(&config, Some(&output_root), PROTO)?;
-            assert_eq!(option.lang, Lang::CSharp);
-            assert_eq!(option.output, output_path);
+            let config = LangConfig::from_config(&config, Some(&output_root), PROTO)?;
+            assert_eq!(config.lang, Lang::CSharp);
+            assert_eq!(config.output, output_path);
             Ok(())
         }
 
         #[test]
         fn from_config_with_unsupported_lang() {
-            assert!(LangOption::from_config("blah unsupported lang", None, PROTO).is_err());
+            assert!(LangConfig::from_config("blah unsupported lang", None, PROTO).is_err());
         }
     }
 
     mod parse_output_path {
-        use crate::lang_option::parse_output_path;
+        use crate::lang_config::parse_output_path;
         use anyhow::Result;
         use std::env;
         use std::path::PathBuf;

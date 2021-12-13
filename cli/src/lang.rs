@@ -12,6 +12,7 @@ pub enum Lang {
     Php,
     Python,
     Ruby,
+    Rust,
 }
 
 impl Default for Lang {
@@ -34,6 +35,7 @@ impl FromStr for Lang {
             "php" => Lang::Php,
             "python" => Lang::Python,
             "ruby" => Lang::Ruby,
+            "rust" => Lang::Rust,
             _ => return Err(anyhow!("Unsupported Language: {}", s)),
         })
     }
@@ -51,6 +53,7 @@ impl Lang {
             Lang::Php => "php",
             Lang::Python => "python",
             Lang::Ruby => "ruby",
+            Lang::Rust => "rust",
         }
         .to_string()
     }

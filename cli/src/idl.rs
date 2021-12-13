@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use clap::ArgMatches;
 
-use crate::options;
+use crate::config;
 
 #[derive(clap::ArgEnum, Clone, Debug, Eq, PartialEq)]
 pub enum Idl {
@@ -13,7 +13,7 @@ pub enum Idl {
 impl Idl {
     pub fn from_args(args: &ArgMatches) -> Result<Self> {
         let idl_str = args
-            .value_of(options::IDL)
+            .value_of(config::IDL)
             .ok_or(anyhow!("IDL missing default value."))?;
         Idl::from_str(idl_str)
     }
@@ -41,7 +41,7 @@ impl Idl {
         match self {
             Idl::Proto => "proto",
         }
-            .to_string()
+        .to_string()
     }
 }
 

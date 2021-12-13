@@ -1,19 +1,19 @@
+use crate::config::Config;
 use crate::idl::Idl;
-use crate::options::Options;
 use anyhow::Result;
 
+mod config;
 mod idl;
 mod lang;
-mod lang_option;
-mod options;
+mod lang_config;
 mod run;
 
 fn main() -> Result<()> {
     env_logger::init();
 
-    let options = Options::from_cli()?;
-    match options.idl {
-        Idl::Proto => run::protoc(&options)?,
+    let config = Config::from_cli()?;
+    match config.idl {
+        Idl::Proto => run::protoc(&config)?,
     };
     Ok(())
 }

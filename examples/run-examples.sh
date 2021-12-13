@@ -18,4 +18,4 @@ cd "$(dirname "$0")/.."
 cargo run -- \
   --input examples/input/proto \
   --output-root examples/output/proto \
-  --proto cpp csharp java js=proto_javascript
+  --proto cpp csharp java rust js=proto_javascript
