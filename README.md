@@ -26,15 +26,7 @@ Protobuf generated code:
 - All [supported protobuf languages](https://developers.google.com/protocol-buffers) via the protobuf compiler itself (protoc)
 - Rust via [prost](https://github.com/tokio-rs/prost)
 
-See the `protobuf` and `protobuf-rust` examples for usage.
-
-## Examples
-
-In `examples` you can see various examples of running struct-ffi-gen. Each example has an `input` and `output` folder. See the `main.rs` file in each example for the command line arguments it runs with.
-
-You can run all examples (and generate their `output`) with `cargo run --example all` or individually with `cargo run --example <example name>`.
-
-Note that these examples assume you are running with `cargo run`.
+See the `examples/run-examples.sh` script for various ways of using struct-ffi-gen.
 
 ## Architecture
 

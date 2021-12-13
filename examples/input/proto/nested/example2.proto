@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package nested;
+
+message Example2 {
+  string str = 1;
+  int32 i32 = 2;
+}

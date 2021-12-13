@@ -1,0 +1,1 @@
+hi i am not a proto file, showing that files without "proto" extensions are ignored.

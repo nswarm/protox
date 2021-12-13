@@ -8,6 +8,7 @@ use std::str::FromStr;
 pub struct LangOption {
     pub lang: Lang,
     pub output: PathBuf,
+    pub output_prefix: PathBuf,
 }
 
 impl LangOption {
@@ -20,9 +21,11 @@ impl LangOption {
             None => (config, default_output(config, default_output_prefix)),
             Some((lang, path)) => (lang, path.into()),
         };
+        let output_path = parse_output_path(output_root, &path)?;
         Ok(LangOption {
             lang: Lang::from_str(lang)?,
-            output: parse_output_path(output_root, &path)?,
+            output: output_path.full(),
+            output_prefix: output_path.prefix,
         })
     }
 }
@@ -31,22 +34,43 @@ fn default_output(config: &str, default_prefix: &str) -> PathBuf {
     PathBuf::from([default_prefix, config].join("_"))
 }
 
-fn parse_output_path(output_root: Option<&PathBuf>, path: &PathBuf) -> Result<PathBuf> {
+struct OutputPath {
+    pub prefix: PathBuf,
+    pub path: PathBuf,
+}
+
+impl OutputPath {
+    pub fn full(&self) -> PathBuf {
+        self.prefix.join(&self.path)
+    }
+}
+
+fn parse_output_path(output_root: Option<&PathBuf>, path: &PathBuf) -> Result<OutputPath> {
     if path.is_absolute() {
-        return Ok(path.clone());
+        return Ok(OutputPath {
+            prefix: PathBuf::new(),
+            path: path.clone(),
+        });
     }
-    match output_root {
-        None => Ok(env::current_dir()
-            .with_context(|| {
-                format!(
-                    "Working directory does not exist or permission denied.\
+    let prefix = if path.is_absolute() {
+        PathBuf::new()
+    } else {
+        output_root.unwrap_or(&current_dir()?).to_path_buf()
+    };
+    Ok(OutputPath {
+        prefix,
+        path: path.clone(),
+    })
+}
+
+fn current_dir() -> Result<PathBuf> {
+    env::current_dir().with_context(|| {
+        format!(
+            "Working directory does not exist or permission denied.\
                      Try specifying an explicit --{} or running from a different folder.",
-                    OUTPUT_ROOT
-                )
-            })?
-            .join(path)),
-        Some(root) => Ok(root.join(path)),
-    }
+            OUTPUT_ROOT
+        )
+    })
 }
 
 #[cfg(test)]
@@ -97,7 +121,9 @@ mod tests {
             let root = env::current_dir()?;
             let path = env::temp_dir();
             let result = parse_output_path(Some(&root), &path)?;
-            assert_eq!(result, path);
+            assert_eq!(result.prefix, PathBuf::new());
+            assert_eq!(result.path, path);
+            assert_eq!(result.full(), path);
             Ok(())
         }
 
@@ -105,7 +131,9 @@ mod tests {
         fn absolute_no_root() -> Result<()> {
             let path = env::temp_dir();
             let result = parse_output_path(None, &path)?;
-            assert_eq!(result, path);
+            assert_eq!(result.prefix, PathBuf::new());
+            assert_eq!(result.path, path);
+            assert_eq!(result.full(), path);
             Ok(())
         }
 
@@ -114,7 +142,9 @@ mod tests {
             let root = env::temp_dir();
             let path = PathBuf::from("rel/path");
             let result = parse_output_path(Some(&root), &path)?;
-            assert_eq!(result, root.join(path));
+            assert_eq!(result.prefix, root);
+            assert_eq!(result.path, path);
+            assert_eq!(result.full(), root.join(path));
             Ok(())
         }
 
@@ -122,7 +152,10 @@ mod tests {
         fn relative_no_root() -> Result<()> {
             let path = PathBuf::from("rel/path");
             let result = parse_output_path(None, &path)?;
-            assert_eq!(result, env::current_dir()?.join(path));
+            let root = env::current_dir()?;
+            assert_eq!(result.prefix, root);
+            assert_eq!(result.path, path);
+            assert_eq!(result.full(), root.join(path));
             Ok(())
         }
     }

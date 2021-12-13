@@ -43,7 +43,8 @@ fn parse_cli_args() -> ArgMatches {
                 .display_order(2)
                 .about("All output files will be prefixed with this path.")
                 .short('r')
-                .long(OUTPUT_ROOT),
+                .long(OUTPUT_ROOT)
+                .takes_value(true),
 
             output_arg(PROTO)
                 .display_order(100)
@@ -72,6 +73,8 @@ fn output_arg(name: &str) -> Arg {
         .long(name)
         .required_unless_present_any(&OUTPUT_TYPES)
         .value_name(&OUTPUT_VALUE_NAME)
+        .takes_value(true)
+        .multiple_values(true)
 }
 
 fn join_about(lines: &[&str]) -> String {
