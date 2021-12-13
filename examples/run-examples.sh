@@ -8,6 +8,7 @@ set -euo pipefail
 # struct-ffi-gen --help
 
 cd "$(dirname "$0")/.."
+rm -rf examples/output
 
 # Proto input, proto output.
 # This is more or less a passthrough to `protoc`, the protobuf compiler.

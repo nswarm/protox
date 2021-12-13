@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package nested;
+package depth0.depth1;
 
 message Example2 {
   string str = 1;

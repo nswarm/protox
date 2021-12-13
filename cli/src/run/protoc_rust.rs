@@ -1,9 +1,35 @@
+use crate::lang::Lang;
 use crate::Config;
-use anyhow::Result;
+use anyhow::{Context, Result};
+use std::fs;
+use std::path::Path;
 
 /// Special case since rust uses prost plugin.
 pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
-    // todo uhh ok I think normal protoc just ignres and this does prost only
-    // prost_build::compile_protos()
+    let rust_config = config
+        .proto
+        .iter()
+        .find(|lang_config| lang_config.lang == Lang::Rust);
+    let output = match rust_config {
+        None => return Ok(()),
+        Some(rust_config) => &rust_config.output,
+    };
+
+    create_output_dir(output)?;
+
+    prost_build::Config::new()
+        .out_dir(output)
+        .compile_protos(input_files, &[&config.input])?;
+    Ok(())
+}
+
+fn create_output_dir(output: &Path) -> Result<()> {
+    fs::create_dir_all(&output).with_context(|| {
+        format!(
+            "Failed to create directory at path {:?} for proto output '{}'",
+            output,
+            Lang::Rust.as_config(),
+        )
+    })?;
     Ok(())
 }

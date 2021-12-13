@@ -83,6 +83,9 @@ fn collect_proto_outputs(config: &Config, args: &mut Vec<String>) -> Result<()> 
 
 fn create_output_paths(config: &Config) -> Result<()> {
     for proto in &config.proto {
+        if !SUPPORTED_LANGUAGES.contains(&proto.lang) {
+            continue;
+        }
         fs::create_dir_all(&proto.output).with_context(|| {
             format!(
                 "Failed to create directory at path {:?} for proto output '{}'",
@@ -98,17 +101,13 @@ fn arg_with_value(arg: &str, value: &str) -> String {
     ["--", arg, "=", value].concat()
 }
 
-fn quote(val: &str) -> String {
-    ["\"", val, "\""].concat()
-}
-
 fn protoc_path() -> PathBuf {
     prost_build::protoc()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::run::protoc_basic::{arg_with_value, quote};
+    use crate::run::protoc_basic::arg_with_value;
 
     mod collect_and_validate_args {
         use crate::lang::Lang;
@@ -220,7 +219,7 @@ mod tests {
         assert_eq!(
             args.get(pos + 1)
                 .expect(&format!("missing value for arg: --{}", first)),
-            &quote(second)
+            second
         );
     }
 }

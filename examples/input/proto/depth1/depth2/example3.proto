@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package depth0;
+package depth0.depth1.depth2;
 
-message Example {
+message Example3 {
   string str = 1;
   int32 i32 = 2;
 }
