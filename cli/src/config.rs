@@ -15,7 +15,7 @@ pub const SERVER: &str = "server";
 pub const CLIENT: &str = "client";
 pub const DIRECT: &str = "direct";
 pub const OUTPUT_TYPES: [&str; 4] = [PROTO, SERVER, CLIENT, DIRECT];
-pub const OUTPUT_VALUE_NAME: &str = "NAME[=OUTPUT]";
+pub const OUTPUT_VALUE_NAME: &str = "LANG[=OUTPUT]";
 pub const OUTPUT_SEPARATOR: &str = "=";
 pub const PLUGIN_PROTO: &str = "plugin-proto";
 pub const OUTPUT_LONG_ABOUT: & str = "If OUTPUT is a relative path, it is evaluated relative to OUTPUT_ROOT if set, or the current working directory otherwise.";
@@ -63,10 +63,10 @@ fn parse_cli_args() -> ArgMatches {
             output_arg(PROTO)
                 .display_order(100)
                 .long_about(&join_about(&[
-                    "Indicates protobuf code should be generated for language NAME to file path OUTPUT.",
-                    "If OUTPUT is not provided, it defaults to `proto_<NAME>`.",
+                    "Indicates protobuf code should be generated for language LANG to file path OUTPUT.",
+                    "If OUTPUT is not provided, it defaults to `proto_<LANG>`.",
                     OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages: {}. \
+                    &format!("Supported languages for LANG: {}. \
                     Custom support can be added via the used of {}.", supported_languages(), PLUGIN_PROTO),
                 ])),
 

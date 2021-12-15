@@ -19,4 +19,4 @@ rm -rf examples/output
 cargo run -- \
   --input examples/input/proto \
   --output-root examples/output/proto \
-  --proto cpp csharp java rust js=proto_javascript
+  --proto cpp csharp java rust js=custom_javascript
