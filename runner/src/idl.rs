@@ -37,7 +37,7 @@ impl FromStr for Idl {
 }
 
 impl Idl {
-    pub(crate) fn as_config(&self) -> String {
+    pub fn as_config(&self) -> String {
         match self {
             Idl::Proto => "proto",
         }

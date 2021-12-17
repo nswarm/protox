@@ -17,9 +17,12 @@ pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
 
     create_output_dir(output)?;
 
-    prost_build::Config::new()
-        .out_dir(output)
-        .compile_protos(input_files, &[&config.input])?;
+    let mut prost_config = prost_build::Config::new();
+    prost_config.out_dir(output);
+    for extra_arg in &config.extra_protoc_args {
+        prost_config.protoc_arg(extra_arg);
+    }
+    prost_config.compile_protos(input_files, &[&config.input])?;
     Ok(())
 }
 

@@ -42,7 +42,7 @@ impl FromStr for Lang {
 }
 
 impl Lang {
-    pub(crate) fn as_config(&self) -> String {
+    pub fn as_config(&self) -> String {
         match self {
             Lang::Cpp => "cpp",
             Lang::CSharp => "csharp",

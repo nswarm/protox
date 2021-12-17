@@ -52,7 +52,7 @@ Other crates:
 
 The way that **protoc**, the protobuf compiler, works is it is an executable that can run another executable as a plugin, passing it data on stdin and receiving results on stdout. For this to work inside of struct-ffi-gen, we have the **cli** executable call the protoc executable with our **protoc-plugin** executable. **protoc-plugin** then calls into our **core** library code.
 
-The **protoc** exe is located using the method build into the [prost](https://github.com/tokio-rs/prost) crate
+The **protoc** executable is assumed to be on your PATH. You can directly specify which protoc to use by setting the environment variable `PROTOC_EXE` to the path of the executable.
 
 ## Background
 
