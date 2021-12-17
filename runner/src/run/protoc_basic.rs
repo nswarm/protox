@@ -1,4 +1,5 @@
 use crate::lang::Lang;
+use crate::run::util;
 use crate::Config;
 use anyhow::{anyhow, bail, Context, Result};
 use log::info;
@@ -93,7 +94,7 @@ fn collect_proto_outputs(config: &Config, args: &mut Vec<String>) -> Result<()> 
 
 fn collect_extra_protoc_args(config: &Config, args: &mut Vec<String>) {
     for arg in &config.extra_protoc_args {
-        args.push(arg.clone());
+        args.push(util::unquote_arg(arg));
     }
 }
 
@@ -229,14 +230,18 @@ mod tests {
     #[test]
     fn passes_extra_protoc_args() -> Result<()> {
         let mut config = Config::default();
-        let extra_protoc_args = vec!["--test1".to_string(), "--test2=hello".to_string()];
-        config
-            .extra_protoc_args
-            .append(&mut extra_protoc_args.to_vec());
+        let extra_protoc_args = vec!["--test1", "--test2=hello"];
+        for extra_arg in &extra_protoc_args {
+            config.extra_protoc_args.push(quote_arg(extra_arg));
+        }
         let mut out_args = vec![];
         collect_extra_protoc_args(&config, &mut out_args);
         assert_eq!(extra_protoc_args, out_args);
         Ok(())
+    }
+
+    pub fn quote_arg(arg: &str) -> String {
+        ["\"", arg, "\""].concat()
     }
 
     #[test]

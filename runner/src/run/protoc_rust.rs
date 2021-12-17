@@ -1,4 +1,5 @@
 use crate::lang::Lang;
+use crate::run::util;
 use crate::Config;
 use anyhow::{Context, Result};
 use std::fs;
@@ -20,7 +21,7 @@ pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
     let mut prost_config = prost_build::Config::new();
     prost_config.out_dir(output);
     for extra_arg in &config.extra_protoc_args {
-        prost_config.protoc_arg(extra_arg);
+        prost_config.protoc_arg(util::unquote_arg(extra_arg));
     }
     prost_config.compile_protos(input_files, &[&config.input])?;
     Ok(())
