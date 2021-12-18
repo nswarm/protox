@@ -1,12 +1,12 @@
 use crate::idl::Idl;
 use crate::lang::Lang;
 use crate::lang_config::LangConfig;
+use crate::run;
 use anyhow::{anyhow, Error, Result};
 use clap::{crate_version, App, Arg, ArgMatches, Values};
 use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
-use crate::run;
 
 pub const APP_NAME: &str = "protoffi";
 pub const IDL: &str = "idl";
@@ -192,7 +192,8 @@ fn error_missing_required_arg(name: &str) -> Error {
 }
 
 fn lang_list(list: &[Lang]) -> String {
-    list.iter().map(|lang| lang.as_config())
+    list.iter()
+        .map(|lang| lang.as_config())
         .collect::<Vec<String>>()
         .join(", ")
 }

@@ -1,11 +1,9 @@
 use crate::lang::Lang;
+use crate::run::protoc::Protoc;
+use crate::run::util;
 use crate::Config;
 use anyhow::{anyhow, bail, Context, Result};
-use log::info;
 use std::fs;
-use std::path::{ PathBuf};
-use std::process::Command;
-use crate::run::util;
 
 const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
 
@@ -41,27 +39,10 @@ fn basic(config: &Config, input_files: &Vec<String>) -> Result<()> {
         return Ok(());
     }
 
-    let protoc_path = protoc_path();
-    let args = collect_and_validate_args(config, input_files)?;
+    let mut protoc = Protoc::new(config);
+    protoc.args = collect_and_validate_args(config, input_files)?;
 
-    info!("using protoc at path: {:?}", protoc_path);
-    info!("running command:\tprotoc {}", args.join(" "));
-
-    let mut child = Command::new(&protoc_path)
-        .args(args)
-        .spawn()
-        .with_context(|| {
-            format!(
-                "Failed to spawn protoc process using protoc: {:?}",
-                protoc_path
-            )
-        })?;
-    let status = child.wait()?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(anyhow!("Exited with status {}", status))
-    }
+    protoc.execute()
 }
 
 /// Special case since rust uses prost plugin.
@@ -69,7 +50,8 @@ fn rust(config: &Config, input_files: &Vec<String>) -> Result<()> {
     let rust_config = match config
         .proto
         .iter()
-        .find(|lang_config| lang_config.lang == Lang::Rust) {
+        .find(|lang_config| lang_config.lang == Lang::Rust)
+    {
         None => return Ok(()),
         Some(config) => config,
     };
@@ -142,13 +124,6 @@ fn arg_with_value(arg: &str, value: &str) -> String {
     ["--", arg, "=", value].concat()
 }
 
-fn protoc_path() -> PathBuf {
-    match option_env!("PROTOC_EXE") {
-        None => PathBuf::from("protoc"),
-        Some(path) => PathBuf::from(path),
-    }
-}
-
 pub fn unquote_arg(arg: &str) -> String {
     arg[1..arg.len() - 1].to_string()
 }
@@ -164,8 +139,8 @@ mod tests {
     };
     use crate::Config;
     use anyhow::Result;
+    use std::env;
     use std::path::PathBuf;
-    use std::{env};
 
     #[test]
     fn proto_path() -> Result<()> {

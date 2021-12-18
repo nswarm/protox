@@ -1,6 +1,6 @@
-use anyhow::{ Result};
-use crate::{Config, Lang};
 use crate::run::util;
+use crate::{Config, Lang};
+use anyhow::Result;
 
 const SUPPORTED_LANGUAGES: [Lang; 0] = [];
 
