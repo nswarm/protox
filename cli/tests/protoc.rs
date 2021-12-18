@@ -136,5 +136,5 @@ fn path_to_str<P: AsRef<Path>>(path: P) -> Result<String> {
 }
 
 fn struct_ffi_gen() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_struct-ffi-gen"))
+    Command::new(env!("CARGO_BIN_EXE_protoffi"))
 }

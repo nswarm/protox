@@ -1,6 +1,6 @@
-# struct-ffi-gen
+# protoffi
 
-struct-ffi-gen is an executable that generates C-ABI-compatible code in one or more languages for seamless and performant direct usage of those types across the library boundary.
+protoffi is an executable that generates C-ABI-compatible code in one or more languages for seamless and performant direct usage of those types across the library boundary.
 
 The user designates a **server** language and a **client** language. Code is generated slightly differently for each:
 - Server language: Classes and a set of C functions for accessing the fields through an opaque pointer.
@@ -26,15 +26,15 @@ Protobuf generated code:
 - All [supported protobuf languages](https://developers.google.com/protocol-buffers) via the protobuf compiler itself (protoc)
 - Rust via [prost](https://github.com/tokio-rs/prost)
 
-See the `examples/run-examples.sh` script for various ways of using struct-ffi-gen.
+See the `examples/run-examples.sh` script for various ways of using protoffi.
 
 ## Architecture
 
-struct-ffi-gen consumes an [IDL](https://en.wikipedia.org/wiki/Interface_description_language) and produces "client" and "server" structs in target languages using [mustache templates](https://mustache.github.io/).
+protoffi consumes an [IDL](https://en.wikipedia.org/wiki/Interface_description_language) and produces "client" and "server" structs in target languages using [mustache templates](https://mustache.github.io/).
 
 ### Plugins
 
-struct-ffi-gen is built around plugins to allow incremental support for new languages. There are multiple types of plugins that can be added:
+protoffi is built around plugins to allow incremental support for new languages. There are multiple types of plugins that can be added:
 - IDL
 - Server language
 - Client language
@@ -50,13 +50,13 @@ Other crates:
 
 #### Protobuf Compiler
 
-The way that **protoc**, the protobuf compiler, works is it is an executable that can run another executable as a plugin, passing it data on stdin and receiving results on stdout. For this to work inside of struct-ffi-gen, we have the **cli** executable call the protoc executable with our **protoc-plugin** executable. **protoc-plugin** then calls into our **core** library code.
+The way that **protoc**, the protobuf compiler, works is it is an executable that can run another executable as a plugin, passing it data on stdin and receiving results on stdout. For this to work inside of protoffi, we have the **cli** executable call the protoc executable with our **protoc-plugin** executable. **protoc-plugin** then calls into our **core** library code.
 
 The **protoc** executable is assumed to be on your PATH. You can directly specify which protoc to use by setting the environment variable `PROTOC_EXE` to the path of the executable.
 
 ## Background
 
-struct-ffi-gen is built to solve a very specific problem: you have a large amount of owned by one language that you want to inspect in another language, for example a complex data model for an app but with UI is built in another language.
+protoffi is built to solve a very specific problem: you have a large amount of owned by one language that you want to inspect in another language, for example a complex data model for an app but with UI is built in another language.
 
 Given this struct hierarchy in C++:
 ```c++
@@ -72,7 +72,7 @@ struct Outer {
 
 How would it look to access this type in another language? For structs of only primitive types, we could copy the struct wholesale, but there's a few downsides:
 1. That won't work once we have std::string or similar language-specific types added to the mix.
-2. If our structs are large, and I don't need all of that information, I'm doing a lot of wasted copying.
+2. If our structs are large, and we don't need all of that information, we're doing a lot of wasted copying.
 
 One way of solving this is to use **opaque pointers** with pure functions that know how to access the values. For example, the above structs could have an FFI layer that looks like: 
 
@@ -128,4 +128,4 @@ The benefits are it gives you a way to access objects on the other side without 
 
 There's a big downside though: that's a lot of boilerplate! It's also very brittle -- there's a lot of ways to mess it up when writing it by hand across many types.
 
-That's where struct-ffi-gen comes in. It generates code like the above so that you don't have to, eliminating the possibility of hand-written bugs.
+That's where protoffi comes in. It generates code like the above so that you don't have to, eliminating the possibility of hand-written bugs.

@@ -7,7 +7,7 @@ use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-pub const APP_NAME: &str = "struct-ffi-gen";
+pub const APP_NAME: &str = "protoffi";
 pub const IDL: &str = "idl";
 pub const INPUT: &str = "input";
 pub const OUTPUT_ROOT: &str = "output-root";
@@ -44,7 +44,7 @@ where
     T: Into<OsString> + Clone,
 {
     App::new(APP_NAME)
-        .long_about("struct-ffi-gen is an executable that generates C-ABI-compatible code in one or more languages for seamless and performant direct usage of those types across the library boundary.")
+        .long_about("protoffi is an executable that generates C-ABI-compatible code in one or more languages for seamless and performant direct usage of those types across the library boundary.")
         .version(crate_version!())
         .args([
             Arg::new(IDL)
@@ -89,7 +89,7 @@ where
 
             Arg::new(PROTOC_ARGS)
                 .display_order(DISPLAY_LAST)
-                .long_about(&format!("Add any arguments directly to protoc invocation. Note they must be wrapped with \"\" as to not be picked up as arguments to struct-ffi-gen.\nFor example: --{} \"--descriptor_set_out=FILE\"", PROTOC_ARGS))
+                .long_about(&format!("Add any arguments directly to protoc invocation. Note they must be wrapped with \"\" as to not be picked up as arguments to protoffi.\nFor example: --{} \"--descriptor_set_out=FILE\"", PROTOC_ARGS))
                 .requires(PROTO)
                 .long(PROTOC_ARGS)
                 .takes_value(true)
