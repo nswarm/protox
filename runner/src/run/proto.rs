@@ -1,10 +1,9 @@
 use crate::lang::Lang;
-use crate::run::util;
 use crate::Config;
 use anyhow::{anyhow, bail, Context, Result};
 use log::info;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
@@ -21,8 +20,14 @@ pub const SUPPORTED_LANGUAGES: [Lang; 9] = [
     Lang::Ruby,
 ];
 
-/// Any basic protoc support.
 pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
+    basic(config, input_files)?;
+    rust(config, input_files)?;
+    Ok(())
+}
+
+/// Any basic protoc support.
+fn basic(config: &Config, input_files: &Vec<String>) -> Result<()> {
     if !has_any_supported_language(config) {
         return Ok(());
     }
@@ -33,7 +38,7 @@ pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
     info!("using protoc at path: {:?}", protoc_path);
     info!("running command:\tprotoc {}", args.join(" "));
 
-    create_output_paths(config)?;
+    create_output_dirs(config)?;
 
     let mut child = Command::new(&protoc_path)
         .args(args)
@@ -50,6 +55,39 @@ pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
     } else {
         Err(anyhow!("Exited with status {}", status))
     }
+}
+
+/// Special case since rust uses prost plugin.
+fn rust(config: &Config, input_files: &Vec<String>) -> Result<()> {
+    let rust_config = config
+        .proto
+        .iter()
+        .find(|lang_config| lang_config.lang == Lang::Rust);
+    let output = match rust_config {
+        None => return Ok(()),
+        Some(rust_config) => &rust_config.output,
+    };
+
+    create_output_dir(output)?;
+
+    let mut prost_config = prost_build::Config::new();
+    prost_config.out_dir(output);
+    for extra_arg in &config.extra_protoc_args {
+        prost_config.protoc_arg(unquote_arg(extra_arg));
+    }
+    prost_config.compile_protos(input_files, &[&config.input])?;
+    Ok(())
+}
+
+fn create_output_dir(output: &Path) -> Result<()> {
+    fs::create_dir_all(&output).with_context(|| {
+        format!(
+            "Failed to create directory at path {:?} for proto output '{}'",
+            output,
+            Lang::Rust.as_config(),
+        )
+    })?;
+    Ok(())
 }
 
 fn collect_and_validate_args(config: &Config, input_files: &Vec<String>) -> Result<Vec<String>> {
@@ -94,11 +132,11 @@ fn collect_proto_outputs(config: &Config, args: &mut Vec<String>) -> Result<()> 
 
 fn collect_extra_protoc_args(config: &Config, args: &mut Vec<String>) {
     for arg in &config.extra_protoc_args {
-        args.push(util::unquote_arg(arg));
+        args.push(unquote_arg(arg));
     }
 }
 
-fn create_output_paths(config: &Config) -> Result<()> {
+fn create_output_dirs(config: &Config) -> Result<()> {
     for proto in &config.proto {
         if !SUPPORTED_LANGUAGES.contains(&proto.lang) {
             continue;
@@ -134,14 +172,18 @@ fn protoc_path() -> PathBuf {
     }
 }
 
+pub fn unquote_arg(arg: &str) -> String {
+    arg[1..arg.len() - 1].to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::lang::Lang;
     use crate::lang_config::LangConfig;
-    use crate::run::protoc_basic::{arg_with_value, has_any_supported_language};
-    use crate::run::protoc_basic::{
+    use crate::run::proto::{arg_with_value, has_any_supported_language};
+    use crate::run::proto::{
         collect_and_validate_args, collect_extra_protoc_args, collect_proto_outputs,
-        collect_proto_path, create_output_paths, PROTOC_ARG_PROTO_PATH,
+        collect_proto_path, create_output_dirs, PROTOC_ARG_PROTO_PATH,
     };
     use crate::Config;
     use anyhow::Result;
@@ -221,7 +263,7 @@ mod tests {
             output: csharp_path.clone(),
             output_prefix: PathBuf::new(),
         });
-        create_output_paths(&config)?;
+        create_output_dirs(&config)?;
         assert!(fs::read_dir(&cpp_path).is_ok());
         assert!(fs::read_dir(&csharp_path).is_ok());
         Ok(())

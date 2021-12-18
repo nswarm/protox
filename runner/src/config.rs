@@ -18,7 +18,6 @@ pub const DIRECT: &str = "direct";
 pub const OUTPUT_TYPES: [&str; 4] = [PROTO, SERVER, CLIENT, DIRECT];
 pub const OUTPUT_VALUE_NAME: &str = "LANG[=OUTPUT]";
 pub const OUTPUT_SEPARATOR: &str = "=";
-pub const PLUGIN_PROTO: &str = "plugin-proto";
 pub const PROTOC_ARGS: &str = "protoc-args";
 pub const OUTPUT_LONG_ABOUT: & str = "If OUTPUT is a relative path, it is evaluated relative to OUTPUT_ROOT if set, or the current working directory otherwise.";
 pub const LONG_ABOUT_NEWLINE: &str = "\n\n";
@@ -35,6 +34,9 @@ const PROTO_SUPPORTED_LANGUAGES: [Lang; 10] = [
     Lang::Php,
     Lang::Python,
     Lang::Ruby,
+    Lang::Rust,
+];
+const DIRECT_SUPPORTED_LANGUAGES: [Lang; 1] = [
     Lang::Rust,
 ];
 
@@ -71,11 +73,10 @@ where
             output_arg(PROTO)
                 .display_order(100)
                 .long_about(&join_about(&[
-                    "Indicates protobuf code should be generated for language LANG to file path OUTPUT.",
+                    "Protobuf code will be generated for language LANG to file path OUTPUT.",
                     "If OUTPUT is not provided, it defaults to `proto_<LANG>`.",
                     OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}. \
-                    Custom support can be added via the used of {}.", supported_languages(), PLUGIN_PROTO),
+                    &format!("Supported languages for LANG: {}.", lang_list(&PROTO_SUPPORTED_LANGUAGES)),
                 ])),
 
             output_arg(SERVER)
@@ -85,7 +86,13 @@ where
                 .display_order(102),
 
             output_arg(DIRECT)
-                .display_order(103),
+                .display_order(103)
+                .long_about(&join_about(&[
+                    "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
+                    "If OUTPUT is not provided, it defaults to `direct_<LANG>`.",
+                    OUTPUT_LONG_ABOUT,
+                    &format!("Supported languages for LANG: {}.", lang_list(&DIRECT_SUPPORTED_LANGUAGES)),
+                ])),
 
             Arg::new(PROTOC_ARGS)
                 .display_order(DISPLAY_LAST)
@@ -178,9 +185,9 @@ fn error_missing_required_arg(name: &str) -> Error {
     anyhow!("Missing required argument '--{}'", name)
 }
 
-fn supported_languages() -> String {
-    PROTO_SUPPORTED_LANGUAGES
-        .map(|lang| lang.as_config())
+fn lang_list(list: &[Lang]) -> String {
+    list.iter().map(|lang| lang.as_config())
+        .collect::<Vec<String>>()
         .join(", ")
 }
 

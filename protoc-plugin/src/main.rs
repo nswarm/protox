@@ -4,7 +4,7 @@ use prost::Message;
 use prost_types::compiler::{CodeGeneratorRequest, CodeGeneratorResponse};
 use std::io::{BufRead, Write};
 use std::{io, process};
-use anyhow::{anyhow, Error, Context, Result};
+use anyhow::{Error, Result};
 
 const ERROR_FAILED_TO_WRITE_RESPONSE: i32 = 100;
 

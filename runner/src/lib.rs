@@ -23,7 +23,7 @@ pub fn run_with_config(config: Config) -> Result<()> {
 
 fn run_internal(config: Config) -> Result<()> {
     match config.idl {
-        Idl::Proto => run::protoc(&config)?,
+        Idl::Proto => run::configured(&config)?,
     };
     Ok(())
 }

@@ -1,6 +1,11 @@
-mod protoc;
-mod protoc_basic;
-mod protoc_rust;
-mod util;
+use crate::Config;
+use anyhow::{Context, Result};
 
-pub use protoc::run as protoc;
+mod input;
+mod proto;
+
+pub fn configured(config: &Config) -> Result<()> {
+    let input_files = input::collect(config).context("Failed to collect input files.")?;
+    proto::run(config, &input_files)?;
+    Ok(())
+}
