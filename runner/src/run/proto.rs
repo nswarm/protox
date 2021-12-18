@@ -1,11 +1,8 @@
 use crate::lang::Lang;
-use crate::run::protoc::Protoc;
+use crate::run::protoc::{arg_with_value, Protoc};
 use crate::run::util;
 use crate::Config;
-use anyhow::{anyhow, bail, Context, Result};
-use std::fs;
-
-const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
+use anyhow::{anyhow, Context, Result};
 
 const BASIC_SUPPORTED_LANGUAGES: [Lang; 9] = [
     Lang::Cpp,
@@ -39,8 +36,10 @@ fn basic(config: &Config, input_files: &Vec<String>) -> Result<()> {
         return Ok(());
     }
 
-    let mut protoc = Protoc::new(config);
-    protoc.args = collect_and_validate_args(config, input_files)?;
+    let mut protoc = Protoc::new(config)?;
+    protoc
+        .args
+        .append(&mut collect_and_validate_args(config, input_files)?);
 
     protoc.execute()
 }
@@ -67,30 +66,17 @@ fn rust(config: &Config, input_files: &Vec<String>) -> Result<()> {
 
 fn collect_and_validate_args(config: &Config, input_files: &Vec<String>) -> Result<Vec<String>> {
     let mut args = Vec::new();
-    collect_proto_path(config, &mut args).context("Failed to collect proto_path arg.")?;
-    collect_proto_outputs(config, &mut args).context("Failed to collect proto output args.")?;
+    args.append(
+        &mut collect_proto_outputs(config).context("Failed to collect proto output args.")?,
+    );
     collect_extra_protoc_args(config, &mut args);
     // Input files must always come last.
     args.append(&mut input_files.clone());
     Ok(args)
 }
 
-fn collect_proto_path(config: &Config, args: &mut Vec<String>) -> Result<()> {
-    if let Err(_) = fs::read_dir(&config.input) {
-        bail!(
-            "Invalid input: could not find the directory located at path '{:?}'.",
-            config.input
-        );
-    }
-    let input = match config.input.to_str() {
-        None => bail!("Invalid input: Could not parse path to string."),
-        Some(input) => input,
-    };
-    args.push(arg_with_value(PROTOC_ARG_PROTO_PATH, input));
-    Ok(())
-}
-
-fn collect_proto_outputs(config: &Config, args: &mut Vec<String>) -> Result<()> {
+fn collect_proto_outputs(config: &Config) -> Result<Vec<String>> {
+    let mut args = Vec::new();
     for proto in &config.proto {
         if !BASIC_SUPPORTED_LANGUAGES.contains(&proto.lang) {
             continue;
@@ -102,7 +88,7 @@ fn collect_proto_outputs(config: &Config, args: &mut Vec<String>) -> Result<()> 
             .ok_or(anyhow!("Output path is invalid: {:?}", proto.output))?;
         args.push(arg_with_value(&arg, value));
     }
-    Ok(())
+    Ok(args)
 }
 
 fn collect_extra_protoc_args(config: &Config, args: &mut Vec<String>) {
@@ -120,10 +106,6 @@ fn has_any_supported_language(config: &Config) -> bool {
     count > 0
 }
 
-fn arg_with_value(arg: &str, value: &str) -> String {
-    ["--", arg, "=", value].concat()
-}
-
 pub fn unquote_arg(arg: &str) -> String {
     arg[1..arg.len() - 1].to_string()
 }
@@ -132,34 +114,12 @@ pub fn unquote_arg(arg: &str) -> String {
 mod tests {
     use crate::lang::Lang;
     use crate::lang_config::LangConfig;
-    use crate::run::proto::{arg_with_value, has_any_supported_language};
-    use crate::run::proto::{
-        collect_and_validate_args, collect_extra_protoc_args, collect_proto_outputs,
-        collect_proto_path, PROTOC_ARG_PROTO_PATH,
-    };
+    use crate::run::proto::has_any_supported_language;
+    use crate::run::proto::{collect_extra_protoc_args, collect_proto_outputs};
+    use crate::run::protoc::arg_with_value;
     use crate::Config;
     use anyhow::Result;
-    use std::env;
     use std::path::PathBuf;
-
-    #[test]
-    fn proto_path() -> Result<()> {
-        let input = env::current_dir().unwrap().to_str().unwrap().to_string();
-        let mut config = Config::default();
-        config.input = PathBuf::from(&input);
-        let args = collect_and_validate_args(&config, &Vec::new())?;
-        assert_arg_pair_exists(&args, &PROTOC_ARG_PROTO_PATH, &input);
-        Ok(())
-    }
-
-    #[test]
-    fn proto_path_missing() {
-        let input = "definitely/missing/path";
-        let mut config = Config::default();
-        config.input = PathBuf::from(input);
-        let mut args = Vec::new();
-        assert!(collect_proto_path(&config, &mut args).is_err());
-    }
 
     #[test]
     fn proto_output() -> Result<()> {
@@ -176,8 +136,7 @@ mod tests {
         };
         config.proto.push(cpp);
         config.proto.push(csharp);
-        let mut args = Vec::new();
-        collect_proto_outputs(&config, &mut args)?;
+        let args = collect_proto_outputs(&config)?;
         assert_arg_pair_exists(&args, "cpp_out", "cpp/path");
         assert_arg_pair_exists(&args, "csharp_out", "csharp/path");
         Ok(())
@@ -192,8 +151,7 @@ mod tests {
             output_prefix: PathBuf::new(),
         };
         config.proto.push(rust);
-        let mut args = Vec::new();
-        collect_proto_outputs(&config, &mut args)?;
+        let args = collect_proto_outputs(&config)?;
         assert_eq!(args.len(), 0);
         Ok(())
     }
