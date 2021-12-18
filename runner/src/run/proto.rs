@@ -3,7 +3,7 @@ use crate::Config;
 use anyhow::{anyhow, bail, Context, Result};
 use log::info;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{ PathBuf};
 use std::process::Command;
 
 const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
@@ -38,8 +38,6 @@ fn basic(config: &Config, input_files: &Vec<String>) -> Result<()> {
     info!("using protoc at path: {:?}", protoc_path);
     info!("running command:\tprotoc {}", args.join(" "));
 
-    create_output_dirs(config)?;
-
     let mut child = Command::new(&protoc_path)
         .args(args)
         .spawn()
@@ -59,34 +57,20 @@ fn basic(config: &Config, input_files: &Vec<String>) -> Result<()> {
 
 /// Special case since rust uses prost plugin.
 fn rust(config: &Config, input_files: &Vec<String>) -> Result<()> {
-    let rust_config = config
+    let rust_config = match config
         .proto
         .iter()
-        .find(|lang_config| lang_config.lang == Lang::Rust);
-    let output = match rust_config {
+        .find(|lang_config| lang_config.lang == Lang::Rust) {
         None => return Ok(()),
-        Some(rust_config) => &rust_config.output,
+        Some(config) => config,
     };
 
-    create_output_dir(output)?;
-
     let mut prost_config = prost_build::Config::new();
-    prost_config.out_dir(output);
+    prost_config.out_dir(&rust_config.output);
     for extra_arg in &config.extra_protoc_args {
         prost_config.protoc_arg(unquote_arg(extra_arg));
     }
     prost_config.compile_protos(input_files, &[&config.input])?;
-    Ok(())
-}
-
-fn create_output_dir(output: &Path) -> Result<()> {
-    fs::create_dir_all(&output).with_context(|| {
-        format!(
-            "Failed to create directory at path {:?} for proto output '{}'",
-            output,
-            Lang::Rust.as_config(),
-        )
-    })?;
     Ok(())
 }
 
@@ -136,22 +120,6 @@ fn collect_extra_protoc_args(config: &Config, args: &mut Vec<String>) {
     }
 }
 
-fn create_output_dirs(config: &Config) -> Result<()> {
-    for proto in &config.proto {
-        if !SUPPORTED_LANGUAGES.contains(&proto.lang) {
-            continue;
-        }
-        fs::create_dir_all(&proto.output).with_context(|| {
-            format!(
-                "Failed to create directory at path {:?} for proto output '{}'",
-                proto.output,
-                proto.lang.as_config()
-            )
-        })?;
-    }
-    Ok(())
-}
-
 fn has_any_supported_language(config: &Config) -> bool {
     let count = config
         .proto
@@ -183,13 +151,12 @@ mod tests {
     use crate::run::proto::{arg_with_value, has_any_supported_language};
     use crate::run::proto::{
         collect_and_validate_args, collect_extra_protoc_args, collect_proto_outputs,
-        collect_proto_path, create_output_dirs, PROTOC_ARG_PROTO_PATH,
+        collect_proto_path, PROTOC_ARG_PROTO_PATH,
     };
     use crate::Config;
     use anyhow::Result;
     use std::path::PathBuf;
-    use std::{env, fs};
-    use tempfile::tempdir;
+    use std::{env};
 
     #[test]
     fn proto_path() -> Result<()> {
@@ -244,28 +211,6 @@ mod tests {
         let mut args = Vec::new();
         collect_proto_outputs(&config, &mut args)?;
         assert_eq!(args.len(), 0);
-        Ok(())
-    }
-
-    #[test]
-    fn creates_all_proto_output_dirs() -> Result<()> {
-        let tempdir = tempdir()?;
-        let mut config = Config::default();
-        let cpp_path = tempdir.path().join("cpp");
-        let csharp_path = tempdir.path().join("csharp");
-        config.proto.push(LangConfig {
-            lang: Lang::Cpp,
-            output: cpp_path.clone(),
-            output_prefix: PathBuf::new(),
-        });
-        config.proto.push(LangConfig {
-            lang: Lang::Cpp,
-            output: csharp_path.clone(),
-            output_prefix: PathBuf::new(),
-        });
-        create_output_dirs(&config)?;
-        assert!(fs::read_dir(&cpp_path).is_ok());
-        assert!(fs::read_dir(&csharp_path).is_ok());
         Ok(())
     }
 
