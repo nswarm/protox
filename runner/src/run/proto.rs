@@ -5,10 +5,11 @@ use log::info;
 use std::fs;
 use std::path::{ PathBuf};
 use std::process::Command;
+use crate::run::util;
 
 const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
 
-pub const SUPPORTED_LANGUAGES: [Lang; 9] = [
+const BASIC_SUPPORTED_LANGUAGES: [Lang; 9] = [
     Lang::Cpp,
     Lang::CSharp,
     Lang::Java,
@@ -20,7 +21,14 @@ pub const SUPPORTED_LANGUAGES: [Lang; 9] = [
     Lang::Ruby,
 ];
 
+pub fn supported_languages() -> Vec<Lang> {
+    let mut vec = BASIC_SUPPORTED_LANGUAGES.to_vec();
+    vec.push(Lang::Rust);
+    vec
+}
+
 pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
+    util::check_languages_supported("proto", &config.proto, &supported_languages())?;
     basic(config, input_files)?;
     rust(config, input_files)?;
     Ok(())
@@ -101,7 +109,7 @@ fn collect_proto_path(config: &Config, args: &mut Vec<String>) -> Result<()> {
 
 fn collect_proto_outputs(config: &Config, args: &mut Vec<String>) -> Result<()> {
     for proto in &config.proto {
-        if !SUPPORTED_LANGUAGES.contains(&proto.lang) {
+        if !BASIC_SUPPORTED_LANGUAGES.contains(&proto.lang) {
             continue;
         }
         let arg = [proto.lang.as_config().as_str(), "_out"].concat();
@@ -124,7 +132,7 @@ fn has_any_supported_language(config: &Config) -> bool {
     let count = config
         .proto
         .iter()
-        .filter(|c| SUPPORTED_LANGUAGES.contains(&c.lang))
+        .filter(|c| BASIC_SUPPORTED_LANGUAGES.contains(&c.lang))
         .count();
     count > 0
 }

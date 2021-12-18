@@ -6,6 +6,7 @@ use clap::{crate_version, App, Arg, ArgMatches, Values};
 use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
+use crate::run;
 
 pub const APP_NAME: &str = "protoffi";
 pub const IDL: &str = "idl";
@@ -23,22 +24,6 @@ pub const OUTPUT_LONG_ABOUT: & str = "If OUTPUT is a relative path, it is evalua
 pub const LONG_ABOUT_NEWLINE: &str = "\n\n";
 
 const DISPLAY_LAST: usize = 990;
-
-const PROTO_SUPPORTED_LANGUAGES: [Lang; 10] = [
-    Lang::Cpp,
-    Lang::CSharp,
-    Lang::Java,
-    Lang::Javascript,
-    Lang::Kotlin,
-    Lang::ObjectiveC,
-    Lang::Php,
-    Lang::Python,
-    Lang::Ruby,
-    Lang::Rust,
-];
-const DIRECT_SUPPORTED_LANGUAGES: [Lang; 1] = [
-    Lang::Rust,
-];
 
 fn parse_cli_args<I, T>(iter: I) -> ArgMatches
 where
@@ -76,14 +61,28 @@ where
                     "Protobuf code will be generated for language LANG to file path OUTPUT.",
                     "If OUTPUT is not provided, it defaults to `proto_<LANG>`.",
                     OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&PROTO_SUPPORTED_LANGUAGES)),
+                    &format!("Supported languages for LANG: {}.", lang_list(&run::proto_supported_languages())),
                 ])),
 
             output_arg(SERVER)
-                .display_order(101),
+                .display_order(101)
+                .long_about(&join_about(&[
+                    // todo
+                    // "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
+                    "If OUTPUT is not provided, it defaults to `server_<LANG>`.",
+                    OUTPUT_LONG_ABOUT,
+                    &format!("Supported languages for LANG: {}.", lang_list(&run::server_supported_languages())),
+                ])),
 
             output_arg(CLIENT)
-                .display_order(102),
+                .display_order(102)
+                .long_about(&join_about(&[
+                    // todo
+                    // "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
+                    "If OUTPUT is not provided, it defaults to `client_<LANG>`.",
+                    OUTPUT_LONG_ABOUT,
+                    &format!("Supported languages for LANG: {}.", lang_list(&run::client_supported_languages())),
+                ])),
 
             output_arg(DIRECT)
                 .display_order(103)
@@ -91,7 +90,7 @@ where
                     "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
                     "If OUTPUT is not provided, it defaults to `direct_<LANG>`.",
                     OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&DIRECT_SUPPORTED_LANGUAGES)),
+                    &format!("Supported languages for LANG: {}.", lang_list(&run::direct_supported_languages())),
                 ])),
 
             Arg::new(PROTOC_ARGS)
@@ -125,6 +124,9 @@ pub struct Config {
     pub input: PathBuf,
     pub output_root: Option<PathBuf>,
     pub proto: Vec<LangConfig>,
+    pub direct: Vec<LangConfig>,
+    pub server: Vec<LangConfig>,
+    pub client: Vec<LangConfig>,
     pub extra_protoc_args: Vec<String>,
 }
 
@@ -141,7 +143,10 @@ impl Config {
             idl: Idl::from_args(&args)?,
             input: parse_input(&args)?,
             output_root: output_root.clone(),
-            proto: parse_proto_outputs(&args, output_root.as_ref())?,
+            proto: parse_outputs(PROTO, &args, output_root.as_ref())?,
+            direct: parse_outputs(DIRECT, &args, output_root.as_ref())?,
+            server: parse_outputs(SERVER, &args, output_root.as_ref())?,
+            client: parse_outputs(CLIENT, &args, output_root.as_ref())?,
             extra_protoc_args: parse_extra_protoc_args(&args),
         })
     }
@@ -159,19 +164,20 @@ fn parse_output_root(args: &ArgMatches) -> Option<PathBuf> {
         .and_then(|value| Some(PathBuf::from(value)))
 }
 
-fn parse_proto_outputs(
+fn parse_outputs(
+    arg_name: &str,
     args: &ArgMatches,
     output_root: Option<&PathBuf>,
 ) -> Result<Vec<LangConfig>> {
-    let mut proto_outputs = Vec::new();
-    let values = match args.values_of(PROTO) {
-        None => return Ok(proto_outputs),
+    let mut outputs = Vec::new();
+    let values = match args.values_of(arg_name) {
+        None => return Ok(outputs),
         Some(values) => values,
     };
     for value in values {
-        proto_outputs.push(LangConfig::from_config(value, output_root, PROTO)?);
+        outputs.push(LangConfig::from_config(value, output_root, PROTO)?);
     }
-    Ok(proto_outputs)
+    Ok(outputs)
 }
 
 fn parse_extra_protoc_args(args: &ArgMatches) -> Vec<String> {
