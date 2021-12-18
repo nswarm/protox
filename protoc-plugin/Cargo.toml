@@ -3,6 +3,11 @@ name = "protoc-plugin"
 version = "0.1.0"
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "protoc-plugin"
+path = "src/main.rs"
 
 [dependencies]
+prost = "0.9.0"
+prost-types = "0.9.0"
+anyhow = "1.0.51"

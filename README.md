@@ -43,7 +43,9 @@ protoffi is built around plugins to allow incremental support for new languages.
 ### Cargo Crates
 The project is split into two main crates:
 - core: The core library that does the IDL -> code generation.
-- cli: 
+- cli:
+
+::: todo :::
 
 Other crates:
 - protoc-plugin: An executable passed to the protoc executable as a plugin.
