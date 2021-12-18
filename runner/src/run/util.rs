@@ -1,4 +1,5 @@
-use anyhow::{anyhow, Result};
+use std::fs;
+use anyhow::{anyhow, Context, Result};
 use crate::Lang;
 use crate::lang_config::LangConfig;
 
@@ -9,4 +10,50 @@ pub fn check_languages_supported(name: &str, config: &Vec<LangConfig>, supported
         }
     }
     Ok(())
+}
+
+pub(crate) fn create_output_dirs(configs: &Vec<LangConfig>) -> Result<()> {
+    for config in configs {
+        fs::create_dir_all(&config.output).with_context(|| {
+            format!(
+                "Failed to create directory at path {:?} for proto output '{}'",
+                config.output,
+                config.lang.as_config()
+            )
+        })?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use anyhow::Result;
+    use tempfile::tempdir;
+    use crate::{ Lang};
+    use crate::lang_config::LangConfig;
+    use crate::run::util::create_output_dirs;
+
+    #[test]
+    fn create_output_dirs_test() -> Result<()> {
+        let tempdir = tempdir()?;
+        let root = tempdir.path();
+        let vec = vec![lang_config_with_output(Lang::Cpp, root)];
+        create_output_dirs(&vec)?;
+        assert!(fs::read_dir(lang_path(Lang::Cpp, root)).is_ok());
+        Ok(())
+    }
+
+    fn lang_config_with_output(lang: Lang, root: &Path) -> LangConfig {
+        LangConfig {
+            lang: lang.clone(),
+            output: lang_path( lang, root),
+            output_prefix: PathBuf::new(),
+        }
+    }
+
+    fn lang_path(lang: Lang, root: &Path) -> PathBuf {
+        root.join(lang.as_config())
+    }
 }

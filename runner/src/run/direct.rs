@@ -10,5 +10,6 @@ pub fn supported_languages() -> &'static [Lang] {
 
 pub fn run(config: &Config, _input_files: &Vec<String>) -> Result<()> {
     util::check_languages_supported("direct", &config.direct, &supported_languages())?;
+    util::create_output_dirs(&config.direct)?;
     Ok(())
 }

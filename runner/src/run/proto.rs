@@ -29,6 +29,7 @@ pub fn supported_languages() -> Vec<Lang> {
 
 pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
     util::check_languages_supported("proto", &config.proto, &supported_languages())?;
+    util::create_output_dirs(&config.proto)?;
     basic(config, input_files)?;
     rust(config, input_files)?;
     Ok(())
