@@ -2,7 +2,7 @@ use crate::idl::Idl;
 use crate::lang::Lang;
 use crate::lang_config::LangConfig;
 use crate::run;
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use clap::{crate_version, App, Arg, ArgMatches, Values};
 use std::env;
 use std::ffi::OsString;
@@ -122,7 +122,7 @@ fn join_about(lines: &[&str]) -> String {
 pub struct Config {
     pub idl: Idl,
     pub input: PathBuf,
-    pub output_root: Option<PathBuf>,
+    pub output_root: PathBuf,
     pub proto: Vec<LangConfig>,
     pub direct: Vec<LangConfig>,
     pub server: Vec<LangConfig>,
@@ -138,15 +138,15 @@ impl Config {
     }
 
     pub fn from_args(args: &ArgMatches) -> Result<Self> {
-        let output_root = parse_output_root(&args);
+        let output_root = parse_output_root(&args)?;
         Ok(Self {
             idl: Idl::from_args(&args)?,
             input: parse_input(&args)?,
             output_root: output_root.clone(),
-            proto: parse_outputs(PROTO, &args, output_root.as_ref())?,
-            direct: parse_outputs(DIRECT, &args, output_root.as_ref())?,
-            server: parse_outputs(SERVER, &args, output_root.as_ref())?,
-            client: parse_outputs(CLIENT, &args, output_root.as_ref())?,
+            proto: parse_outputs(PROTO, &args, &output_root)?,
+            direct: parse_outputs(DIRECT, &args, &output_root)?,
+            server: parse_outputs(SERVER, &args, &output_root)?,
+            client: parse_outputs(CLIENT, &args, &output_root)?,
             extra_protoc_args: parse_extra_protoc_args(&args),
         })
     }
@@ -159,15 +159,28 @@ fn parse_input(args: &ArgMatches) -> Result<PathBuf> {
     }
 }
 
-fn parse_output_root(args: &ArgMatches) -> Option<PathBuf> {
-    args.value_of(OUTPUT_ROOT)
+fn parse_output_root(args: &ArgMatches) -> Result<PathBuf> {
+    let root = args
+        .value_of(OUTPUT_ROOT)
         .and_then(|value| Some(PathBuf::from(value)))
+        .unwrap_or(current_dir()?);
+    Ok(root)
+}
+
+fn current_dir() -> Result<PathBuf> {
+    env::current_dir().with_context(|| {
+        format!(
+            "Working directory does not exist or permission denied.\
+                     Try specifying an explicit --{} or running from a different folder.",
+            OUTPUT_ROOT
+        )
+    })
 }
 
 fn parse_outputs(
     arg_name: &str,
     args: &ArgMatches,
-    output_root: Option<&PathBuf>,
+    output_root: &PathBuf,
 ) -> Result<Vec<LangConfig>> {
     let mut outputs = Vec::new();
     let values = match args.values_of(arg_name) {
@@ -234,7 +247,7 @@ mod tests {
     fn parse_output_root() -> Result<()> {
         let output_root = "path/to/output";
         let config = config_with_required_args([&arg(OUTPUT_ROOT), output_root])?;
-        assert_eq!(config.output_root, Some(PathBuf::from(output_root)));
+        assert_eq!(config.output_root, PathBuf::from(output_root));
         Ok(())
     }
 

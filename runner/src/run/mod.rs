@@ -26,7 +26,3 @@ pub fn configured(config: &Config) -> Result<()> {
     protoc.execute()?;
     Ok(())
 }
-
-// let mut protoc = Protoc::new(config)?;
-// protoc.add_input_files(&mut input_files);
-// protoc.execute()
