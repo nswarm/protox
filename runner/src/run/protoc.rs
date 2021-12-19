@@ -15,12 +15,14 @@ pub struct Protoc<'a> {
 
 impl<'a> Protoc<'a> {
     pub fn new(config: &'a Config) -> Result<Protoc<'a>> {
-        let args = vec![collect_proto_path(config)?];
+        let mut args = vec![collect_proto_path(config)?];
+        args.append(&mut collect_extra_protoc_args(config));
         Ok(Self { config, args })
     }
 
-    pub fn execute(&self) -> Result<()> {
+    pub fn execute(&mut self, mut input_files: Vec<String>) -> Result<()> {
         let protoc_path = protoc_path();
+        self.args.append(&mut input_files);
 
         info!("using protoc at path: {:?}", protoc_path);
         info!("running command:\tprotoc {}", self.args.join(" "));
@@ -41,6 +43,10 @@ impl<'a> Protoc<'a> {
             Err(anyhow!("Exited with status {}", status))
         }
     }
+
+    pub fn add_args(&mut self, args: &mut Vec<String>) {
+        self.args.append(args);
+    }
 }
 
 fn collect_proto_path(config: &Config) -> Result<String> {
@@ -57,6 +63,18 @@ fn collect_proto_path(config: &Config) -> Result<String> {
     Ok(arg_with_value(PROTOC_ARG_PROTO_PATH, input))
 }
 
+fn collect_extra_protoc_args(config: &Config) -> Vec<String> {
+    config
+        .extra_protoc_args
+        .iter()
+        .map(|s| unquote_arg(s))
+        .collect()
+}
+
+pub fn unquote_arg(arg: &str) -> String {
+    arg[1..arg.len() - 1].to_string()
+}
+
 fn protoc_path() -> PathBuf {
     match option_env!("PROTOC_EXE") {
         None => PathBuf::from("protoc"),
@@ -70,7 +88,9 @@ pub fn arg_with_value(arg: &str, value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::run::protoc::{arg_with_value, collect_proto_path, PROTOC_ARG_PROTO_PATH};
+    use crate::run::protoc::{
+        arg_with_value, collect_extra_protoc_args, collect_proto_path, PROTOC_ARG_PROTO_PATH,
+    };
     use crate::Config;
     use anyhow::Result;
     use std::env;
@@ -92,5 +112,21 @@ mod tests {
         let mut config = Config::default();
         config.input = PathBuf::from(input);
         assert!(collect_proto_path(&config).is_err());
+    }
+
+    #[test]
+    fn passes_extra_protoc_args() -> Result<()> {
+        let mut config = Config::default();
+        let extra_protoc_args = vec!["--test1", "--test2=hello"];
+        for extra_arg in &extra_protoc_args {
+            config.extra_protoc_args.push(quote_arg(extra_arg));
+        }
+        let args = collect_extra_protoc_args(&config);
+        assert_eq!(extra_protoc_args, args);
+        Ok(())
+    }
+
+    pub fn quote_arg(arg: &str) -> String {
+        ["\"", arg, "\""].concat()
     }
 }

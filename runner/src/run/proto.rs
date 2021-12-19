@@ -25,27 +25,25 @@ pub fn supported_languages() -> Vec<Lang> {
 pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
     util::check_languages_supported("proto", &config.proto, &supported_languages())?;
     util::create_output_dirs(&config.proto)?;
-    basic(config, input_files)?;
-    rust(config, input_files)?;
+    run_builtin(config, input_files)?;
+    run_rust(config, input_files)?;
     Ok(())
 }
 
 /// Any basic protoc support.
-fn basic(config: &Config, input_files: &Vec<String>) -> Result<()> {
+fn run_builtin(config: &Config, input_files: &Vec<String>) -> Result<()> {
     if !has_any_supported_language(config) {
         return Ok(());
     }
-
     let mut protoc = Protoc::new(config)?;
-    protoc
-        .args
-        .append(&mut collect_and_validate_args(config, input_files)?);
-
-    protoc.execute()
+    protoc.add_args(
+        &mut collect_proto_outputs(config).context("Failed to collect proto output args.")?,
+    );
+    protoc.execute(input_files.clone())
 }
 
 /// Special case since rust uses prost plugin.
-fn rust(config: &Config, input_files: &Vec<String>) -> Result<()> {
+fn run_rust(config: &Config, input_files: &Vec<String>) -> Result<()> {
     let rust_config = match config
         .proto
         .iter()
@@ -64,15 +62,8 @@ fn rust(config: &Config, input_files: &Vec<String>) -> Result<()> {
     Ok(())
 }
 
-fn collect_and_validate_args(config: &Config, input_files: &Vec<String>) -> Result<Vec<String>> {
-    let mut args = Vec::new();
-    args.append(
-        &mut collect_proto_outputs(config).context("Failed to collect proto output args.")?,
-    );
-    collect_extra_protoc_args(config, &mut args);
-    // Input files must always come last.
-    args.append(&mut input_files.clone());
-    Ok(args)
+pub fn unquote_arg(arg: &str) -> String {
+    arg[1..arg.len() - 1].to_string()
 }
 
 fn collect_proto_outputs(config: &Config) -> Result<Vec<String>> {
@@ -91,12 +82,6 @@ fn collect_proto_outputs(config: &Config) -> Result<Vec<String>> {
     Ok(args)
 }
 
-fn collect_extra_protoc_args(config: &Config, args: &mut Vec<String>) {
-    for arg in &config.extra_protoc_args {
-        args.push(unquote_arg(arg));
-    }
-}
-
 fn has_any_supported_language(config: &Config) -> bool {
     let count = config
         .proto
@@ -106,16 +91,12 @@ fn has_any_supported_language(config: &Config) -> bool {
     count > 0
 }
 
-pub fn unquote_arg(arg: &str) -> String {
-    arg[1..arg.len() - 1].to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use crate::lang::Lang;
     use crate::lang_config::LangConfig;
+    use crate::run::proto::collect_proto_outputs;
     use crate::run::proto::has_any_supported_language;
-    use crate::run::proto::{collect_extra_protoc_args, collect_proto_outputs};
     use crate::run::protoc::arg_with_value;
     use crate::Config;
     use anyhow::Result;
@@ -154,23 +135,6 @@ mod tests {
         let args = collect_proto_outputs(&config)?;
         assert_eq!(args.len(), 0);
         Ok(())
-    }
-
-    #[test]
-    fn passes_extra_protoc_args() -> Result<()> {
-        let mut config = Config::default();
-        let extra_protoc_args = vec!["--test1", "--test2=hello"];
-        for extra_arg in &extra_protoc_args {
-            config.extra_protoc_args.push(quote_arg(extra_arg));
-        }
-        let mut out_args = vec![];
-        collect_extra_protoc_args(&config, &mut out_args);
-        assert_eq!(extra_protoc_args, out_args);
-        Ok(())
-    }
-
-    pub fn quote_arg(arg: &str) -> String {
-        ["\"", arg, "\""].concat()
     }
 
     #[test]
