@@ -15,6 +15,5 @@ pub fn run(config: &Config, protoc: &mut Protoc) -> Result<()> {
     }
     util::check_languages_supported("direct", &config.direct, &supported_languages())?;
     util::create_output_dirs(&config.direct)?;
-    protoc.flag_for_execution();
     Ok(())
 }

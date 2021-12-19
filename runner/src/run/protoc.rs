@@ -6,29 +6,33 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
+const PROTOC_ARG_DESCRIPTOR_SET_OUT: &str = "descriptor_set_out";
 
 /// Manages collecting args and the invocation of `protoc`, the protobuf compiler.
 pub struct Protoc {
     args: Vec<String>,
     input_files: Vec<String>,
-    should_execute: bool,
 }
 
 impl Protoc {
     pub fn new(config: &Config) -> Result<Protoc> {
         let mut args = vec![collect_proto_path(config)?];
+        let descriptor_set_path = config
+            .descriptor_set_path
+            .to_str()
+            .ok_or(anyhow!("Descriptor set path is not valid unicode."))?;
+        args.push(arg_with_value(
+            PROTOC_ARG_DESCRIPTOR_SET_OUT,
+            descriptor_set_path,
+        ));
         args.append(&mut collect_extra_protoc_args(config));
         Ok(Self {
             args,
             input_files: Vec::new(),
-            should_execute: false,
         })
     }
 
     pub fn execute(&mut self) -> Result<()> {
-        if !self.should_execute {
-            return Ok(());
-        }
         let protoc_path = protoc_path();
         self.args.append(&mut self.input_files.clone());
 
@@ -50,10 +54,6 @@ impl Protoc {
         } else {
             Err(anyhow!("protoc exited with status {}", status))
         }
-    }
-
-    pub fn flag_for_execution(&mut self) {
-        self.should_execute = true
     }
 
     pub fn add_args(&mut self, args: &mut Vec<String>) {

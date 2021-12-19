@@ -38,7 +38,6 @@ fn run_builtin(config: &Config, protoc: &mut Protoc) -> Result<()> {
     protoc.add_args(
         &mut collect_proto_outputs(config).context("Failed to collect proto output args.")?,
     );
-    protoc.flag_for_execution();
     Ok(())
 }
 

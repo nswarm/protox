@@ -15,6 +15,5 @@ pub fn run(config: &Config, protoc: &mut Protoc) -> Result<()> {
     }
     util::check_languages_supported("client", &config.client, &supported_languages())?;
     util::create_output_dirs(&config.client)?;
-    protoc.flag_for_execution();
     Ok(())
 }
