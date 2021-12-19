@@ -5,21 +5,28 @@ pub use direct::supported_languages as direct_supported_languages;
 pub use proto::supported_languages as proto_supported_languages;
 pub use server::supported_languages as server_supported_languages;
 
+use crate::run::protoc::Protoc;
 use crate::Config;
 
+mod client;
+mod direct;
 mod input;
 mod proto;
-mod direct;
-mod client;
+mod protoc;
 mod server;
 mod util;
-mod protoc;
 
 pub fn configured(config: &Config) -> Result<()> {
-    let input_files = input::collect(config).context("Failed to collect input files.")?;
-    proto::run(config, &input_files)?;
-    direct::run(config, &input_files)?;
-    client::run(config, &input_files)?;
-    server::run(config, &input_files)?;
+    let mut protoc = Protoc::new(config)?;
+    protoc.add_input_files(&mut input::collect(config).context("Failed to collect input files.")?);
+    proto::run(config, &mut protoc)?;
+    direct::run(config, &mut protoc)?;
+    client::run(config, &mut protoc)?;
+    server::run(config, &mut protoc)?;
+    protoc.execute()?;
     Ok(())
 }
+
+// let mut protoc = Protoc::new(config)?;
+// protoc.add_input_files(&mut input_files);
+// protoc.execute()

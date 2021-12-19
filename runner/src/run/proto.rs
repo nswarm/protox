@@ -22,28 +22,28 @@ pub fn supported_languages() -> Vec<Lang> {
     vec
 }
 
-pub fn run(config: &Config, input_files: &Vec<String>) -> Result<()> {
+pub fn run(config: &Config, protoc: &mut Protoc) -> Result<()> {
     util::check_languages_supported("proto", &config.proto, &supported_languages())?;
     util::create_output_dirs(&config.proto)?;
-    run_builtin(config, input_files)?;
-    run_rust(config, input_files)?;
+    run_builtin(config, protoc)?;
+    run_rust(config, protoc)?;
     Ok(())
 }
 
 /// Any basic protoc support.
-fn run_builtin(config: &Config, input_files: &Vec<String>) -> Result<()> {
+fn run_builtin(config: &Config, protoc: &mut Protoc) -> Result<()> {
     if !has_any_supported_language(config) {
         return Ok(());
     }
-    let mut protoc = Protoc::new(config)?;
     protoc.add_args(
         &mut collect_proto_outputs(config).context("Failed to collect proto output args.")?,
     );
-    protoc.execute(input_files.clone())
+    protoc.flag_for_execution();
+    Ok(())
 }
 
 /// Special case since rust uses prost plugin.
-fn run_rust(config: &Config, input_files: &Vec<String>) -> Result<()> {
+fn run_rust(config: &Config, protoc: &Protoc) -> Result<()> {
     let rust_config = match config
         .proto
         .iter()
@@ -58,7 +58,7 @@ fn run_rust(config: &Config, input_files: &Vec<String>) -> Result<()> {
     for extra_arg in &config.extra_protoc_args {
         prost_config.protoc_arg(unquote_arg(extra_arg));
     }
-    prost_config.compile_protos(input_files, &[&config.input])?;
+    prost_config.compile_protos(protoc.input_files(), &[&config.input])?;
     Ok(())
 }
 

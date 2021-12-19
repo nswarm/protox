@@ -8,21 +8,29 @@ use std::process::Command;
 const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
 
 /// Manages collecting args and the invocation of `protoc`, the protobuf compiler.
-pub struct Protoc<'a> {
-    config: &'a Config,
-    pub args: Vec<String>,
+pub struct Protoc {
+    args: Vec<String>,
+    input_files: Vec<String>,
+    should_execute: bool,
 }
 
-impl<'a> Protoc<'a> {
-    pub fn new(config: &'a Config) -> Result<Protoc<'a>> {
+impl Protoc {
+    pub fn new(config: &Config) -> Result<Protoc> {
         let mut args = vec![collect_proto_path(config)?];
         args.append(&mut collect_extra_protoc_args(config));
-        Ok(Self { config, args })
+        Ok(Self {
+            args,
+            input_files: Vec::new(),
+            should_execute: false,
+        })
     }
 
-    pub fn execute(&mut self, mut input_files: Vec<String>) -> Result<()> {
+    pub fn execute(&mut self) -> Result<()> {
+        if !self.should_execute {
+            return Ok(());
+        }
         let protoc_path = protoc_path();
-        self.args.append(&mut input_files);
+        self.args.append(&mut self.input_files.clone());
 
         info!("using protoc at path: {:?}", protoc_path);
         info!("running command:\tprotoc {}", self.args.join(" "));
@@ -40,12 +48,25 @@ impl<'a> Protoc<'a> {
         if status.success() {
             Ok(())
         } else {
-            Err(anyhow!("Exited with status {}", status))
+            Err(anyhow!("protoc exited with status {}", status))
         }
+    }
+
+    pub fn flag_for_execution(&mut self) {
+        self.should_execute = true
     }
 
     pub fn add_args(&mut self, args: &mut Vec<String>) {
         self.args.append(args);
+    }
+
+    pub fn add_input_files(&mut self, input_files: &mut Vec<String>) {
+        // Cache input files until execute since they must come last in protoc args.
+        self.input_files.append(input_files);
+    }
+
+    pub fn input_files(&self) -> &Vec<String> {
+        &self.input_files
     }
 }
 
