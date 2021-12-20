@@ -54,6 +54,7 @@ fn str_or_error<F: Fn() -> String>(value: &Option<String>, error: F) -> Result<&
 mod tests {
     use crate::generator::config::Config;
     use crate::generator::context::FieldContext;
+    use crate::generator::primitive;
     use anyhow::Result;
     use prost_types::FieldDescriptorProto;
 
@@ -117,7 +118,7 @@ mod tests {
     fn missing_name_errors() {
         let mut config = Config::default();
         let mut field = empty_field();
-        field.type_name = Some("float".to_string());
+        field.type_name = Some(primitive::FLOAT.to_string());
         let result = FieldContext::new(&field, &config);
         assert!(result.is_err());
     }
@@ -153,7 +154,7 @@ mod tests {
             number: None,
             label: None,
             r#type: None,
-            type_name: Some("float".to_string()),
+            type_name: Some(primitive::FLOAT.to_string()),
             extendee: None,
             default_value: None,
             oneof_index: None,

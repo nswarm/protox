@@ -14,6 +14,7 @@ pub mod server;
 
 mod config;
 mod context;
+mod primitive;
 mod renderer;
 
 pub fn generate(app_config: &AppConfig) -> Result<()> {

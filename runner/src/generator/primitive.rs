@@ -1,0 +1,13 @@
+pub const FLOAT: &str = "float";
+pub const DOUBLE: &str = "double";
+pub const INT32: &str = "int32";
+pub const INT64: &str = "int64";
+pub const UINT32: &str = "uint32";
+pub const UINT64: &str = "uint64";
+pub const SINT32: &str = "sint32";
+pub const SINT64: &str = "sint64";
+pub const FIXED32: &str = "fixed32";
+pub const FIXED64: &str = "fixed64";
+pub const BOOL: &str = "bool";
+pub const STRING: &str = "string";
+pub const BYTES: &str = "bytes";

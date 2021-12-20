@@ -53,43 +53,41 @@ impl Renderer<'_> {
 
 #[cfg(test)]
 mod tests {
-    mod field {
-        use anyhow::Result;
-        use prost_types::FieldDescriptorProto;
+    use crate::generator::config::Config;
+    use crate::generator::primitive;
+    use crate::generator::renderer::Renderer;
+    use anyhow::Result;
+    use prost_types::FieldDescriptorProto;
 
-        use crate::generator::config::Config;
-        use crate::generator::renderer::Renderer;
+    #[test]
+    fn field_template() -> Result<()> {
+        let field_name = "field-name";
+        let native_type = ["TEST-", primitive::FLOAT].concat();
+        let separator = ":::";
+        let mut config = Config::default();
+        config
+            .type_config
+            .insert(primitive::FLOAT.to_string(), native_type.clone());
+        let mut renderer = Renderer::with_config(config);
+        renderer.load_field_template(["{{name}}", separator, "{{type_name}}"].concat())?;
+        let result = renderer.render_field(&fake_field("field-name", primitive::FLOAT))?;
+        assert_eq!(result, [field_name, separator, &native_type].concat());
+        Ok(())
+    }
 
-        // #[test]
-        // fn configured_type() -> Result<()> {
-        //     let mut config = Config::default();
-        //     config
-        //         .type_config
-        //         .insert("float".to_string(), "TEST-float".to_string());
-        //     let mut renderer = Renderer::with_config(config);
-        //     renderer.load_field_template("{{name}}:::{{type_name}}".to_string())?;
-        //     let result = renderer.render_field(&fake_field("field-name", "float"))?;
-        //     assert_eq!(result, "field-name:::TEST-float");
-        //     Ok(())
-        // }
-
-        fn fake_field(
-            name: impl Into<String>,
-            type_name: impl Into<String>,
-        ) -> FieldDescriptorProto {
-            FieldDescriptorProto {
-                name: Some(name.into()),
-                number: None,
-                label: None,
-                r#type: None,
-                type_name: Some(type_name.into()),
-                extendee: None,
-                default_value: None,
-                oneof_index: None,
-                json_name: None,
-                options: None,
-                proto3_optional: None,
-            }
+    fn fake_field(name: impl Into<String>, type_name: impl Into<String>) -> FieldDescriptorProto {
+        FieldDescriptorProto {
+            name: Some(name.into()),
+            number: None,
+            label: None,
+            r#type: None,
+            type_name: Some(type_name.into()),
+            extendee: None,
+            default_value: None,
+            oneof_index: None,
+            json_name: None,
+            options: None,
+            proto3_optional: None,
         }
     }
 }
