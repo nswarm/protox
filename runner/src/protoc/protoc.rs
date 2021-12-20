@@ -1,4 +1,4 @@
-use crate::Config;
+use crate::{util, Config};
 use anyhow::{anyhow, bail, Context, Result};
 use log::info;
 use std::fs;
@@ -7,6 +7,7 @@ use std::process::Command;
 
 const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
 const PROTOC_ARG_DESCRIPTOR_SET_OUT: &str = "descriptor_set_out";
+const PROTOC_ARG_INCLUDE_SOURCE_INFO: &str = "include_source_info";
 
 /// Manages collecting args and the invocation of `protoc`, the protobuf compiler.
 pub struct Protoc {
@@ -21,10 +22,12 @@ impl Protoc {
             .descriptor_set_path
             .to_str()
             .ok_or(anyhow!("Descriptor set path is not valid unicode."))?;
+        // Descriptor set with source info is used by generators.
         args.push(arg_with_value(
             PROTOC_ARG_DESCRIPTOR_SET_OUT,
             descriptor_set_path,
         ));
+        args.push(["--", PROTOC_ARG_INCLUDE_SOURCE_INFO].concat());
         args.append(&mut collect_extra_protoc_args(config));
         Ok(Self {
             args,
@@ -64,10 +67,6 @@ impl Protoc {
         // Cache input files until execute since they must come last in protoc args.
         self.input_files.append(input_files);
     }
-
-    pub fn input_files(&self) -> &Vec<String> {
-        &self.input_files
-    }
 }
 
 fn collect_proto_path(config: &Config) -> Result<String> {
@@ -88,12 +87,8 @@ fn collect_extra_protoc_args(config: &Config) -> Vec<String> {
     config
         .extra_protoc_args
         .iter()
-        .map(|s| unquote_arg(s))
+        .map(|s| util::unquote_arg(s))
         .collect()
-}
-
-pub fn unquote_arg(arg: &str) -> String {
-    arg[1..arg.len() - 1].to_string()
 }
 
 fn protoc_path() -> PathBuf {
@@ -109,7 +104,7 @@ pub fn arg_with_value(arg: &str, value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::run::protoc::{
+    use crate::protoc::protoc::{
         arg_with_value, collect_extra_protoc_args, collect_proto_path, PROTOC_ARG_PROTO_PATH,
     };
     use crate::Config;

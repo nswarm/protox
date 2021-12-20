@@ -1,10 +1,12 @@
 use anyhow::Result;
 
 mod config;
+mod generator;
 mod idl;
 mod lang;
 mod lang_config;
-mod run;
+mod protoc;
+mod util;
 
 pub use config::Config;
 pub use idl::Idl;
@@ -23,7 +25,10 @@ pub fn run_with_config(config: Config) -> Result<()> {
 
 fn run_internal(config: Config) -> Result<()> {
     match config.idl {
-        Idl::Proto => run::configured(&config)?,
+        Idl::Proto => {
+            protoc::run(&config)?;
+            generator::generate(&config)?;
+        }
     };
     Ok(())
 }

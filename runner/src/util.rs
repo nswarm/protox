@@ -1,27 +1,15 @@
 use crate::lang_config::LangConfig;
-use crate::Lang;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
+use std::borrow::Borrow;
 use std::fs;
 
-pub fn check_languages_supported(
-    name: &str,
-    config: &Vec<LangConfig>,
-    supported_languages: &[Lang],
-) -> Result<()> {
-    for lang_config in config {
-        if !supported_languages.contains(&lang_config.lang) {
-            return Err(anyhow!(
-                "Language `{}` is not supported for {} generation.",
-                lang_config.lang.as_config(),
-                name
-            ));
-        }
-    }
-    Ok(())
+pub(crate) fn unquote_arg(arg: &str) -> String {
+    arg[1..arg.len() - 1].to_string()
 }
 
-pub(crate) fn create_output_dirs(configs: &Vec<LangConfig>) -> Result<()> {
+pub fn create_output_dirs<C: Borrow<LangConfig>>(configs: &[C]) -> Result<()> {
     for config in configs {
+        let config = config.borrow();
         fs::create_dir_all(&config.output).with_context(|| {
             format!(
                 "Failed to create directory at path {:?} for proto output '{}'",
@@ -36,7 +24,7 @@ pub(crate) fn create_output_dirs(configs: &Vec<LangConfig>) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use crate::lang_config::LangConfig;
-    use crate::run::util::create_output_dirs;
+    use crate::util::create_output_dirs;
     use crate::Lang;
     use anyhow::Result;
     use std::fs;
@@ -48,7 +36,7 @@ mod tests {
         let tempdir = tempdir()?;
         let root = tempdir.path();
         let vec = vec![lang_config_with_output(Lang::Cpp, root)];
-        create_output_dirs(&vec)?;
+        create_output_dirs(&vec[..])?;
         assert!(fs::read_dir(lang_path(Lang::Cpp, root)).is_ok());
         Ok(())
     }

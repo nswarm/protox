@@ -1,7 +1,7 @@
 use crate::idl::Idl;
 use crate::lang::Lang;
 use crate::lang_config::LangConfig;
-use crate::run;
+use crate::{generator, protoc};
 use anyhow::{anyhow, Context, Error, Result};
 use clap::{crate_version, App, Arg, ArgMatches, Values};
 use std::env;
@@ -63,7 +63,7 @@ where
                     "Protobuf code will be generated for language LANG to file path OUTPUT.",
                     "If OUTPUT is not provided, it defaults to `proto_<LANG>`.",
                     OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&run::proto_supported_languages())),
+                    &format!("Supported languages for LANG: {}.", lang_list(&proto_supported_languages())),
                 ])),
 
             output_arg(SERVER)
@@ -73,7 +73,7 @@ where
                     // "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
                     "If OUTPUT is not provided, it defaults to `server_<LANG>`.",
                     OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&run::server_supported_languages())),
+                    &format!("Supported languages for LANG: {}.", lang_list(&generator::server::SUPPORTED_LANGUAGES)),
                 ])),
 
             output_arg(CLIENT)
@@ -83,7 +83,7 @@ where
                     // "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
                     "If OUTPUT is not provided, it defaults to `client_<LANG>`.",
                     OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&run::client_supported_languages())),
+                    &format!("Supported languages for LANG: {}.", lang_list(&generator::client::SUPPORTED_LANGUAGES)),
                 ])),
 
             output_arg(DIRECT)
@@ -92,7 +92,7 @@ where
                     "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
                     "If OUTPUT is not provided, it defaults to `direct_<LANG>`.",
                     OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&run::direct_supported_languages())),
+                    &format!("Supported languages for LANG: {}.", lang_list(&generator::direct::SUPPORTED_LANGUAGES)),
                 ])),
 
             Arg::new(DESCRIPTOR_SET_OUT)
@@ -107,7 +107,7 @@ where
 
             Arg::new(PROTOC_ARGS)
                 .display_order(DISPLAY_ORDER_DEFAULT)
-                .long_about(&format!("Add any arguments directly to protoc invocation. Note they must be wrapped with \"\" as to not be picked up as arguments to protoffi.\nFor example: --{} \"--dependency_out=FILE\"", PROTOC_ARGS))
+                .long_about(&format!("Add any arguments directly to protoc invocation. Note they must be wrapped with \"\" as to not be picked up as arguments to protoffi.\nFor example: --{} \"--error_format=FORMAT\"", PROTOC_ARGS))
                 .long(PROTOC_ARGS)
                 .takes_value(true)
                 .multiple_values(true),
@@ -146,12 +146,13 @@ impl Config {
     pub fn from_cli() -> Result<Self> {
         let args = parse_cli_args(&mut env::args_os());
         let config = Config::from_args(&args)?;
+        check_supported_languages(&config)?;
         Ok(config)
     }
 
     pub fn from_args(args: &ArgMatches) -> Result<Self> {
         let output_root = parse_output_root(&args)?;
-        Ok(Self {
+        let config = Self {
             idl: Idl::from_args(&args)?,
             input: parse_input(&args)?,
             output_root: output_root.clone(),
@@ -161,8 +162,55 @@ impl Config {
             server: parse_outputs(SERVER, &args, &output_root)?,
             client: parse_outputs(CLIENT, &args, &output_root)?,
             extra_protoc_args: parse_extra_protoc_args(&args),
-        })
+        };
+        check_supported_languages(&config)?;
+        Ok(config)
     }
+}
+
+fn check_supported_languages(config: &Config) -> Result<()> {
+    _check_supported_languages(PROTO, &config.proto, &proto_supported_languages())?;
+    _check_supported_languages(
+        DIRECT,
+        &config.direct,
+        &generator::direct::SUPPORTED_LANGUAGES,
+    )?;
+    _check_supported_languages(
+        CLIENT,
+        &config.client,
+        &generator::client::SUPPORTED_LANGUAGES,
+    )?;
+    _check_supported_languages(
+        SERVER,
+        &config.server,
+        &generator::server::SUPPORTED_LANGUAGES,
+    )?;
+    Ok(())
+}
+
+fn _check_supported_languages(
+    name: &str,
+    config: &Vec<LangConfig>,
+    supported_languages: &[Lang],
+) -> Result<()> {
+    for lang_config in config {
+        if !supported_languages.contains(&lang_config.lang) {
+            return Err(anyhow!(
+                "Language `{}` is not supported for {} generation.",
+                lang_config.lang.as_config(),
+                name
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn proto_supported_languages() -> Vec<Lang> {
+    [
+        &protoc::SUPPORTED_LANGUAGES[..],
+        &generator::proto::SUPPORTED_LANGUAGES[..],
+    ]
+    .concat()
 }
 
 fn parse_input(args: &ArgMatches) -> Result<PathBuf> {

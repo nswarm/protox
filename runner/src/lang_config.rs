@@ -29,6 +29,12 @@ impl LangConfig {
     }
 }
 
+impl AsRef<LangConfig> for LangConfig {
+    fn as_ref(&self) -> &LangConfig {
+        &self
+    }
+}
+
 fn default_output(config: &str, default_prefix: &str) -> PathBuf {
     PathBuf::from([default_prefix, config].join("_"))
 }

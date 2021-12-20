@@ -5,5 +5,4 @@ default-members = [
 members = [
     "cli",
     "runner",
-    "protoc-plugin",
 ]

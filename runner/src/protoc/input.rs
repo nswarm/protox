@@ -1,7 +1,7 @@
-use std::path::Path;
 use crate::Config;
 use anyhow::{anyhow, Result};
 use log::debug;
+use std::path::Path;
 use walkdir::WalkDir;
 
 pub fn collect(config: &Config) -> Result<Vec<String>> {
@@ -39,12 +39,12 @@ fn normalize_slashes(path: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::protoc::input;
     use crate::Config;
     use anyhow::Result;
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::tempdir;
-    use crate::run::input;
 
     #[test]
     fn collects_all_in_dir() -> Result<()> {
@@ -125,7 +125,7 @@ mod tests {
     }
 
     mod is_proto_ext {
-        use crate::run::input::is_proto_ext;
+        use crate::protoc::input::is_proto_ext;
         use std::path::PathBuf;
 
         #[test]

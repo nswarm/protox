@@ -1,10 +1,10 @@
 use crate::lang::Lang;
-use crate::run::protoc::{arg_with_value, Protoc};
-use crate::run::util;
-use crate::Config;
+use crate::lang_config::LangConfig;
+use crate::protoc::protoc::{arg_with_value, Protoc};
+use crate::{util, Config};
 use anyhow::{anyhow, Context, Result};
 
-const BASIC_SUPPORTED_LANGUAGES: [Lang; 9] = [
+pub const SUPPORTED_LANGUAGES: [Lang; 9] = [
     Lang::Cpp,
     Lang::CSharp,
     Lang::Java,
@@ -16,22 +16,20 @@ const BASIC_SUPPORTED_LANGUAGES: [Lang; 9] = [
     Lang::Ruby,
 ];
 
-pub fn supported_languages() -> Vec<Lang> {
-    let mut vec = BASIC_SUPPORTED_LANGUAGES.to_vec();
-    vec.push(Lang::Rust);
-    vec
-}
-
-pub fn run(config: &Config, protoc: &mut Protoc) -> Result<()> {
-    util::check_languages_supported("proto", &config.proto, &supported_languages())?;
-    util::create_output_dirs(&config.proto)?;
-    run_builtin(config, protoc)?;
-    run_rust(config, protoc)?;
+pub fn register(config: &Config, protoc: &mut Protoc) -> Result<()> {
+    util::create_output_dirs(
+        &config
+            .proto
+            .iter()
+            .filter(|cfg| SUPPORTED_LANGUAGES.contains(&cfg.lang))
+            .collect::<Vec<&LangConfig>>(),
+    )?;
+    register_builtin(config, protoc)?;
     Ok(())
 }
 
 /// Any basic protoc support.
-fn run_builtin(config: &Config, protoc: &mut Protoc) -> Result<()> {
+fn register_builtin(config: &Config, protoc: &mut Protoc) -> Result<()> {
     if !has_any_supported_language(config) {
         return Ok(());
     }
@@ -41,34 +39,10 @@ fn run_builtin(config: &Config, protoc: &mut Protoc) -> Result<()> {
     Ok(())
 }
 
-/// Special case since rust uses prost plugin.
-fn run_rust(config: &Config, protoc: &Protoc) -> Result<()> {
-    let rust_config = match config
-        .proto
-        .iter()
-        .find(|lang_config| lang_config.lang == Lang::Rust)
-    {
-        None => return Ok(()),
-        Some(config) => config,
-    };
-
-    let mut prost_config = prost_build::Config::new();
-    prost_config.out_dir(&rust_config.output);
-    for extra_arg in &config.extra_protoc_args {
-        prost_config.protoc_arg(unquote_arg(extra_arg));
-    }
-    prost_config.compile_protos(protoc.input_files(), &[&config.input])?;
-    Ok(())
-}
-
-pub fn unquote_arg(arg: &str) -> String {
-    arg[1..arg.len() - 1].to_string()
-}
-
 fn collect_proto_outputs(config: &Config) -> Result<Vec<String>> {
     let mut args = Vec::new();
     for proto in &config.proto {
-        if !BASIC_SUPPORTED_LANGUAGES.contains(&proto.lang) {
+        if !SUPPORTED_LANGUAGES.contains(&proto.lang) {
             continue;
         }
         let arg = [proto.lang.as_config().as_str(), "_out"].concat();
@@ -85,7 +59,7 @@ fn has_any_supported_language(config: &Config) -> bool {
     let count = config
         .proto
         .iter()
-        .filter(|c| BASIC_SUPPORTED_LANGUAGES.contains(&c.lang))
+        .filter(|c| SUPPORTED_LANGUAGES.contains(&c.lang))
         .count();
     count > 0
 }
@@ -94,9 +68,9 @@ fn has_any_supported_language(config: &Config) -> bool {
 mod tests {
     use crate::lang::Lang;
     use crate::lang_config::LangConfig;
-    use crate::run::proto::collect_proto_outputs;
-    use crate::run::proto::has_any_supported_language;
-    use crate::run::protoc::arg_with_value;
+    use crate::protoc::proto::collect_proto_outputs;
+    use crate::protoc::proto::has_any_supported_language;
+    use crate::protoc::protoc::arg_with_value;
     use crate::Config;
     use anyhow::Result;
     use std::path::PathBuf;

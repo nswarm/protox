@@ -15,7 +15,7 @@ macro_rules! protoc_test {
 
 mod test_lang {
     use crate::test_with_args;
-    use anyhow::Result;
+    use anyhow::{Context, Result};
     use runner::Lang;
     use std::fs;
 
@@ -32,7 +32,13 @@ mod test_lang {
 
     fn test_lang(lang: Lang) -> Result<()> {
         let output_dir = test_with_args(&["--proto", &lang.as_config()])?;
-        assert_ne!(fs::read_dir(output_dir.path())?.count(), 0);
+        let lang_output_dir = output_dir
+            .path()
+            .join(["proto_", &lang.as_config()].concat());
+        let output_files = fs::read_dir(&lang_output_dir)
+            .context("Missing output dir for lang")?
+            .count();
+        assert_ne!(output_files, 0);
         Ok(())
     }
 }
