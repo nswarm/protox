@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package root.middle.inner;
+
+message Inner {
+  string str = 1;
+  int32 i32 = 2;
+}
+
+// Same name across root/middle/inner.
+message SharedName {
+  string str = 1;
+}

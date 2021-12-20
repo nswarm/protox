@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package depth0;
-
-message Example {
-  string str = 1;
-  int32 i32 = 2;
-}

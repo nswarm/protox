@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "root.proto";
+import "middle/middle.proto";
+import "middle/inner/inner.proto";
+
+package root.middle.inner;
+
+message Imports {
+  BasicTypes root = 1;
+  Middle middle = 2;
+  Inner inner = 3;
+
+  root.SharedName root_shared = 4;
+  root.middle.SharedName middle_shared = 5;
+  root.middle.inner.SharedName inner_shared = 6;
+}

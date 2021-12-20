@@ -9,7 +9,7 @@ mod input;
 mod proto;
 mod protoc;
 
-pub fn run(config: &Config) -> Result<()> {
+pub fn generate_descriptor_set_and_builtin_lang_outputs(config: &Config) -> Result<()> {
     let mut protoc = Protoc::new(config)?;
     protoc.add_input_files(&mut input::collect(config).context("Failed to collect input files.")?);
     proto::register(config, &mut protoc)?;

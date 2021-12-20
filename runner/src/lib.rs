@@ -26,7 +26,7 @@ pub fn run_with_config(config: Config) -> Result<()> {
 fn run_internal(config: Config) -> Result<()> {
     match config.idl {
         Idl::Proto => {
-            protoc::run(&config)?;
+            protoc::generate_descriptor_set_and_builtin_lang_outputs(&config)?;
             generator::generate(&config)?;
         }
     };

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "root.proto";
+import "middle/inner/inner.proto";
+
+package root.middle;
+
+message Middle {
+  string str = 1;
+  int32 i32 = 2;
+  root.BasicTypes root = 3;
+  inner.Inner inner = 4;
+}
+
+// Same name across root/middle/inner.
+message SharedName {
+  string str = 1;
+}

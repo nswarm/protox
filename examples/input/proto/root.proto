@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package root;
+
+enum ExampleEnum {
+  INVALID = 0;
+  ONE = 1;
+  TWO = 2;
+}
+
+message BasicTypes {
+  string str = 1;
+  int32 i32 = 2;
+  int64 i64 = 3;
+  uint32 u36 = 4;
+  uint64 u64 = 5;
+  float f32 = 6;
+  double f64 = 7;
+}
+
+message ComplexTypes {
+  ExampleEnum enum = 1;
+  BasicTypes inner = 2;
+}
+
+message Arrays {
+  repeated string basic = 1;
+  repeated ExampleEnum enum = 2;
+  repeated BasicTypes msg = 3;
+}
+
+message Maps {
+  map<string, string> basic = 1;
+  map<string, ExampleEnum> enum = 2;
+  map<string, BasicTypes> msg = 3;
+}
+
+message OneOfs {
+  oneof basic {
+    string str = 1;
+    int32 i32 = 2;
+    int64 i64 = 3;
+    uint32 u36 = 4;
+    uint64 u64 = 5;
+    float f32 = 6;
+    double f64 = 7;
+  }
+  oneof complex {
+    ExampleEnum enum = 10;
+    BasicTypes inner = 11;
+  }
+}
+
+// Same name across root/middle/inner.
+message SharedName {
+  string str = 1;
+}
