@@ -30,6 +30,11 @@ pub fn str_or_error<F: Fn() -> String>(value: &Option<String>, error: F) -> Resu
     Ok(result)
 }
 
+pub fn str_or_unknown(str: &Option<String>) -> &str {
+    static UNKNOWN: &str = "(unknown)";
+    str.as_ref().map(|s| s.as_str()).unwrap_or(&UNKNOWN)
+}
+
 pub fn normalize_slashes(path: impl ToString) -> String {
     path.to_string().replace("\\", "/")
 }

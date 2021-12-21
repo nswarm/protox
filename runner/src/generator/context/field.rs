@@ -1,20 +1,22 @@
+use crate::generator::primitive;
 use crate::generator::template_config::TemplateConfig;
 use crate::util;
 use anyhow::{anyhow, Result};
 use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize)]
 pub struct FieldContext<'a> {
     name: &'a str,
-    type_name: &'a str,
+    native_type: &'a str,
 }
 
 impl<'a> FieldContext<'a> {
     pub fn new(field: &'a FieldDescriptorProto, config: &'a TemplateConfig) -> Result<Self> {
         let context = Self {
             name: name(field)?,
-            type_name: type_name(field, config)?,
+            native_type: native_type(field, config)?,
         };
         Ok(context)
     }
@@ -24,18 +26,60 @@ fn name(field: &FieldDescriptorProto) -> Result<&str> {
     util::str_or_error(&field.name, || "Field has no 'name'".to_string())
 }
 
-fn type_name<'a>(field: &'a FieldDescriptorProto, config: &'a TemplateConfig) -> Result<&'a str> {
-    let type_name = util::str_or_error(&field.type_name, || {
-        format!(
-            "Field '{}' has no 'type name'",
-            field.name.as_ref().unwrap_or(&"(unknown)".to_string())
-        )
-    })?;
-    let type_name = config
-        .type_config
-        .get(type_name)
-        .ok_or(anyhow!("Invalid primitive type name {}", type_name))?;
-    Ok(type_name)
+fn native_type<'a>(field: &'a FieldDescriptorProto, config: &'a TemplateConfig) -> Result<&'a str> {
+    let native_type = match &field.type_name {
+        Some(type_name) => config.type_config.get(type_name).unwrap_or(type_name),
+        None => configured_primitive_type_name(field, config)?,
+    };
+    Ok(native_type)
+}
+
+fn configured_primitive_type_name<'a>(
+    field: &FieldDescriptorProto,
+    config: &'a TemplateConfig,
+) -> Result<&'a String> {
+    let primitive_name = primitive::from_proto_type(proto_type(field)?)?;
+    match config.type_config.get(primitive_name) {
+        None => Err(anyhow!(
+            "No native type is configured for proto primitive '{}'",
+            primitive_name
+        )),
+        Some(primitive_name) => Ok(primitive_name),
+    }
+}
+
+fn proto_type(field: &FieldDescriptorProto) -> Result<prost_types::field::Kind> {
+    match field.r#type {
+        None => Err(anyhow!(
+            "Field '{}' has no type.",
+            util::str_or_unknown(&field.name)
+        )),
+        Some(value) => i32_to_proto_type(value),
+    }
+}
+
+fn i32_to_proto_type(val: i32) -> Result<prost_types::field::Kind> {
+    match val {
+        1 => Ok(prost_types::field::Kind::TypeDouble),
+        2 => Ok(prost_types::field::Kind::TypeFloat),
+        3 => Ok(prost_types::field::Kind::TypeInt64),
+        4 => Ok(prost_types::field::Kind::TypeUint64),
+        5 => Ok(prost_types::field::Kind::TypeInt32),
+        6 => Ok(prost_types::field::Kind::TypeFixed64),
+        7 => Ok(prost_types::field::Kind::TypeFixed32),
+        8 => Ok(prost_types::field::Kind::TypeBool),
+        9 => Ok(prost_types::field::Kind::TypeString),
+        10 => Ok(prost_types::field::Kind::TypeGroup),
+        11 => Ok(prost_types::field::Kind::TypeMessage),
+        12 => Ok(prost_types::field::Kind::TypeBytes),
+        13 => Ok(prost_types::field::Kind::TypeUint32),
+        14 => Ok(prost_types::field::Kind::TypeEnum),
+        15 => Ok(prost_types::field::Kind::TypeSfixed32),
+        16 => Ok(prost_types::field::Kind::TypeSfixed64),
+        17 => Ok(prost_types::field::Kind::TypeSint32),
+        18 => Ok(prost_types::field::Kind::TypeSint64),
+        _ => Err(anyhow!("i32 '{}' does not map to a valid proto type.", val)),
+    }
 }
 
 #[cfg(test)]
@@ -98,7 +142,7 @@ mod tests {
             field.type_name = Some(proto_type_name.to_string());
             let context = FieldContext::new(&field, &config)?;
             assert_eq!(
-                Some(&context.type_name.to_string()),
+                Some(&context.native_type.to_string()),
                 config.type_config.get(proto_type_name),
             );
             Ok(())

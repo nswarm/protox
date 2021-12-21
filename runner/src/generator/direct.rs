@@ -5,7 +5,7 @@ use anyhow::{anyhow, Context, Result};
 use log::info;
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 pub const SUPPORTED_LANGUAGES: [Lang; 1] = [Lang::CSharp];
@@ -15,42 +15,48 @@ pub fn generate(app_config: &Config) -> Result<()> {
         return Ok(());
     }
     util::create_output_dirs(&app_config.direct)?;
-
     let descriptor_set = load_descriptor_set(&app_config)?;
-
-    // todo functions
     for lang_config in &app_config.direct {
         info!(
             "Generating 'direct' for language '{}' to output path: {}",
             lang_config.lang.as_config(),
             util::normalize_slashes(lang_config.output.display()),
         );
+        let output_path = &lang_config.output;
         let template_config = TemplateConfig::default(); // todo load from file.
         let renderer = Renderer::with_config(template_config);
-        for file in &descriptor_set.file {
-            info!("Rendering file for descriptor '{}'", file_name(file)?);
-            let path = lang_config.output.join(file_name(file)?);
-            match path.parent() {
-                None => {}
-                Some(parent) => {
-                    fs::create_dir_all(parent).with_context(|| {
-                        format!(
-                            "Failed to create directories for path {}",
-                            util::normalize_slashes(parent.display())
-                        )
-                    })?;
-                }
-            }
-            let mut writer = io::BufWriter::new(fs::File::create(&path).with_context(|| {
-                format!(
-                    "Failed to create file at path {}",
-                    util::normalize_slashes(path.display())
-                )
-            })?);
-            renderer.render_file(file, &mut writer)?;
-        }
+        render_descriptor_set(&descriptor_set, output_path, renderer)?;
     }
+    Ok(())
+}
 
+fn render_descriptor_set(
+    descriptor_set: &FileDescriptorSet,
+    output_path: &PathBuf,
+    renderer: Renderer,
+) -> Result<()> {
+    for file in &descriptor_set.file {
+        info!("Rendering file for descriptor '{}'", file_name(file)?);
+        let path = output_path.join(file_name(file)?);
+        match path.parent() {
+            None => {}
+            Some(parent) => {
+                fs::create_dir_all(parent).with_context(|| {
+                    format!(
+                        "Failed to create directories for path {}",
+                        util::normalize_slashes(parent.display())
+                    )
+                })?;
+            }
+        }
+        let mut writer = io::BufWriter::new(fs::File::create(&path).with_context(|| {
+            format!(
+                "Failed to create file at path {}",
+                util::normalize_slashes(path.display())
+            )
+        })?);
+        renderer.render_file(file, &mut writer)?;
+    }
     Ok(())
 }
 

@@ -1,5 +1,6 @@
 use crate::generator::context::{FieldContext, FileContext, MessageContext};
 use crate::generator::template_config::TemplateConfig;
+use crate::util;
 use anyhow::{Context, Result};
 use handlebars::Handlebars;
 use log::debug;
@@ -62,7 +63,7 @@ impl Renderer<'_> {
         file: &FileDescriptorProto,
         writer: &mut W,
     ) -> Result<()> {
-        debug!("Rendering file: {}", name_or_unknown(&file.name));
+        debug!("Rendering file: {}", util::str_or_unknown(&file.name));
         let mut context = FileContext::new(file, &self.config)?;
         for message in &file.message_type {
             context.messages.push(self.render_message(message)?);
@@ -71,7 +72,7 @@ impl Renderer<'_> {
     }
 
     fn render_message(&self, message: &DescriptorProto) -> Result<String> {
-        debug!("Rendering message: {}", name_or_unknown(&message.name));
+        debug!("Rendering message: {}", util::str_or_unknown(&message.name));
         let mut context = MessageContext::new(message, &self.config)?;
         for field in &message.field {
             context.fields.push(self.render_field(field)?);
@@ -80,7 +81,7 @@ impl Renderer<'_> {
     }
 
     fn render_field(&self, field: &FieldDescriptorProto) -> Result<String> {
-        debug!("Rendering field: {}", name_or_unknown(&field.name));
+        debug!("Rendering field: {}", util::str_or_unknown(&field.name));
         let context = FieldContext::new(field, &self.config)?;
         self.render_to_string(FIELD_TEMPLATE_NAME, &context)
     }
@@ -104,11 +105,6 @@ impl Renderer<'_> {
             .with_context(|| render_error_context(template, data))?;
         Ok(())
     }
-}
-
-fn name_or_unknown(name: &Option<String>) -> &str {
-    static UNKNOWN: &str = "(unknown)";
-    name.as_ref().map(|s| s.as_str()).unwrap_or(&UNKNOWN)
 }
 
 fn render_error_context<S: Serialize>(name: &str, data: &S) -> String {
@@ -155,7 +151,7 @@ mod tests {
         let config = TemplateConfig::default();
         let mut renderer = Renderer::with_config(config);
         renderer.load_message_template("{{name}}{{#each fields}}{{this}}{{/each}}".to_string());
-        renderer.load_field_template("{{name}}:::{{type_name}}".to_string());
+        renderer.load_field_template("{{name}}:::{{native_type}}".to_string());
 
         let msg_name = "msg_name".to_string();
         let field0 = fake_field("field0", primitive::FLOAT);
@@ -182,7 +178,7 @@ mod tests {
             .type_config
             .insert(primitive::FLOAT.to_string(), native_type.clone());
         let mut renderer = Renderer::with_config(config);
-        renderer.load_field_template(["{{name}}", separator, "{{type_name}}"].concat())?;
+        renderer.load_field_template(["{{name}}", separator, "{{native_type}}"].concat())?;
         let result = renderer.render_field(&fake_field("field-name", primitive::FLOAT))?;
         assert_eq!(result, [field_name, separator, &native_type].concat());
         Ok(())
