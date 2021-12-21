@@ -1,21 +1,17 @@
 use crate::generator::config::Config;
+use crate::generator::context::util;
 use anyhow::{anyhow, Result};
 use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
 
-pub fn field(field: &FieldDescriptorProto, config: &Config) -> Result<serde_json::Value> {
-    let context = FieldContext::new(field, config)?;
-    Ok(serde_json::to_value(&context)?)
-}
-
 #[derive(Serialize, Deserialize)]
-struct FieldContext<'a> {
+pub struct FieldContext<'a> {
     name: &'a str,
     type_name: &'a str,
 }
 
 impl<'a> FieldContext<'a> {
-    fn new(field: &'a FieldDescriptorProto, config: &'a Config) -> Result<Self> {
+    pub fn new(field: &'a FieldDescriptorProto, config: &'a Config) -> Result<Self> {
         let context = Self {
             name: name(field)?,
             type_name: type_name(field, config)?,
@@ -25,11 +21,11 @@ impl<'a> FieldContext<'a> {
 }
 
 fn name(field: &FieldDescriptorProto) -> Result<&str> {
-    str_or_error(&field.name, || "Field has no 'name'".to_string())
+    util::str_or_error(&field.name, || "Field has no 'name'".to_string())
 }
 
 fn type_name<'a>(field: &'a FieldDescriptorProto, config: &'a Config) -> Result<&'a str> {
-    let type_name = str_or_error(&field.type_name, || {
+    let type_name = util::str_or_error(&field.type_name, || {
         format!(
             "Field has no 'type name': {:?}",
             field.name.as_ref().unwrap_or(&"(unknown)".to_string())
@@ -42,24 +38,16 @@ fn type_name<'a>(field: &'a FieldDescriptorProto, config: &'a Config) -> Result<
     Ok(type_name)
 }
 
-fn str_or_error<F: Fn() -> String>(value: &Option<String>, error: F) -> Result<&str> {
-    let result = value
-        .as_ref()
-        .map(String::as_str)
-        .ok_or(anyhow!("{}", error()))?;
-    Ok(result)
-}
-
 #[cfg(test)]
 mod tests {
     use crate::generator::config::Config;
-    use crate::generator::context::FieldContext;
+    use crate::generator::context::field::FieldContext;
     use crate::generator::primitive;
     use anyhow::Result;
     use prost_types::FieldDescriptorProto;
 
     #[test]
-    fn name_to_json() -> Result<()> {
+    fn name() -> Result<()> {
         let mut config = Config::default();
         let name = "test_name".to_string();
         let field = field_with_name(name.clone());
@@ -70,10 +58,9 @@ mod tests {
 
     mod type_name_from_config {
         use crate::generator::config::Config;
-        use crate::generator::context::tests::field_with_type;
-        use crate::generator::context::FieldContext;
+        use crate::generator::context::field::tests::field_with_type;
+        use crate::generator::context::field::FieldContext;
         use anyhow::Result;
-        use prost_types::FieldDescriptorProto;
 
         macro_rules! test_type_config {
             ($proto_type:ident) => {
