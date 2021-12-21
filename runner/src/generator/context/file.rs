@@ -1,5 +1,6 @@
-use crate::generator::context::{util, RenderedField};
+use crate::generator::context::RenderedField;
 use crate::generator::template_config::TemplateConfig;
+use crate::util;
 use anyhow::Result;
 use prost_types::FileDescriptorProto;
 use serde::{Deserialize, Serialize};

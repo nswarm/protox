@@ -256,7 +256,7 @@ fn parse_outputs(
         Some(values) => values,
     };
     for value in values {
-        outputs.push(LangConfig::from_config(value, output_root, PROTO)?);
+        outputs.push(LangConfig::from_config(value, output_root, arg_name)?);
     }
     Ok(outputs)
 }

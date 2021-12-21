@@ -1,5 +1,5 @@
-use crate::generator::context::util;
 use crate::generator::template_config::TemplateConfig;
+use crate::util;
 use anyhow::{anyhow, Result};
 use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ fn name(field: &FieldDescriptorProto) -> Result<&str> {
 fn type_name<'a>(field: &'a FieldDescriptorProto, config: &'a TemplateConfig) -> Result<&'a str> {
     let type_name = util::str_or_error(&field.type_name, || {
         format!(
-            "Field has no 'type name': {:?}",
+            "Field '{}' has no 'type name'",
             field.name.as_ref().unwrap_or(&"(unknown)".to_string())
         )
     })?;

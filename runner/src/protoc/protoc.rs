@@ -39,8 +39,14 @@ impl Protoc {
         let protoc_path = protoc_path();
         self.args.append(&mut self.input_files.clone());
 
-        info!("using protoc at path: {:?}", protoc_path);
-        info!("running command:\tprotoc {}", self.args.join(" "));
+        info!(
+            "using protoc at path: {}",
+            util::normalize_slashes(protoc_path.display())
+        );
+        info!(
+            "running command:\tprotoc {}",
+            util::normalize_slashes(self.args.join(" "))
+        );
 
         let mut child = Command::new(&protoc_path)
             .args(&self.args)

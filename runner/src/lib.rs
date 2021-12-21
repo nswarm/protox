@@ -1,4 +1,6 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
+use std::fs;
+use std::path::Path;
 
 mod config;
 mod generator;
@@ -24,6 +26,7 @@ pub fn run_with_config(config: Config) -> Result<()> {
 }
 
 fn run_internal(config: Config) -> Result<()> {
+    create_output_root(&config.output_root)?;
     match config.idl {
         Idl::Proto => {
             protoc::generate_descriptor_set_and_builtin_lang_outputs(&config)?;
@@ -31,4 +34,13 @@ fn run_internal(config: Config) -> Result<()> {
         }
     };
     Ok(())
+}
+
+fn create_output_root(path: &Path) -> Result<()> {
+    Ok(fs::create_dir_all(path).with_context(|| {
+        format!(
+            "Failed to create output-root directories in path: {}",
+            util::normalize_slashes(path.display())
+        )
+    })?)
 }

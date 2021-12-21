@@ -1,6 +1,7 @@
 use crate::lang_config::LangConfig;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use std::borrow::Borrow;
+use std::fmt::Display;
 use std::fs;
 
 pub fn unquote_arg(arg: &str) -> String {
@@ -12,13 +13,25 @@ pub fn create_output_dirs<C: Borrow<LangConfig>>(configs: &[C]) -> Result<()> {
         let config = config.borrow();
         fs::create_dir_all(&config.output).with_context(|| {
             format!(
-                "Failed to create directory at path {:?} for proto output '{}'",
+                "Failed to create directory at path {:?} for output '{}'",
                 config.output,
                 config.lang.as_config()
             )
         })?;
     }
     Ok(())
+}
+
+pub fn str_or_error<F: Fn() -> String>(value: &Option<String>, error: F) -> Result<&str> {
+    let result = value
+        .as_ref()
+        .map(String::as_str)
+        .ok_or(anyhow!("{}", error()))?;
+    Ok(result)
+}
+
+pub fn normalize_slashes(path: impl ToString) -> String {
+    path.to_string().replace("\\", "/")
 }
 
 #[cfg(test)]

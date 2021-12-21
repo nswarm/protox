@@ -2,6 +2,7 @@ use crate::generator::context::{FieldContext, FileContext, MessageContext};
 use crate::generator::template_config::TemplateConfig;
 use anyhow::{Context, Result};
 use handlebars::Handlebars;
+use log::debug;
 use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet};
 use serde::Serialize;
 use std::io;
@@ -61,6 +62,7 @@ impl Renderer<'_> {
         file: &FileDescriptorProto,
         writer: &mut W,
     ) -> Result<()> {
+        debug!("Rendering file: {}", name_or_unknown(&file.name));
         let mut context = FileContext::new(file, &self.config)?;
         for message in &file.message_type {
             context.messages.push(self.render_message(message)?);
@@ -69,6 +71,7 @@ impl Renderer<'_> {
     }
 
     fn render_message(&self, message: &DescriptorProto) -> Result<String> {
+        debug!("Rendering message: {}", name_or_unknown(&message.name));
         let mut context = MessageContext::new(message, &self.config)?;
         for field in &message.field {
             context.fields.push(self.render_field(field)?);
@@ -77,6 +80,7 @@ impl Renderer<'_> {
     }
 
     fn render_field(&self, field: &FieldDescriptorProto) -> Result<String> {
+        debug!("Rendering field: {}", name_or_unknown(&field.name));
         let context = FieldContext::new(field, &self.config)?;
         self.render_to_string(FIELD_TEMPLATE_NAME, &context)
     }
@@ -100,6 +104,11 @@ impl Renderer<'_> {
             .with_context(|| render_error_context(template, data))?;
         Ok(())
     }
+}
+
+fn name_or_unknown(name: &Option<String>) -> &str {
+    static UNKNOWN: &str = "(unknown)";
+    name.as_ref().map(|s| s.as_str()).unwrap_or(&UNKNOWN)
 }
 
 fn render_error_context<S: Serialize>(name: &str, data: &S) -> String {

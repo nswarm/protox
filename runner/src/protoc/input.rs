@@ -1,4 +1,4 @@
-use crate::Config;
+use crate::{util, Config};
 use anyhow::{anyhow, Result};
 use log::debug;
 use std::path::Path;
@@ -21,7 +21,7 @@ pub fn collect(config: &Config) -> Result<Vec<String>> {
             .to_str()
             .ok_or(anyhow!("Failed to convert path to str: {:?}", entry.path()))?
             .to_string();
-        inputs.push(normalize_slashes(&input));
+        inputs.push(util::normalize_slashes(&input));
     }
     Ok(inputs)
 }
@@ -31,10 +31,6 @@ fn is_proto_ext(path: &Path) -> bool {
         Some(ext) if ext == "proto" => true,
         _ => false,
     }
-}
-
-fn normalize_slashes(path: &str) -> String {
-    path.replace("\\", "/")
 }
 
 #[cfg(test)]
