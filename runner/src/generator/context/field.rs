@@ -1,5 +1,5 @@
-use crate::generator::config::Config;
 use crate::generator::context::util;
+use crate::generator::template_config::TemplateConfig;
 use anyhow::{anyhow, Result};
 use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ pub struct FieldContext<'a> {
 }
 
 impl<'a> FieldContext<'a> {
-    pub fn new(field: &'a FieldDescriptorProto, config: &'a Config) -> Result<Self> {
+    pub fn new(field: &'a FieldDescriptorProto, config: &'a TemplateConfig) -> Result<Self> {
         let context = Self {
             name: name(field)?,
             type_name: type_name(field, config)?,
@@ -24,7 +24,7 @@ fn name(field: &FieldDescriptorProto) -> Result<&str> {
     util::str_or_error(&field.name, || "Field has no 'name'".to_string())
 }
 
-fn type_name<'a>(field: &'a FieldDescriptorProto, config: &'a Config) -> Result<&'a str> {
+fn type_name<'a>(field: &'a FieldDescriptorProto, config: &'a TemplateConfig) -> Result<&'a str> {
     let type_name = util::str_or_error(&field.type_name, || {
         format!(
             "Field has no 'type name': {:?}",
@@ -40,26 +40,28 @@ fn type_name<'a>(field: &'a FieldDescriptorProto, config: &'a Config) -> Result<
 
 #[cfg(test)]
 mod tests {
-    use crate::generator::config::Config;
     use crate::generator::context::field::FieldContext;
     use crate::generator::primitive;
+    use crate::generator::template_config::TemplateConfig;
     use anyhow::Result;
     use prost_types::FieldDescriptorProto;
 
     #[test]
     fn name() -> Result<()> {
-        let mut config = Config::default();
+        let config = TemplateConfig::default();
         let name = "test_name".to_string();
-        let field = field_with_name(name.clone());
+        let mut field = default_field();
+        field.name = Some(name.clone());
+        field.type_name = Some(primitive::FLOAT.to_string());
         let context = FieldContext::new(&field, &config)?;
         assert_eq!(context.name.to_string(), name);
         Ok(())
     }
 
     mod type_name_from_config {
-        use crate::generator::config::Config;
-        use crate::generator::context::field::tests::field_with_type;
+        use crate::generator::context::field::tests::default_field;
         use crate::generator::context::field::FieldContext;
+        use crate::generator::template_config::TemplateConfig;
         use anyhow::Result;
 
         macro_rules! test_type_config {
@@ -86,12 +88,14 @@ mod tests {
         test_type_config!(bytes);
 
         fn test_type_config(proto_type_name: &str) -> Result<()> {
-            let mut config = Config::default();
+            let mut config = TemplateConfig::default();
             config.type_config.insert(
                 proto_type_name.to_string(),
                 ["TEST", proto_type_name].concat(),
             );
-            let field = field_with_type(proto_type_name.to_string());
+            let mut field = default_field();
+            field.name = Some("field_name".to_string());
+            field.type_name = Some(proto_type_name.to_string());
             let context = FieldContext::new(&field, &config)?;
             assert_eq!(
                 Some(&context.type_name.to_string()),
@@ -103,8 +107,8 @@ mod tests {
 
     #[test]
     fn missing_name_errors() {
-        let mut config = Config::default();
-        let mut field = empty_field();
+        let config = TemplateConfig::default();
+        let mut field = default_field();
         field.type_name = Some(primitive::FLOAT.to_string());
         let result = FieldContext::new(&field, &config);
         assert!(result.is_err());
@@ -112,52 +116,20 @@ mod tests {
 
     #[test]
     fn missing_type_name_errors() {
-        let mut config = Config::default();
-        let mut field = empty_field();
+        let config = TemplateConfig::default();
+        let mut field = default_field();
         field.name = Some("field_name".to_string());
         let result = FieldContext::new(&field, &config);
         assert!(result.is_err());
     }
 
-    fn empty_field() -> FieldDescriptorProto {
+    fn default_field() -> FieldDescriptorProto {
         FieldDescriptorProto {
             name: None,
             number: None,
             label: None,
             r#type: None,
             type_name: None,
-            extendee: None,
-            default_value: None,
-            oneof_index: None,
-            json_name: None,
-            options: None,
-            proto3_optional: None,
-        }
-    }
-
-    fn field_with_name(name: String) -> FieldDescriptorProto {
-        FieldDescriptorProto {
-            name: Some(name),
-            number: None,
-            label: None,
-            r#type: None,
-            type_name: Some(primitive::FLOAT.to_string()),
-            extendee: None,
-            default_value: None,
-            oneof_index: None,
-            json_name: None,
-            options: None,
-            proto3_optional: None,
-        }
-    }
-
-    fn field_with_type(proto_type: String) -> FieldDescriptorProto {
-        FieldDescriptorProto {
-            name: Some("field_name".to_string()),
-            number: None,
-            label: None,
-            r#type: None,
-            type_name: Some(proto_type),
             extendee: None,
             default_value: None,
             oneof_index: None,

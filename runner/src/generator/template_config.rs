@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
-pub struct Config {
+pub struct TemplateConfig {
     /// Defines the primitive type mapping for proto -> lang.
     /// https://developers.google.com/protocol-buffers/docs/proto3#scalar
     ///
@@ -12,7 +12,7 @@ pub struct Config {
     pub type_config: HashMap<String, String>,
 }
 
-impl Default for Config {
+impl Default for TemplateConfig {
     fn default() -> Self {
         Self {
             type_config: default_type_config(),

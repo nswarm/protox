@@ -1,17 +1,19 @@
-use crate::generator::config::Config;
-use crate::generator::context::{FieldContext, MessageContext};
+use crate::generator::context::{FieldContext, FileContext, MessageContext};
+use crate::generator::template_config::TemplateConfig;
 use anyhow::{Context, Result};
 use handlebars::Handlebars;
-use prost_types::{DescriptorProto, FieldDescriptorProto};
+use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet};
 use serde::Serialize;
+use std::io;
 
 pub struct Renderer<'a> {
     hbs: Handlebars<'a>,
-    config: Config,
+    config: TemplateConfig,
 }
 
-const FIELD_TEMPLATE_NAME: &str = "field";
+const FILE_TEMPLATE_NAME: &str = "file";
 const MESSAGE_TEMPLATE_NAME: &str = "message";
+const FIELD_TEMPLATE_NAME: &str = "field";
 
 /// Renders final output files by using data from a proto descriptor set,
 /// a set of templates which define how the data is structured, and the generator
@@ -24,23 +26,27 @@ impl Renderer<'_> {
         }
     }
 
-    pub fn with_config(config: Config) -> Self {
+    pub fn with_config(config: TemplateConfig) -> Self {
         Self {
             hbs: Handlebars::new(),
             config,
         }
     }
 
-    pub fn configure(&mut self, config: Config) {
+    pub fn configure(&mut self, config: TemplateConfig) {
         self.config = config;
     }
 
-    pub fn load_field_template(&mut self, template: String) -> Result<()> {
-        self.load_template(FIELD_TEMPLATE_NAME, template)
+    pub fn load_file_template(&mut self, template: String) -> Result<()> {
+        self.load_template(FILE_TEMPLATE_NAME, template)
     }
 
     pub fn load_message_template(&mut self, template: String) -> Result<()> {
         self.load_template(MESSAGE_TEMPLATE_NAME, template)
+    }
+
+    pub fn load_field_template(&mut self, template: String) -> Result<()> {
+        self.load_template(FIELD_TEMPLATE_NAME, template)
     }
 
     fn load_template(&mut self, name: &str, template: String) -> Result<()> {
@@ -50,41 +56,94 @@ impl Renderer<'_> {
         Ok(())
     }
 
+    pub fn render_file<W: io::Write>(
+        &self,
+        file: &FileDescriptorProto,
+        writer: &mut W,
+    ) -> Result<()> {
+        let mut context = FileContext::new(file, &self.config)?;
+        for message in &file.message_type {
+            context.messages.push(self.render_message(message)?);
+        }
+        self.render_to_write(FILE_TEMPLATE_NAME, &context, writer)
+    }
+
     fn render_message(&self, message: &DescriptorProto) -> Result<String> {
         let mut context = MessageContext::new(message, &self.config)?;
         for field in &message.field {
             context.fields.push(self.render_field(field)?);
         }
-        self.render(MESSAGE_TEMPLATE_NAME, &context)
+        self.render_to_string(MESSAGE_TEMPLATE_NAME, &context)
     }
 
     fn render_field(&self, field: &FieldDescriptorProto) -> Result<String> {
         let context = FieldContext::new(field, &self.config)?;
-        self.render(FIELD_TEMPLATE_NAME, &context)
+        self.render_to_string(FIELD_TEMPLATE_NAME, &context)
     }
 
-    fn render<S: Serialize>(&self, template: &str, data: &S) -> Result<String> {
-        let rendered = self.hbs.render(template, data).with_context(|| {
-            format!(
-                "Failed to render template for data: {}",
-                serde_json::to_string(data).unwrap_or("(failed to serialize)".to_string()),
-            )
-        })?;
+    fn render_to_string<S: Serialize>(&self, template: &str, data: &S) -> Result<String> {
+        let rendered = self
+            .hbs
+            .render(template, data)
+            .with_context(|| render_error_context(template, data))?;
         Ok(rendered)
     }
+
+    fn render_to_write<S: Serialize, W: io::Write>(
+        &self,
+        template: &str,
+        data: &S,
+        writer: W,
+    ) -> Result<()> {
+        self.hbs
+            .render_to_write(template, data, writer)
+            .with_context(|| render_error_context(template, data))?;
+        Ok(())
+    }
+}
+
+fn render_error_context<S: Serialize>(name: &str, data: &S) -> String {
+    format!(
+        "Failed to render template '{}' for data: {}",
+        name,
+        serde_json::to_string(data).unwrap_or("(failed to serialize)".to_string()),
+    )
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::generator::config::Config;
     use crate::generator::primitive;
     use crate::generator::renderer::Renderer;
+    use crate::generator::template_config::TemplateConfig;
     use anyhow::Result;
-    use prost_types::{DescriptorProto, FieldDescriptorProto};
+    use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
+
+    #[test]
+    fn file_template() -> Result<()> {
+        let config = TemplateConfig::default();
+        let mut renderer = Renderer::with_config(config);
+        renderer.load_file_template("{{name}}{{#each messages}}{{this}}{{/each}}".to_string());
+        renderer.load_message_template("{{name}}".to_string());
+        renderer.load_field_template("{{name}}".to_string());
+
+        let file_name = "file_name".to_string();
+        let msg0 = fake_message("msg0", Vec::new());
+        let msg1 = fake_message("msg1", Vec::new());
+        let msg0_rendered = renderer.render_message(&msg0)?;
+        let msg1_rendered = renderer.render_message(&msg1)?;
+        let file = fake_file(&file_name, vec![msg0, msg1]);
+
+        let mut bytes = Vec::<u8>::new();
+        renderer.render_file(&file, &mut bytes)?;
+
+        let result = String::from_utf8(bytes)?;
+        assert_eq!(result, [file_name, msg0_rendered, msg1_rendered].concat());
+        Ok(())
+    }
 
     #[test]
     fn message_template() -> Result<()> {
-        let config = Config::default();
+        let config = TemplateConfig::default();
         let mut renderer = Renderer::with_config(config);
         renderer.load_message_template("{{name}}{{#each fields}}{{this}}{{/each}}".to_string());
         renderer.load_field_template("{{name}}:::{{type_name}}".to_string());
@@ -109,7 +168,7 @@ mod tests {
         let field_name = "field-name";
         let native_type = ["TEST-", primitive::FLOAT].concat();
         let separator = ":::";
-        let mut config = Config::default();
+        let mut config = TemplateConfig::default();
         config
             .type_config
             .insert(primitive::FLOAT.to_string(), native_type.clone());
@@ -118,6 +177,23 @@ mod tests {
         let result = renderer.render_field(&fake_field("field-name", primitive::FLOAT))?;
         assert_eq!(result, [field_name, separator, &native_type].concat());
         Ok(())
+    }
+
+    fn fake_file(name: impl Into<String>, messages: Vec<DescriptorProto>) -> FileDescriptorProto {
+        FileDescriptorProto {
+            name: Some(name.into()),
+            package: None,
+            dependency: vec![],
+            public_dependency: vec![],
+            weak_dependency: vec![],
+            message_type: messages,
+            enum_type: vec![],
+            service: vec![],
+            extension: vec![],
+            options: None,
+            source_code_info: None,
+            syntax: None,
+        }
     }
 
     fn fake_message(name: impl Into<String>, fields: Vec<FieldDescriptorProto>) -> DescriptorProto {

@@ -1,6 +1,6 @@
-use crate::generator::config::Config;
 use crate::generator::renderer::Renderer;
-use crate::Config as AppConfig;
+use crate::generator::template_config::TemplateConfig;
+use crate::Config;
 use anyhow::{Context, Result};
 use prost::Message;
 use prost_types::FileDescriptorSet;
@@ -12,20 +12,20 @@ pub mod direct;
 pub mod proto;
 pub mod server;
 
-mod config;
 mod context;
 mod primitive;
 mod renderer;
+mod template_config;
 
-pub fn generate(app_config: &AppConfig) -> Result<()> {
+pub fn generate(app_config: &Config) -> Result<()> {
     let descriptor_set = read_descriptor_set(&app_config.descriptor_set_path)?;
-    let config = Config::default(); // todo load from file.
-    let renderer = Renderer::with_config(config);
+    let template_config = TemplateConfig::default(); // todo load from file.
+    let renderer = Renderer::with_config(template_config);
     // todo render(descriptor_set);
     proto::generate(app_config)?;
-    direct::generate(app_config)?;
-    client::generate(app_config)?;
-    server::generate(app_config)?;
+    // direct::generate(app_config)?;
+    // client::generate(app_config)?;
+    // server::generate(app_config)?;
     Ok(())
 }
 
