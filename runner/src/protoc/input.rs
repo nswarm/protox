@@ -2,6 +2,7 @@ use crate::{util, Config};
 use anyhow::{anyhow, Result};
 use log::debug;
 use std::path::Path;
+use util::DisplayNormalized;
 use walkdir::WalkDir;
 
 pub fn collect(config: &Config) -> Result<Vec<String>> {
@@ -14,7 +15,10 @@ pub fn collect(config: &Config) -> Result<Vec<String>> {
         if !is_proto_ext(entry.path()) {
             continue;
         }
-        debug!("collect_inputs found proto file: {:?}", entry.path());
+        debug!(
+            "collect_inputs found proto file: {}",
+            entry.path().display_normalized(),
+        );
         let input = entry
             .path()
             .strip_prefix(&config.input)?

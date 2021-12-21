@@ -4,6 +4,7 @@ use log::info;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use util::DisplayNormalized;
 
 const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
 const PROTOC_ARG_DESCRIPTOR_SET_OUT: &str = "descriptor_set_out";
@@ -39,10 +40,7 @@ impl Protoc {
         let protoc_path = protoc_path();
         self.args.append(&mut self.input_files.clone());
 
-        info!(
-            "using protoc at path: {}",
-            util::normalize_slashes(protoc_path.display())
-        );
+        info!("using protoc at path: {}", protoc_path.display_normalized());
         info!(
             "running command:\tprotoc {}",
             util::normalize_slashes(self.args.join(" "))

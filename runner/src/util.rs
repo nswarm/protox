@@ -1,8 +1,9 @@
 use crate::lang_config::LangConfig;
+use crate::util;
 use anyhow::{anyhow, Context, Result};
 use std::borrow::Borrow;
-use std::fmt::Display;
 use std::fs;
+use std::path::Path;
 
 pub fn unquote_arg(arg: &str) -> String {
     arg[1..arg.len() - 1].to_string()
@@ -22,6 +23,29 @@ pub fn create_output_dirs<C: Borrow<LangConfig>>(configs: &[C]) -> Result<()> {
     Ok(())
 }
 
+pub fn create_dir_or_error(path: &Path) -> Result<()> {
+    fs::create_dir_all(path).with_context(|| {
+        format!(
+            "Failed to create directories for path {}",
+            path.display_normalized()
+        )
+    })
+}
+
+/// Creates the file including any necessary directories.
+pub fn create_file_or_error(path: &Path) -> Result<fs::File> {
+    match path.parent() {
+        None => {}
+        Some(parent) => util::create_dir_or_error(parent)?,
+    }
+    fs::File::create(&path).with_context(|| {
+        format!(
+            "Failed to create file at path {}",
+            path.display_normalized()
+        )
+    })
+}
+
 pub fn str_or_error<F: Fn() -> String>(value: &Option<String>, error: F) -> Result<&str> {
     let result = value
         .as_ref()
@@ -39,15 +63,34 @@ pub fn normalize_slashes(path: impl ToString) -> String {
     path.to_string().replace("\\", "/")
 }
 
+pub trait DisplayNormalized {
+    fn display_normalized(&self) -> String;
+}
+
+impl DisplayNormalized for Path {
+    fn display_normalized(&self) -> String {
+        normalize_slashes(self.display())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::lang_config::LangConfig;
-    use crate::util::create_output_dirs;
+    use crate::util::{create_output_dirs, DisplayNormalized};
     use crate::Lang;
     use anyhow::Result;
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::tempdir;
+
+    #[test]
+    fn normalized_path_display() {
+        let path = PathBuf::from("/test\\path\\display/slashes");
+        assert_eq!(
+            path.display_normalized(),
+            "/test/path/display/slashes".to_string()
+        );
+    }
 
     #[test]
     fn create_output_dirs_test() -> Result<()> {

@@ -1,11 +1,5 @@
-use crate::generator::renderer::Renderer;
-use crate::generator::template_config::TemplateConfig;
 use crate::Config;
-use anyhow::{Context, Result};
-use prost::Message;
-use prost_types::FileDescriptorSet;
-use std::path::Path;
-use std::{fs, io};
+use anyhow::Result;
 
 pub mod client;
 pub mod direct;

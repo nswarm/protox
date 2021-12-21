@@ -10,6 +10,7 @@ mod lang_config;
 mod protoc;
 mod util;
 
+use crate::util::DisplayNormalized;
 pub use config::Config;
 pub use idl::Idl;
 pub use lang::Lang;
@@ -40,7 +41,7 @@ fn create_output_root(path: &Path) -> Result<()> {
     Ok(fs::create_dir_all(path).with_context(|| {
         format!(
             "Failed to create output-root directories in path: {}",
-            util::normalize_slashes(path.display())
+            path.display_normalized()
         )
     })?)
 }
