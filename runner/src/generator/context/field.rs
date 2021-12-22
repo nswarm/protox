@@ -4,7 +4,6 @@ use crate::util;
 use anyhow::{anyhow, Result};
 use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize)]
 pub struct FieldContext<'a> {

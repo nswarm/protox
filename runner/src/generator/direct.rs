@@ -1,5 +1,4 @@
 use crate::generator::renderer::Renderer;
-use crate::generator::template_config::TemplateConfig;
 use crate::lang_config::LangConfig;
 use crate::util::DisplayNormalized;
 use crate::{util, Config, Lang};
@@ -18,12 +17,12 @@ pub fn generate(app_config: &Config) -> Result<()> {
     }
     util::create_output_dirs(&app_config.direct)?;
     let descriptor_set = load_descriptor_set(&app_config)?;
+    let mut renderer = Renderer::new();
     for lang_config in &app_config.direct {
         log_lang_start(lang_config);
         let output_path = &lang_config.output;
-        let template_config = TemplateConfig::default(); // todo load from file.
-        let renderer = Renderer::with_config(template_config);
-        render_descriptor_set(&descriptor_set, output_path, renderer)?;
+        renderer.load_all(&app_config.template_root)?;
+        render_descriptor_set(&descriptor_set, output_path, &renderer)?;
     }
     Ok(())
 }
@@ -39,7 +38,7 @@ fn log_lang_start(lang_config: &LangConfig) {
 fn render_descriptor_set(
     descriptor_set: &FileDescriptorSet,
     output_path: &PathBuf,
-    renderer: Renderer,
+    renderer: &Renderer,
 ) -> Result<()> {
     for file in &descriptor_set.file {
         info!("Rendering file for descriptor '{}'", file_name(file)?);

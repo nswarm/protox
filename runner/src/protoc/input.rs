@@ -1,5 +1,5 @@
 use crate::{util, Config};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::debug;
 use std::path::Path;
 use util::DisplayNormalized;
@@ -8,7 +8,7 @@ use walkdir::WalkDir;
 pub fn collect(config: &Config) -> Result<Vec<String>> {
     let mut inputs = Vec::new();
     for entry in WalkDir::new(&config.input).follow_links(false).into_iter() {
-        let entry = entry?;
+        let entry = entry.context("Failed to collect input.")?;
         if entry.file_type().is_dir() {
             continue;
         }

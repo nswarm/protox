@@ -11,6 +11,7 @@ use std::path::PathBuf;
 pub const APP_NAME: &str = "protoffi";
 pub const IDL: &str = "idl";
 pub const INPUT: &str = "input";
+pub const TEMPLATE_ROOT: &str = "template-root";
 pub const OUTPUT_ROOT: &str = "output-root";
 pub const DESCRIPTOR_SET_OUT: &str = "descriptor-set-out";
 pub const PROTO: &str = "proto";
@@ -50,8 +51,15 @@ where
                 .takes_value(true)
                 .required(true),
 
-            Arg::new(OUTPUT_ROOT)
+            Arg::new(TEMPLATE_ROOT)
                 .display_order(2)
+                .about("File path to search for template files.") // todo not complete
+                .default_short()
+                .long(TEMPLATE_ROOT)
+                .takes_value(true),
+
+            Arg::new(OUTPUT_ROOT)
+                .display_order(3)
                 .about("All output files will be prefixed with this path.")
                 .short('r')
                 .long(OUTPUT_ROOT)
@@ -133,6 +141,7 @@ fn join_about(lines: &[&str]) -> String {
 pub struct Config {
     pub idl: Idl,
     pub input: PathBuf,
+    pub template_root: PathBuf,
     pub output_root: PathBuf,
     pub descriptor_set_path: PathBuf,
     pub proto: Vec<LangConfig>,
@@ -151,10 +160,11 @@ impl Config {
     }
 
     pub fn from_args(args: &ArgMatches) -> Result<Self> {
-        let output_root = parse_output_root(&args)?;
+        let output_root = parse_path_or_current_dir(OUTPUT_ROOT, &args)?;
         let config = Self {
             idl: Idl::from_args(&args)?,
             input: parse_input(&args)?,
+            template_root: parse_path_or_current_dir(TEMPLATE_ROOT, &args)?,
             output_root: output_root.clone(),
             descriptor_set_path: parse_descriptor_path(&output_root, &args),
             proto: parse_outputs(PROTO, &args, &output_root)?,
@@ -220,9 +230,9 @@ fn parse_input(args: &ArgMatches) -> Result<PathBuf> {
     }
 }
 
-fn parse_output_root(args: &ArgMatches) -> Result<PathBuf> {
+fn parse_path_or_current_dir(arg_name: &str, args: &ArgMatches) -> Result<PathBuf> {
     let root = args
-        .value_of(OUTPUT_ROOT)
+        .value_of(arg_name)
         .and_then(|value| Some(PathBuf::from(value)))
         .unwrap_or(current_dir()?);
     Ok(root)

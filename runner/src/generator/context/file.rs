@@ -32,7 +32,7 @@ mod tests {
     use crate::generator::context::FileContext;
     use crate::generator::template_config::TemplateConfig;
     use anyhow::Result;
-    use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
+    use prost_types::FileDescriptorProto;
 
     #[test]
     fn name() -> Result<()> {

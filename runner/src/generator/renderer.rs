@@ -1,25 +1,28 @@
 use crate::generator::context::{FieldContext, FileContext, MessageContext};
 use crate::generator::template_config::TemplateConfig;
-use crate::util;
+use crate::{util, DisplayNormalized};
 use anyhow::{Context, Result};
 use handlebars::Handlebars;
 use log::debug;
-use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet};
+use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
 use serde::Serialize;
-use std::io;
+use std::path::{Path, PathBuf};
+use std::{fs, io};
 
+const FILE_TEMPLATE_NAME: &str = "file";
+const MESSAGE_TEMPLATE_NAME: &str = "message";
+const FIELD_TEMPLATE_NAME: &str = "field";
+const CONFIG_FILE_NAME: &str = "config.json";
+
+/// Renders final output files by using:
+/// 1. Data from a proto descriptor set.
+/// 2. A set of templates which define how the data is structured.
+/// 3. A template configuration file, which supplies user choices about how to handle specifics.
 pub struct Renderer<'a> {
     hbs: Handlebars<'a>,
     config: TemplateConfig,
 }
 
-const FILE_TEMPLATE_NAME: &str = "file";
-const MESSAGE_TEMPLATE_NAME: &str = "message";
-const FIELD_TEMPLATE_NAME: &str = "field";
-
-/// Renders final output files by using data from a proto descriptor set,
-/// a set of templates which define how the data is structured, and the generator
-/// configuration, which supplies user choices about how to handle specifics.
 impl Renderer<'_> {
     pub fn new() -> Self {
         Self {
@@ -28,6 +31,7 @@ impl Renderer<'_> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_config(config: TemplateConfig) -> Self {
         Self {
             hbs: Handlebars::new(),
@@ -35,26 +39,83 @@ impl Renderer<'_> {
         }
     }
 
-    pub fn configure(&mut self, config: TemplateConfig) {
-        self.config = config;
+    /// Loads config and templates from the same root path with the following names:
+    /// ```txt
+    ///     root/config.json
+    ///     root/file.hbs
+    ///     root/message.hbs
+    ///     root/field.hbs
+    /// ```
+    pub fn load_all(&mut self, root: &Path) -> Result<()> {
+        self.load_config(&root.join(CONFIG_FILE_NAME))?;
+        self.load_templates(root)?;
+        Ok(())
     }
 
-    pub fn load_file_template(&mut self, template: String) -> Result<()> {
-        self.load_template(FILE_TEMPLATE_NAME, template)
+    pub fn load_config(&mut self, path: &Path) -> Result<TemplateConfig> {
+        let file = fs::File::open(path).context("Failed to read template config file.")?;
+        let buf_reader = io::BufReader::new(file);
+        let config = serde_json::from_reader(buf_reader).with_context(|| {
+            format!(
+                "Failed to deserialize template config as json, path: {}",
+                path.display_normalized()
+            )
+        })?;
+        Ok(config)
     }
 
-    pub fn load_message_template(&mut self, template: String) -> Result<()> {
-        self.load_template(MESSAGE_TEMPLATE_NAME, template)
+    #[allow(dead_code)]
+    pub fn load_file_template_string(&mut self, template: String) -> Result<()> {
+        self.load_template_string(FILE_TEMPLATE_NAME, template)
     }
 
-    pub fn load_field_template(&mut self, template: String) -> Result<()> {
-        self.load_template(FIELD_TEMPLATE_NAME, template)
+    #[allow(dead_code)]
+    pub fn load_message_template_string(&mut self, template: String) -> Result<()> {
+        self.load_template_string(MESSAGE_TEMPLATE_NAME, template)
     }
 
-    fn load_template(&mut self, name: &str, template: String) -> Result<()> {
+    #[allow(dead_code)]
+    pub fn load_field_template_string(&mut self, template: String) -> Result<()> {
+        self.load_template_string(FIELD_TEMPLATE_NAME, template)
+    }
+
+    #[allow(dead_code)]
+    fn load_template_string(&mut self, name: &str, template: String) -> Result<()> {
         self.hbs
             .register_template_string(name, template)
-            .context("Failed to load field template")?;
+            .with_context(|| format!("Failed to load '{}' template from string", name))?;
+        Ok(())
+    }
+
+    pub fn load_templates(&mut self, root: &Path) -> Result<()> {
+        self.load_file_template_file(&hbs_file_path(root, FILE_TEMPLATE_NAME))?;
+        self.load_message_template_file(&hbs_file_path(root, MESSAGE_TEMPLATE_NAME))?;
+        self.load_field_template_file(&hbs_file_path(root, FIELD_TEMPLATE_NAME))?;
+        Ok(())
+    }
+
+    pub fn load_file_template_file(&mut self, path: &Path) -> Result<()> {
+        self.load_template_file(FILE_TEMPLATE_NAME, path)
+    }
+
+    pub fn load_message_template_file(&mut self, path: &Path) -> Result<()> {
+        self.load_template_file(MESSAGE_TEMPLATE_NAME, path)
+    }
+
+    pub fn load_field_template_file(&mut self, path: &Path) -> Result<()> {
+        self.load_template_file(FIELD_TEMPLATE_NAME, path)
+    }
+
+    fn load_template_file(&mut self, name: &str, path: &Path) -> Result<()> {
+        self.hbs
+            .register_template_file(name, path)
+            .with_context(|| {
+                format!(
+                    "Failed to load '{}' template at path: {}",
+                    name,
+                    path.display_normalized()
+                )
+            })?;
         Ok(())
     }
 
@@ -115,6 +176,13 @@ fn render_error_context<S: Serialize>(name: &str, data: &S) -> String {
     )
 }
 
+fn hbs_file_path(root: &Path, file_name: &str) -> PathBuf {
+    static HBS_EXT: &str = "hbs";
+    let mut path = root.join(file_name);
+    path.set_extension(HBS_EXT);
+    path
+}
+
 #[cfg(test)]
 mod tests {
     use crate::generator::primitive;
@@ -127,9 +195,10 @@ mod tests {
     fn file_template() -> Result<()> {
         let config = TemplateConfig::default();
         let mut renderer = Renderer::with_config(config);
-        renderer.load_file_template("{{name}}{{#each messages}}{{this}}{{/each}}".to_string());
-        renderer.load_message_template("{{name}}".to_string());
-        renderer.load_field_template("{{name}}".to_string());
+        renderer
+            .load_file_template_string("{{name}}{{#each messages}}{{this}}{{/each}}".to_string())?;
+        renderer.load_message_template_string("{{name}}".to_string())?;
+        renderer.load_field_template_string("{{name}}".to_string())?;
 
         let file_name = "file_name".to_string();
         let msg0 = fake_message("msg0", Vec::new());
@@ -150,8 +219,10 @@ mod tests {
     fn message_template() -> Result<()> {
         let config = TemplateConfig::default();
         let mut renderer = Renderer::with_config(config);
-        renderer.load_message_template("{{name}}{{#each fields}}{{this}}{{/each}}".to_string());
-        renderer.load_field_template("{{name}}:::{{native_type}}".to_string());
+        renderer.load_message_template_string(
+            "{{name}}{{#each fields}}{{this}}{{/each}}".to_string(),
+        )?;
+        renderer.load_field_template_string("{{name}}:::{{native_type}}".to_string())?;
 
         let msg_name = "msg_name".to_string();
         let field0 = fake_field("field0", primitive::FLOAT);
@@ -178,7 +249,7 @@ mod tests {
             .type_config
             .insert(primitive::FLOAT.to_string(), native_type.clone());
         let mut renderer = Renderer::with_config(config);
-        renderer.load_field_template(["{{name}}", separator, "{{native_type}}"].concat())?;
+        renderer.load_field_template_string(["{{name}}", separator, "{{native_type}}"].concat())?;
         let result = renderer.render_field(&fake_field("field-name", primitive::FLOAT))?;
         assert_eq!(result, [field_name, separator, &native_type].concat());
         Ok(())

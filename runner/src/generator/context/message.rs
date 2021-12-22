@@ -14,7 +14,7 @@ pub struct MessageContext<'a> {
 }
 
 impl<'a> MessageContext<'a> {
-    pub fn new(message: &'a DescriptorProto, config: &TemplateConfig) -> Result<Self> {
+    pub fn new(message: &'a DescriptorProto, _config: &TemplateConfig) -> Result<Self> {
         let context = Self {
             name: name(message)?,
             fields: Vec::new(),
@@ -32,7 +32,7 @@ mod tests {
     use crate::generator::context::message::MessageContext;
     use crate::generator::template_config::TemplateConfig;
     use anyhow::Result;
-    use prost_types::{DescriptorProto, FieldDescriptorProto};
+    use prost_types::DescriptorProto;
 
     #[test]
     fn name() -> Result<()> {
