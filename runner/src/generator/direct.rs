@@ -41,18 +41,22 @@ fn render_descriptor_set(
     renderer: &Renderer,
 ) -> Result<()> {
     for file in &descriptor_set.file {
-        info!("Rendering file for descriptor '{}'", file_name(file)?);
-        let path = output_path.join(file_name(file)?);
+        let file_name = file_name(file, renderer.output_ext())?;
+        info!("Rendering file for descriptor '{}'", file_name);
+        let path = output_path.join(file_name);
         let mut writer = io::BufWriter::new(util::create_file_or_error(&path)?);
         renderer.render_file(file, &mut writer)?;
     }
     Ok(())
 }
 
-fn file_name(file: &FileDescriptorProto) -> Result<&str> {
-    util::str_or_error(&file.name, || {
-        "Descriptor set file is missing a file name. The descriptor set was probably generated incorrectly.".to_string()
-    })
+fn file_name(file: &FileDescriptorProto, new_ext: &str) -> Result<String> {
+    Ok(util::replace_proto_ext(
+        util::str_or_error(&file.name, || {
+            "Descriptor set file is missing a file name. The descriptor set was probably generated incorrectly.".to_string()
+        })?,
+        new_ext,
+    ))
 }
 
 fn load_descriptor_set(app_config: &Config) -> Result<FileDescriptorSet> {

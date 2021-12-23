@@ -1,5 +1,5 @@
 {
-  "file_extension": "rs",
+  "file_extension": "test",
   "type_config": {
     "float": "f32",
     "double": "f64",

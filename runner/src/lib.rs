@@ -3,12 +3,13 @@ use std::fs;
 use std::path::Path;
 
 mod config;
-mod generator;
 mod idl;
 mod lang;
 mod lang_config;
 mod protoc;
 mod util;
+
+pub mod generator;
 
 use crate::util::DisplayNormalized;
 pub use config::Config;
@@ -34,6 +35,7 @@ fn run_internal(config: Config) -> Result<()> {
             generator::generate(&config)?;
         }
     };
+
     Ok(())
 }
 

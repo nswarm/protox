@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct FileContext<'a> {
-    name: &'a str,
+    source_file: &'a str,
 
     // Must be rendered and supplied externally.
     pub messages: Vec<RenderedField>,
@@ -16,14 +16,14 @@ pub struct FileContext<'a> {
 impl<'a> FileContext<'a> {
     pub fn new(file: &'a FileDescriptorProto, _config: &TemplateConfig) -> Result<Self> {
         let context = Self {
-            name: name(file)?,
+            source_file: source_file(file)?,
             messages: Vec::new(),
         };
         Ok(context)
     }
 }
 
-fn name(file: &FileDescriptorProto) -> Result<&str> {
+fn source_file(file: &FileDescriptorProto) -> Result<&str> {
     util::str_or_error(&file.name, || "File has no 'name'".to_string())
 }
 
@@ -35,13 +35,13 @@ mod tests {
     use prost_types::FileDescriptorProto;
 
     #[test]
-    fn name() -> Result<()> {
+    fn source_file() -> Result<()> {
         let config = TemplateConfig::default();
         let name = "file_name".to_string();
         let mut file = default_file();
         file.name = Some(name.clone());
         let context = FileContext::new(&file, &config)?;
-        assert_eq!(context.name, name);
+        assert_eq!(context.source_file, name);
         Ok(())
     }
 

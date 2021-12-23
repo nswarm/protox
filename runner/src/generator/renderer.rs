@@ -3,7 +3,7 @@ use crate::generator::template_config::TemplateConfig;
 use crate::{util, DisplayNormalized};
 use anyhow::{Context, Result};
 use handlebars::Handlebars;
-use log::debug;
+use log::{debug, info};
 use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -39,6 +39,10 @@ impl Renderer<'_> {
         }
     }
 
+    pub fn output_ext(&self) -> &str {
+        &self.config.file_extension
+    }
+
     /// Loads config and templates from the same root path with the following names:
     /// ```txt
     ///     root/config.json
@@ -52,16 +56,17 @@ impl Renderer<'_> {
         Ok(())
     }
 
-    pub fn load_config(&mut self, path: &Path) -> Result<TemplateConfig> {
+    pub fn load_config(&mut self, path: &Path) -> Result<()> {
+        info!("Loading config from: {}", path.display_normalized());
         let file = fs::File::open(path).context("Failed to read template config file.")?;
         let buf_reader = io::BufReader::new(file);
-        let config = serde_json::from_reader(buf_reader).with_context(|| {
+        self.config = serde_json::from_reader(buf_reader).with_context(|| {
             format!(
                 "Failed to deserialize template config as json, path: {}",
                 path.display_normalized()
             )
         })?;
-        Ok(config)
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -124,7 +129,13 @@ impl Renderer<'_> {
         file: &FileDescriptorProto,
         writer: &mut W,
     ) -> Result<()> {
-        debug!("Rendering file: {}", util::str_or_unknown(&file.name));
+        debug!(
+            "Rendering file: {}",
+            util::replace_proto_ext(
+                util::str_or_unknown(&file.name),
+                &self.config.file_extension
+            )
+        );
         let mut context = FileContext::new(file, &self.config)?;
         for message in &file.message_type {
             context.messages.push(self.render_message(message)?);
@@ -192,11 +203,20 @@ mod tests {
     use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
 
     #[test]
+    fn output_ext_from_config() {
+        let mut config = TemplateConfig::default();
+        config.file_extension = "test".to_string();
+        let renderer = Renderer::with_config(config.clone());
+        assert_eq!(renderer.output_ext(), config.file_extension);
+    }
+
+    #[test]
     fn file_template() -> Result<()> {
         let config = TemplateConfig::default();
         let mut renderer = Renderer::with_config(config);
-        renderer
-            .load_file_template_string("{{name}}{{#each messages}}{{this}}{{/each}}".to_string())?;
+        renderer.load_file_template_string(
+            "{{source_file}}{{#each messages}}{{this}}{{/each}}".to_string(),
+        )?;
         renderer.load_message_template_string("{{name}}".to_string())?;
         renderer.load_field_template_string("{{name}}".to_string())?;
 

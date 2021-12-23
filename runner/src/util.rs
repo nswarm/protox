@@ -63,6 +63,16 @@ pub fn normalize_slashes(path: impl ToString) -> String {
     path.to_string().replace("\\", "/")
 }
 
+pub fn replace_proto_ext(file_name: &str, new_ext: &str) -> String {
+    if new_ext.starts_with(".") {
+        static PROTO_EXT_FULL: &str = ".proto";
+        file_name.replace(PROTO_EXT_FULL, new_ext)
+    } else {
+        static PROTO_EXT_RAW: &str = "proto";
+        file_name.replace(PROTO_EXT_RAW, new_ext)
+    }
+}
+
 pub trait DisplayNormalized {
     fn display_normalized(&self) -> String;
 }

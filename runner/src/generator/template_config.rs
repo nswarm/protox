@@ -2,8 +2,11 @@ use crate::generator::primitive;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct TemplateConfig {
+    /// The file extension to use for generated files.
+    pub file_extension: String,
+
     /// Defines the primitive type mapping for proto -> lang.
     /// https://developers.google.com/protocol-buffers/docs/proto3#scalar
     ///
@@ -15,6 +18,7 @@ pub struct TemplateConfig {
 impl Default for TemplateConfig {
     fn default() -> Self {
         Self {
+            file_extension: "".to_string(),
             type_config: default_type_config(),
         }
     }
