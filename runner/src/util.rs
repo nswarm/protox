@@ -9,14 +9,14 @@ pub fn unquote_arg(arg: &str) -> String {
     arg[1..arg.len() - 1].to_string()
 }
 
-pub fn create_output_dirs<C: Borrow<LangConfig>>(configs: &[C]) -> Result<()> {
+pub fn create_proto_out_dirs<C: Borrow<LangConfig>>(configs: &[C]) -> Result<()> {
     for config in configs {
         let config = config.borrow();
         fs::create_dir_all(&config.output).with_context(|| {
             format!(
-                "Failed to create directory at path {:?} for output '{}'",
-                config.output,
-                config.lang.as_config()
+                "Failed to create directory at path {} for output '{}'",
+                config.output.display_normalized(),
+                config.lang.as_config(),
             )
         })?;
     }
@@ -105,7 +105,7 @@ impl DisplayNormalized for Path {
 #[cfg(test)]
 mod tests {
     use crate::lang_config::LangConfig;
-    use crate::util::{create_output_dirs, DisplayNormalized};
+    use crate::util::{create_proto_out_dirs, DisplayNormalized};
     use crate::Lang;
     use anyhow::Result;
     use std::fs;
@@ -129,7 +129,7 @@ mod tests {
             lang_config_with_output(Lang::Cpp, root),
             lang_config_with_output(Lang::CSharp, root),
         ];
-        create_output_dirs(&vec[..])?;
+        create_proto_out_dirs(&vec[..])?;
         assert!(fs::read_dir(root.join(Lang::Cpp.as_config())).is_ok());
         assert!(fs::read_dir(root.join(Lang::CSharp.as_config())).is_ok());
         Ok(())

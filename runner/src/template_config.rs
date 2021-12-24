@@ -21,13 +21,6 @@ impl TemplateConfig {
     }
 }
 
-// todo do I need this?
-impl AsRef<TemplateConfig> for TemplateConfig {
-    fn as_ref(&self) -> &TemplateConfig {
-        &self
-    }
-}
-
 #[cfg(test)]
 mod tests {
     mod lang_config {

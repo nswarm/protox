@@ -17,7 +17,7 @@ pub const SUPPORTED_LANGUAGES: [Lang; 9] = [
 ];
 
 pub fn register(config: &Config, protoc: &mut Protoc) -> Result<()> {
-    util::create_output_dirs(
+    util::create_proto_out_dirs(
         &config
             .protos
             .iter()

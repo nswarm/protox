@@ -14,7 +14,7 @@ pub fn generate(config: &Config) -> Result<()> {
         Some(config) => config,
     };
 
-    util::create_output_dirs(&[rust_config])?;
+    util::create_proto_out_dirs(&[rust_config])?;
 
     let mut prost_config = prost_build::Config::new();
     // We can skip protoc since we already generate the descriptor fileset with our protoc run.

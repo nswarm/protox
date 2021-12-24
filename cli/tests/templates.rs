@@ -1,28 +1,43 @@
-// mod util;
-//
-// use anyhow::Result;
-// use runner::template_renderer::TemplateConfig;
-// use std::fs;
-// use std::fs::DirEntry;
-// use std::path::{Path, PathBuf};
-// use tempfile::tempdir_in;
-//
-// fn test_templates(
-//     config: &TemplateConfig,
-//     test_dir: &Path,
-//     additional_args: &[&str],
-// ) -> Result<PathBuf> {
-//     // We copy inputs to test dir so we can overwrite the config.json.
-//     let tmp_inputs = test_dir.join("inputs");
-//     util::copy_all_resources(&tmp_inputs)?;
-//     util::write_config(&tmp_inputs, &config)?;
-//     let template_dir = util::path_to_str(&tmp_inputs)?;
-//     println!("{:?}", tmp_inputs);
-//     let mut args = vec!["--templates", &template_dir];
-//     for additional_arg in additional_args {
-//         args.push(additional_arg);
-//     }
-//     let output_dir = test_dir.join("outputs");
-//     util::test_with_args_in(&output_dir, &args)?;
-//     Ok(output_dir)
-// }
+mod util;
+
+use crate::util::resources_dir;
+use anyhow::Result;
+use std::fs;
+use tempfile::tempdir_in;
+
+#[test]
+fn test_templates() -> Result<()> {
+    let test_dir = tempdir_in(env!("CARGO_TARGET_TMPDIR"))?;
+    let inputs = [
+        resources_dir().join("template-a"),
+        resources_dir().join("template-b"),
+    ];
+    let outputs = [
+        test_dir.path().join("output-a"),
+        test_dir.path().join("output-b"),
+    ];
+    let args = vec![
+        "--template".to_string(),
+        util::path_to_str(&inputs[0])?,
+        util::path_to_str(&outputs[0])?,
+        "--template".to_string(),
+        util::path_to_str(&inputs[1])?,
+        util::path_to_str(&outputs[1])?,
+    ];
+
+    util::test_with_args_in(test_dir.path(), &args)?;
+
+    assert_ne!(
+        fs::read_dir(&outputs[0])
+            .expect("Failed to read output 0 dir")
+            .count(),
+        0
+    );
+    assert_ne!(
+        fs::read_dir(&outputs[1])
+            .expect("Failed to read output 1 dir")
+            .count(),
+        0
+    );
+    Ok(())
+}

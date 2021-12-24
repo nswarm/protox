@@ -5,7 +5,7 @@ mod renderer_config;
 
 use crate::template_config::TemplateConfig;
 use crate::template_renderer::renderer::Renderer;
-use crate::{Config, DisplayNormalized};
+use crate::{util, Config, DisplayNormalized};
 use anyhow::{Context, Result};
 use log::info;
 use prost::Message;
@@ -13,7 +13,7 @@ use prost_types::FileDescriptorSet;
 use std::fs;
 
 pub fn generate(config: &Config) -> Result<()> {
-    if config.template_root.is_none() {
+    if config.templates.is_empty() {
         return Ok(());
     }
     let descriptor_set = load_descriptor_set(&config)?;
@@ -29,6 +29,7 @@ fn generate_from_descriptor_set(config: &Config, descriptor_set: &FileDescriptor
     for config in &config.templates {
         log_template_start(config);
         renderer.load_all(&config.input)?;
+        util::create_dir_or_error(&config.output)?;
         renderer.render(&descriptor_set, &config.output)?;
     }
     Ok(())

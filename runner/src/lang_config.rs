@@ -19,7 +19,6 @@ impl LangConfig {
     }
 }
 
-// todo do I need this?
 impl AsRef<LangConfig> for LangConfig {
     fn as_ref(&self) -> &LangConfig {
         &self

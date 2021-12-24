@@ -1,9 +1,7 @@
 #[cfg(test)]
 #[allow(dead_code)]
 mod tests {
-    use anyhow::{anyhow, Context, Result};
-    // use runner::template_renderer::TemplateConfig;
-    use std::fs;
+    use anyhow::{anyhow, Result};
     use std::path::{Path, PathBuf};
     use std::process::Command;
     use tempfile::{tempdir_in, TempDir};
@@ -14,7 +12,7 @@ mod tests {
         Ok(tempdir)
     }
 
-    pub fn test_with_args_in(output: &Path, args: &[&str]) -> Result<()> {
+    pub fn test_with_args_in<A: AsRef<str>>(output: &Path, args: &[A]) -> Result<()> {
         let mut cmd = protoffi();
         cmd.env("RUST_LOG", "debug,handlebars=off")
             .arg("--input")
@@ -23,25 +21,10 @@ mod tests {
             .arg(path_to_str(output)?);
 
         for arg in args {
-            cmd.arg(arg);
+            cmd.arg(arg.as_ref());
         }
 
         assert_cmd(cmd)?;
-        Ok(())
-    }
-
-    pub fn copy_all_resources(dest_dir: &Path) -> Result<()> {
-        for entry in fs::read_dir(resources_dir())? {
-            let entry = entry?;
-            if !entry.file_type()?.is_file() {
-                continue;
-            }
-            let relative_path = entry.path().strip_prefix(resources_dir())?.to_path_buf();
-            let dest_path = dest_dir.join(relative_path);
-            fs::create_dir_all(&dest_dir)?;
-            fs::copy(entry.path(), &dest_path)
-                .with_context(|| format!("Failed to copy {:?} to {:?}", entry.path(), dest_path))?;
-        }
         Ok(())
     }
 
@@ -72,15 +55,6 @@ mod tests {
 
     pub fn protoffi() -> Command {
         Command::new(env!("CARGO_BIN_EXE_protoffi"))
-    }
-
-    #[test]
-    fn copy_resources() -> Result<()> {
-        let tempdir = tempdir_in(env!("CARGO_TARGET_TMPDIR"))?;
-        assert_eq!(fs::read_dir(tempdir.path())?.count(), 0);
-        copy_all_resources(tempdir.path())?;
-        assert_ne!(fs::read_dir(tempdir.path())?.count(), 0);
-        Ok(())
     }
 }
 
