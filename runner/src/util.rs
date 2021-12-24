@@ -3,7 +3,7 @@ use crate::util;
 use anyhow::{anyhow, Context, Result};
 use std::borrow::Borrow;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub fn unquote_arg(arg: &str) -> String {
     arg[1..arg.len() - 1].to_string()
@@ -73,6 +73,25 @@ pub fn replace_proto_ext(file_name: &str, new_ext: &str) -> String {
     }
 }
 
+pub(crate) fn parse_rooted_path<P: AsRef<Path>>(
+    root: Option<&P>,
+    path_str: &str,
+    root_arg_name: &str,
+) -> Result<PathBuf> {
+    let path = PathBuf::from(path_str);
+    if path.is_absolute() {
+        return Ok(path);
+    }
+    match root {
+        None => Err(anyhow!(
+            "Path {} is relative but no {} root was specified.",
+            path_str,
+            root_arg_name,
+        )),
+        Some(root) => Ok(root.as_ref().join(path)),
+    }
+}
+
 pub trait DisplayNormalized {
     fn display_normalized(&self) -> String;
 }
@@ -106,21 +125,61 @@ mod tests {
     fn create_output_dirs_test() -> Result<()> {
         let tempdir = tempdir()?;
         let root = tempdir.path();
-        let vec = vec![lang_config_with_output(Lang::Cpp, root)];
+        let vec = vec![
+            lang_config_with_output(Lang::Cpp, root),
+            lang_config_with_output(Lang::CSharp, root),
+        ];
         create_output_dirs(&vec[..])?;
-        assert!(fs::read_dir(lang_path(Lang::Cpp, root)).is_ok());
+        assert!(fs::read_dir(root.join(Lang::Cpp.as_config())).is_ok());
+        assert!(fs::read_dir(root.join(Lang::CSharp.as_config())).is_ok());
         Ok(())
     }
 
     fn lang_config_with_output(lang: Lang, root: &Path) -> LangConfig {
         LangConfig {
             lang: lang.clone(),
-            output: lang_path(lang, root),
-            output_prefix: PathBuf::new(),
+            output: root.join(lang.as_config()),
         }
     }
 
-    fn lang_path(lang: Lang, root: &Path) -> PathBuf {
-        root.join(lang.as_config())
+    mod parse_rooted_path {
+        use crate::util::parse_rooted_path;
+        use crate::DisplayNormalized;
+        use anyhow::Result;
+        use std::env;
+        use std::path::PathBuf;
+
+        #[test]
+        fn absolute_with_root() -> Result<()> {
+            let root = env::current_dir()?;
+            let path = env::temp_dir();
+            let result = parse_rooted_path(Some(&root), &path.display_normalized(), "test")?;
+            assert_eq!(result, path);
+            Ok(())
+        }
+
+        #[test]
+        fn relative_with_root() -> Result<()> {
+            let root = env::current_dir()?;
+            let path = "relative/path";
+            let result = parse_rooted_path(Some(&root), path, "test")?;
+            assert_eq!(result, root.join(path));
+            Ok(())
+        }
+
+        #[test]
+        fn absolute_without_root() -> Result<()> {
+            let path = env::temp_dir();
+            let result = parse_rooted_path::<PathBuf>(None, &path.display_normalized(), "test")?;
+            assert_eq!(result, path);
+            Ok(())
+        }
+
+        #[test]
+        fn relative_without_root() -> Result<()> {
+            let path = "relative/path";
+            assert!(parse_rooted_path::<PathBuf>(None, path, "test").is_err());
+            Ok(())
+        }
     }
 }

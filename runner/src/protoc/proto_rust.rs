@@ -6,7 +6,7 @@ pub const SUPPORTED_LANGUAGES: [Lang; 1] = [Lang::Rust];
 
 pub fn generate(config: &Config) -> Result<()> {
     let rust_config = match config
-        .proto
+        .protos
         .iter()
         .find(|lang_config| lang_config.lang == Lang::Rust)
     {

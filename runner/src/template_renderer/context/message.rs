@@ -1,5 +1,5 @@
-use crate::generator::context::RenderedField;
-use crate::generator::template_config::TemplateConfig;
+use crate::template_renderer::context::RenderedField;
+use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 use anyhow::Result;
 use prost_types::DescriptorProto;
@@ -14,7 +14,7 @@ pub struct MessageContext<'a> {
 }
 
 impl<'a> MessageContext<'a> {
-    pub fn new(message: &'a DescriptorProto, _config: &TemplateConfig) -> Result<Self> {
+    pub fn new(message: &'a DescriptorProto, _config: &RendererConfig) -> Result<Self> {
         let context = Self {
             name: name(message)?,
             fields: Vec::new(),
@@ -29,14 +29,14 @@ fn name(message: &DescriptorProto) -> Result<&str> {
 
 #[cfg(test)]
 mod tests {
-    use crate::generator::context::message::MessageContext;
-    use crate::generator::template_config::TemplateConfig;
+    use crate::template_renderer::context::message::MessageContext;
+    use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
     use prost_types::DescriptorProto;
 
     #[test]
     fn name() -> Result<()> {
-        let config = TemplateConfig::default();
+        let config = RendererConfig::default();
         let msg_name = "msg_name".to_string();
         let mut message = default_message();
         message.name = Some(msg_name.clone());
@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     fn missing_name_errors() {
-        let config = TemplateConfig::default();
+        let config = RendererConfig::default();
         let message = default_message();
         let result = MessageContext::new(&message, &config);
         assert!(result.is_err());

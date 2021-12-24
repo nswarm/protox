@@ -1,18 +1,13 @@
-use crate::generator::context::{FieldContext, FileContext, MessageContext};
-use crate::generator::template_config::TemplateConfig;
+use crate::template_renderer::context::{FieldContext, FileContext, MessageContext};
+use crate::template_renderer::renderer_config::RendererConfig;
 use crate::{util, DisplayNormalized};
 use anyhow::{Context, Result};
 use handlebars::Handlebars;
 use log::{debug, info};
-use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
+use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
-
-const FILE_TEMPLATE_NAME: &str = "file";
-const MESSAGE_TEMPLATE_NAME: &str = "message";
-const FIELD_TEMPLATE_NAME: &str = "field";
-const CONFIG_FILE_NAME: &str = "config.json";
 
 /// Renders final output files by using:
 /// 1. Data from a proto descriptor set.
@@ -20,10 +15,17 @@ const CONFIG_FILE_NAME: &str = "config.json";
 /// 3. A template configuration file, which supplies user choices about how to handle specifics.
 pub struct Renderer<'a> {
     hbs: Handlebars<'a>,
-    config: TemplateConfig,
+    config: RendererConfig,
 }
 
 impl Renderer<'_> {
+    pub const CONFIG_FILE_NAME: &'static str = "config.json";
+    pub const TEMPLATE_EXT: &'static str = "hbs";
+
+    pub const FILE_TEMPLATE_NAME: &'static str = "file";
+    pub const MESSAGE_TEMPLATE_NAME: &'static str = "message";
+    pub const FIELD_TEMPLATE_NAME: &'static str = "field";
+
     pub fn new() -> Self {
         Self {
             hbs: Handlebars::new(),
@@ -32,7 +34,7 @@ impl Renderer<'_> {
     }
 
     #[allow(dead_code)]
-    pub fn with_config(config: TemplateConfig) -> Self {
+    pub fn with_config(config: RendererConfig) -> Self {
         Self {
             hbs: Handlebars::new(),
             config,
@@ -51,7 +53,7 @@ impl Renderer<'_> {
     ///     root/field.hbs
     /// ```
     pub fn load_all(&mut self, root: &Path) -> Result<()> {
-        self.load_config(&root.join(CONFIG_FILE_NAME))?;
+        self.load_config(&root.join(Self::CONFIG_FILE_NAME))?;
         self.load_templates(root)?;
         Ok(())
     }
@@ -71,17 +73,17 @@ impl Renderer<'_> {
 
     #[allow(dead_code)]
     pub fn load_file_template_string(&mut self, template: String) -> Result<()> {
-        self.load_template_string(FILE_TEMPLATE_NAME, template)
+        self.load_template_string(Self::FILE_TEMPLATE_NAME, template)
     }
 
     #[allow(dead_code)]
     pub fn load_message_template_string(&mut self, template: String) -> Result<()> {
-        self.load_template_string(MESSAGE_TEMPLATE_NAME, template)
+        self.load_template_string(Self::MESSAGE_TEMPLATE_NAME, template)
     }
 
     #[allow(dead_code)]
     pub fn load_field_template_string(&mut self, template: String) -> Result<()> {
-        self.load_template_string(FIELD_TEMPLATE_NAME, template)
+        self.load_template_string(Self::FIELD_TEMPLATE_NAME, template)
     }
 
     #[allow(dead_code)]
@@ -93,22 +95,22 @@ impl Renderer<'_> {
     }
 
     pub fn load_templates(&mut self, root: &Path) -> Result<()> {
-        self.load_file_template_file(&hbs_file_path(root, FILE_TEMPLATE_NAME))?;
-        self.load_message_template_file(&hbs_file_path(root, MESSAGE_TEMPLATE_NAME))?;
-        self.load_field_template_file(&hbs_file_path(root, FIELD_TEMPLATE_NAME))?;
+        self.load_file_template_file(&hbs_file_path(root, Self::FILE_TEMPLATE_NAME))?;
+        self.load_message_template_file(&hbs_file_path(root, Self::MESSAGE_TEMPLATE_NAME))?;
+        self.load_field_template_file(&hbs_file_path(root, Self::FIELD_TEMPLATE_NAME))?;
         Ok(())
     }
 
     pub fn load_file_template_file(&mut self, path: &Path) -> Result<()> {
-        self.load_template_file(FILE_TEMPLATE_NAME, path)
+        self.load_template_file(Self::FILE_TEMPLATE_NAME, path)
     }
 
     pub fn load_message_template_file(&mut self, path: &Path) -> Result<()> {
-        self.load_template_file(MESSAGE_TEMPLATE_NAME, path)
+        self.load_template_file(Self::MESSAGE_TEMPLATE_NAME, path)
     }
 
     pub fn load_field_template_file(&mut self, path: &Path) -> Result<()> {
-        self.load_template_file(FIELD_TEMPLATE_NAME, path)
+        self.load_template_file(Self::FIELD_TEMPLATE_NAME, path)
     }
 
     fn load_template_file(&mut self, name: &str, path: &Path) -> Result<()> {
@@ -124,11 +126,22 @@ impl Renderer<'_> {
         Ok(())
     }
 
-    pub fn render_file<W: io::Write>(
-        &self,
-        file: &FileDescriptorProto,
-        writer: &mut W,
+    pub fn render(
+        &mut self,
+        descriptor_set: &FileDescriptorSet,
+        output_path: &PathBuf,
     ) -> Result<()> {
+        for file in &descriptor_set.file {
+            let file_name = file_name(file, self.output_ext())?;
+            info!("Rendering file for descriptor '{}'", file_name);
+            let path = output_path.join(file_name);
+            let mut writer = io::BufWriter::new(util::create_file_or_error(&path)?);
+            self.render_file(file, &mut writer)?;
+        }
+        Ok(())
+    }
+
+    fn render_file<W: io::Write>(&self, file: &FileDescriptorProto, writer: &mut W) -> Result<()> {
         debug!(
             "Rendering file: {}",
             util::replace_proto_ext(
@@ -140,7 +153,7 @@ impl Renderer<'_> {
         for message in &file.message_type {
             context.messages.push(self.render_message(message)?);
         }
-        self.render_to_write(FILE_TEMPLATE_NAME, &context, writer)
+        self.render_to_write(Self::FILE_TEMPLATE_NAME, &context, writer)
     }
 
     fn render_message(&self, message: &DescriptorProto) -> Result<String> {
@@ -149,13 +162,13 @@ impl Renderer<'_> {
         for field in &message.field {
             context.fields.push(self.render_field(field)?);
         }
-        self.render_to_string(MESSAGE_TEMPLATE_NAME, &context)
+        self.render_to_string(Self::MESSAGE_TEMPLATE_NAME, &context)
     }
 
     fn render_field(&self, field: &FieldDescriptorProto) -> Result<String> {
         debug!("Rendering field: {}", util::str_or_unknown(&field.name));
         let context = FieldContext::new(field, &self.config)?;
-        self.render_to_string(FIELD_TEMPLATE_NAME, &context)
+        self.render_to_string(Self::FIELD_TEMPLATE_NAME, &context)
     }
 
     fn render_to_string<S: Serialize>(&self, template: &str, data: &S) -> Result<String> {
@@ -179,6 +192,15 @@ impl Renderer<'_> {
     }
 }
 
+fn file_name(file: &FileDescriptorProto, new_ext: &str) -> Result<String> {
+    Ok(util::replace_proto_ext(
+        util::str_or_error(&file.name, || {
+            "Descriptor set file is missing a file name. The descriptor set was probably generated incorrectly.".to_string()
+        })?,
+        new_ext,
+    ))
+}
+
 fn render_error_context<S: Serialize>(name: &str, data: &S) -> String {
     format!(
         "Failed to render template '{}' for data: {}",
@@ -188,23 +210,22 @@ fn render_error_context<S: Serialize>(name: &str, data: &S) -> String {
 }
 
 fn hbs_file_path(root: &Path, file_name: &str) -> PathBuf {
-    static HBS_EXT: &str = "hbs";
     let mut path = root.join(file_name);
-    path.set_extension(HBS_EXT);
+    path.set_extension(Renderer::TEMPLATE_EXT);
     path
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::generator::primitive;
-    use crate::generator::renderer::Renderer;
-    use crate::generator::template_config::TemplateConfig;
+    use crate::template_renderer::primitive;
+    use crate::template_renderer::renderer::Renderer;
+    use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
     use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
 
     #[test]
     fn output_ext_from_config() {
-        let mut config = TemplateConfig::default();
+        let mut config = RendererConfig::default();
         config.file_extension = "test".to_string();
         let renderer = Renderer::with_config(config.clone());
         assert_eq!(renderer.output_ext(), config.file_extension);
@@ -212,7 +233,7 @@ mod tests {
 
     #[test]
     fn file_template() -> Result<()> {
-        let config = TemplateConfig::default();
+        let config = RendererConfig::default();
         let mut renderer = Renderer::with_config(config);
         renderer.load_file_template_string(
             "{{source_file}}{{#each messages}}{{this}}{{/each}}".to_string(),
@@ -237,7 +258,7 @@ mod tests {
 
     #[test]
     fn message_template() -> Result<()> {
-        let config = TemplateConfig::default();
+        let config = RendererConfig::default();
         let mut renderer = Renderer::with_config(config);
         renderer.load_message_template_string(
             "{{name}}{{#each fields}}{{this}}{{/each}}".to_string(),
@@ -264,7 +285,7 @@ mod tests {
         let field_name = "field-name";
         let native_type = ["TEST-", primitive::FLOAT].concat();
         let separator = ":::";
-        let mut config = TemplateConfig::default();
+        let mut config = RendererConfig::default();
         config
             .type_config
             .insert(primitive::FLOAT.to_string(), native_type.clone());

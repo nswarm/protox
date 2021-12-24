@@ -19,7 +19,7 @@ pub const SUPPORTED_LANGUAGES: [Lang; 9] = [
 pub fn register(config: &Config, protoc: &mut Protoc) -> Result<()> {
     util::create_output_dirs(
         &config
-            .proto
+            .protos
             .iter()
             .filter(|cfg| SUPPORTED_LANGUAGES.contains(&cfg.lang))
             .collect::<Vec<&LangConfig>>(),
@@ -41,7 +41,7 @@ fn register_builtin(config: &Config, protoc: &mut Protoc) -> Result<()> {
 
 fn collect_proto_outputs(config: &Config) -> Result<Vec<String>> {
     let mut args = Vec::new();
-    for proto in &config.proto {
+    for proto in &config.protos {
         if !SUPPORTED_LANGUAGES.contains(&proto.lang) {
             continue;
         }
@@ -57,7 +57,7 @@ fn collect_proto_outputs(config: &Config) -> Result<Vec<String>> {
 
 fn has_any_supported_language(config: &Config) -> bool {
     let count = config
-        .proto
+        .protos
         .iter()
         .filter(|c| SUPPORTED_LANGUAGES.contains(&c.lang))
         .count();
@@ -68,8 +68,8 @@ fn has_any_supported_language(config: &Config) -> bool {
 mod tests {
     use crate::lang::Lang;
     use crate::lang_config::LangConfig;
-    use crate::protoc::proto::collect_proto_outputs;
-    use crate::protoc::proto::has_any_supported_language;
+    use crate::protoc::builtin::collect_proto_outputs;
+    use crate::protoc::builtin::has_any_supported_language;
     use crate::protoc::protoc::arg_with_value;
     use crate::Config;
     use anyhow::Result;
@@ -81,15 +81,13 @@ mod tests {
         let cpp = LangConfig {
             lang: Lang::Cpp,
             output: PathBuf::from("cpp/path"),
-            output_prefix: PathBuf::new(),
         };
         let csharp = LangConfig {
             lang: Lang::CSharp,
             output: PathBuf::from("csharp/path"),
-            output_prefix: PathBuf::new(),
         };
-        config.proto.push(cpp);
-        config.proto.push(csharp);
+        config.protos.push(cpp);
+        config.protos.push(csharp);
         let args = collect_proto_outputs(&config)?;
         assert_arg_pair_exists(&args, "cpp_out", "cpp/path");
         assert_arg_pair_exists(&args, "csharp_out", "csharp/path");
@@ -102,9 +100,8 @@ mod tests {
         let rust = LangConfig {
             lang: Lang::Rust,
             output: PathBuf::from("rust/path"),
-            output_prefix: PathBuf::new(),
         };
-        config.proto.push(rust);
+        config.protos.push(rust);
         let args = collect_proto_outputs(&config)?;
         assert_eq!(args.len(), 0);
         Ok(())
@@ -113,10 +110,9 @@ mod tests {
     #[test]
     fn has_supported_language() {
         let mut config = Config::default();
-        config.proto.push(LangConfig {
+        config.protos.push(LangConfig {
             lang: Lang::Cpp,
             output: Default::default(),
-            output_prefix: Default::default(),
         });
         assert!(has_any_supported_language(&config));
     }
@@ -124,10 +120,9 @@ mod tests {
     #[test]
     fn has_no_supported_language() {
         let mut config = Config::default();
-        config.proto.push(LangConfig {
+        config.protos.push(LangConfig {
             lang: Lang::Rust,
             output: Default::default(),
-            output_prefix: Default::default(),
         });
         assert!(!has_any_supported_language(&config));
     }

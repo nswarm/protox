@@ -1,9 +1,9 @@
-use crate::generator::primitive;
+use crate::template_renderer::primitive;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct TemplateConfig {
+pub struct RendererConfig {
     /// The file extension to use for generated files.
     pub file_extension: String,
 
@@ -15,7 +15,7 @@ pub struct TemplateConfig {
     pub type_config: HashMap<String, String>,
 }
 
-impl Default for TemplateConfig {
+impl Default for RendererConfig {
     fn default() -> Self {
         Self {
             file_extension: "".to_string(),

@@ -2,7 +2,7 @@
 #[allow(dead_code)]
 mod tests {
     use anyhow::{anyhow, Context, Result};
-    use runner::generator::TemplateConfig;
+    // use runner::template_renderer::TemplateConfig;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -27,12 +27,6 @@ mod tests {
         }
 
         assert_cmd(cmd)?;
-        Ok(())
-    }
-
-    pub fn write_config(dir: &Path, config: &TemplateConfig) -> Result<()> {
-        let config_json = serde_json::to_string(&config)?;
-        fs::write(dir.join("config.json"), config_json)?;
         Ok(())
     }
 
@@ -86,9 +80,6 @@ mod tests {
         assert_eq!(fs::read_dir(tempdir.path())?.count(), 0);
         copy_all_resources(tempdir.path())?;
         assert_ne!(fs::read_dir(tempdir.path())?.count(), 0);
-        for entry in fs::read_dir(tempdir.path())? {
-            println!("{}", entry?.path().display());
-        }
         Ok(())
     }
 }

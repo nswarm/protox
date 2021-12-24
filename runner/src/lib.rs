@@ -1,15 +1,16 @@
 use anyhow::{Context, Result};
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 
 mod config;
 mod idl;
 mod lang;
 mod lang_config;
 mod protoc;
+mod template_config;
 mod util;
 
-pub mod generator;
+pub mod template_renderer;
 
 use crate::util::DisplayNormalized;
 pub use config::Config;
@@ -28,22 +29,25 @@ pub fn run_with_config(config: Config) -> Result<()> {
 }
 
 fn run_internal(config: Config) -> Result<()> {
-    create_output_root(&config.output_root)?;
+    create_output_root(config.output_root.as_ref())?;
     match config.idl {
         Idl::Proto => {
-            protoc::generate_descriptor_set_and_builtin_lang_outputs(&config)?;
-            generator::generate(&config)?;
+            protoc::generate(&config)?;
+            template_renderer::generate(&config)?;
         }
     };
 
     Ok(())
 }
 
-fn create_output_root(path: &Path) -> Result<()> {
-    Ok(fs::create_dir_all(path).with_context(|| {
-        format!(
-            "Failed to create output-root directories in path: {}",
-            path.display_normalized()
-        )
-    })?)
+fn create_output_root(path: Option<&PathBuf>) -> Result<()> {
+    match path {
+        None => Ok(()),
+        Some(path) => Ok(fs::create_dir_all(path).with_context(|| {
+            format!(
+                "Failed to create output directories in path: {}",
+                path.display_normalized()
+            )
+        })?),
+    }
 }

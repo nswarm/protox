@@ -1,5 +1,5 @@
-use crate::generator::context::RenderedField;
-use crate::generator::template_config::TemplateConfig;
+use crate::template_renderer::context::RenderedField;
+use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 use anyhow::Result;
 use prost_types::FileDescriptorProto;
@@ -14,7 +14,7 @@ pub struct FileContext<'a> {
 }
 
 impl<'a> FileContext<'a> {
-    pub fn new(file: &'a FileDescriptorProto, _config: &TemplateConfig) -> Result<Self> {
+    pub fn new(file: &'a FileDescriptorProto, _config: &RendererConfig) -> Result<Self> {
         let context = Self {
             source_file: source_file(file)?,
             messages: Vec::new(),
@@ -29,14 +29,14 @@ fn source_file(file: &FileDescriptorProto) -> Result<&str> {
 
 #[cfg(test)]
 mod tests {
-    use crate::generator::context::FileContext;
-    use crate::generator::template_config::TemplateConfig;
+    use crate::template_renderer::context::FileContext;
+    use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
     use prost_types::FileDescriptorProto;
 
     #[test]
     fn source_file() -> Result<()> {
-        let config = TemplateConfig::default();
+        let config = RendererConfig::default();
         let name = "file_name".to_string();
         let mut file = default_file();
         file.name = Some(name.clone());
@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     fn missing_name_errors() {
-        let config = TemplateConfig::default();
+        let config = RendererConfig::default();
         let file = default_file();
         let result = FileContext::new(&file, &config);
         assert!(result.is_err());

@@ -7,6 +7,7 @@
       <sourceFolder url="file://$MODULE_DIR$/protoc-plugin/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/runner/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cli-test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/runner/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

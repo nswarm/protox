@@ -1,34 +1,30 @@
 use crate::idl::Idl;
 use crate::lang::Lang;
 use crate::lang_config::LangConfig;
-use crate::{generator, protoc};
+use crate::protoc;
+use crate::template_config::TemplateConfig;
 use anyhow::{anyhow, Context, Error, Result};
 use clap::{crate_version, App, Arg, ArgMatches, Values};
 use std::env;
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use tempfile::{tempdir, TempDir};
 
 pub const APP_NAME: &str = "protoffi";
 pub const IDL: &str = "idl";
 pub const INPUT: &str = "input";
+pub const PROTO: &str = "proto";
+pub const TEMPLATE: &str = "template";
 pub const TEMPLATE_ROOT: &str = "template-root";
 pub const OUTPUT_ROOT: &str = "output-root";
 pub const DESCRIPTOR_SET_OUT: &str = "descriptor-set-out";
-pub const PROTO: &str = "proto";
-pub const SERVER: &str = "server";
-pub const CLIENT: &str = "client";
-pub const DIRECT: &str = "direct";
-pub const OUTPUT_TYPES: [&str; 4] = [PROTO, SERVER, CLIENT, DIRECT];
-pub const OUTPUT_VALUE_NAME: &str = "LANG[=OUTPUT]";
-pub const OUTPUT_SEPARATOR: &str = "=";
 pub const PROTOC_ARGS: &str = "protoc-args";
-pub const OUTPUT_LONG_ABOUT: & str = "If OUTPUT is a relative path, it is evaluated relative to OUTPUT_ROOT if set, or the current working directory otherwise.";
 pub const LONG_ABOUT_NEWLINE: &str = "\n\n";
 
 const DISPLAY_ORDER_DEFAULT: usize = 990;
 const DEFAULT_DESCRIPTOR_SET_FILENAME: &str = "descriptor_set.proto";
 
-fn parse_cli_args<I, T>(iter: I) -> ArgMatches
+fn parse_cli_args<I, T>(iter: I) -> Result<ArgMatches, clap::Error>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
@@ -51,63 +47,51 @@ where
                 .takes_value(true)
                 .required(true),
 
-            Arg::new(TEMPLATE_ROOT)
+            Arg::new(PROTO)
                 .display_order(2)
-                .about("File path to search for template files.") // todo not complete
+                .long_about(&join_about(&[
+                    "Protobuf code will be generated for language LANG to directory located at OUTPUT.",
+                    &format!("If OUTPUT is a relative path, it is evaluated relative to --{}.", OUTPUT_ROOT),
+                    &format!("Supported languages for LANG: {}.", lang_list(&protoc::supported_languages())),
+                ]))
                 .default_short()
+                .long(PROTO)
+                .value_names(&["LANG", "OUTPUT"])
+                .multiple_occurrences(true)
+                .required_unless_present(TEMPLATE),
+
+            Arg::new(TEMPLATE)
+                .display_order(3)
+                .long_about(&join_about(&[
+                    "Code will be generated for the templates and configuration found inside the INPUT folder, and written to directory located at OUTPUT.",
+                    &format!("If INPUT is a relative path, it is evaluated relative to --{}.", TEMPLATE_ROOT),
+                    &format!("If OUTPUT is a relative path, it is evaluated relative to --{}.", OUTPUT_ROOT),
+                    "See the examples folder for how to set up the INPUT directory correctly.",
+                ]))
+                .default_short()
+                .long(TEMPLATE)
+                .value_names(&["INPUT", "OUTPUT"])
+                .multiple_occurrences(true)
+                .required_unless_present(PROTO),
+
+            Arg::new(TEMPLATE_ROOT)
+                .display_order(4)
+                .about(&format!("All non-absolute --{} INPUT paths will be prefixed with this path. Required if any --{} INPUT paths are relative.", TEMPLATE, TEMPLATE))
                 .long(TEMPLATE_ROOT)
                 .takes_value(true),
 
             Arg::new(OUTPUT_ROOT)
-                .display_order(3)
-                .about("All output files will be prefixed with this path.")
-                .short('r')
+                .display_order(4)
+                .about("All non-absolute output paths will be prefixed with this path. Required if any OUTPUT paths are relative.")
+                .default_short()
                 .long(OUTPUT_ROOT)
                 .takes_value(true),
-
-            output_arg(PROTO)
-                .display_order(100)
-                .long_about(&join_about(&[
-                    "Protobuf code will be generated for language LANG to file path OUTPUT.",
-                    "If OUTPUT is not provided, it defaults to `proto_<LANG>`.",
-                    OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&proto_supported_languages())),
-                ])),
-
-            output_arg(SERVER)
-                .display_order(101)
-                .long_about(&join_about(&[
-                    // todo
-                    // "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
-                    "If OUTPUT is not provided, it defaults to `server_<LANG>`.",
-                    OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&generator::server::SUPPORTED_LANGUAGES)),
-                ])),
-
-            output_arg(CLIENT)
-                .display_order(102)
-                .long_about(&join_about(&[
-                    // todo
-                    // "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
-                    "If OUTPUT is not provided, it defaults to `client_<LANG>`.",
-                    OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&generator::client::SUPPORTED_LANGUAGES)),
-                ])),
-
-            output_arg(DIRECT)
-                .display_order(103)
-                .long_about(&join_about(&[
-                    "Simple struct types (or equivalent) will be generated for language LANG to file path OUTPUT.",
-                    "If OUTPUT is not provided, it defaults to `direct_<LANG>`.",
-                    OUTPUT_LONG_ABOUT,
-                    &format!("Supported languages for LANG: {}.", lang_list(&generator::direct::SUPPORTED_LANGUAGES)),
-                ])),
 
             Arg::new(DESCRIPTOR_SET_OUT)
                 .display_order(DISPLAY_ORDER_DEFAULT)
                 .default_value(DEFAULT_DESCRIPTOR_SET_FILENAME)
                 .long_about(&join_about(&[
-                    &format!("Output path for the descriptor_set proto file generated by protoc. If this path is relative, it will be relative to the --{}.", OUTPUT_ROOT),
+                    "Absolute output path for the descriptor_set proto file generated by protoc. By default it will be created in a temp folder that is deleted after the program is finished running.",
                     "This file is used by the generators other than those built into protoc itself.",
                 ]))
                 .long(DESCRIPTOR_SET_OUT)
@@ -120,85 +104,80 @@ where
                 .takes_value(true)
                 .multiple_values(true),
 
-        ]).get_matches_from(iter)
-}
-
-fn output_arg(name: &str) -> Arg {
-    Arg::new(name)
-        .default_short()
-        .long(name)
-        .required_unless_present_any(&OUTPUT_TYPES)
-        .value_name(&OUTPUT_VALUE_NAME)
-        .takes_value(true)
-        .multiple_values(true)
+        ]).try_get_matches_from(iter)
 }
 
 fn join_about(lines: &[&str]) -> String {
     lines.join(LONG_ABOUT_NEWLINE).to_string()
 }
 
-#[derive(Default)]
 pub struct Config {
     pub idl: Idl,
     pub input: PathBuf,
-    pub template_root: PathBuf,
-    pub output_root: PathBuf,
+    pub protos: Vec<LangConfig>,
+    pub templates: Vec<TemplateConfig>,
+    pub template_root: Option<PathBuf>,
+    pub output_root: Option<PathBuf>,
     pub descriptor_set_path: PathBuf,
-    pub proto: Vec<LangConfig>,
-    pub direct: Vec<LangConfig>,
-    pub server: Vec<LangConfig>,
-    pub client: Vec<LangConfig>,
     pub extra_protoc_args: Vec<String>,
+
+    // Owned here to keep alive for full program execution.
+    #[allow(dead_code)]
+    intermediate_dir: TempDir,
+}
+
+#[cfg(test)]
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            idl: Default::default(),
+            input: Default::default(),
+            protos: vec![],
+            templates: vec![],
+            template_root: None,
+            output_root: None,
+            descriptor_set_path: Default::default(),
+            extra_protoc_args: vec![],
+            intermediate_dir: tempdir().unwrap(),
+        }
+    }
 }
 
 impl Config {
     pub fn from_cli() -> Result<Self> {
-        let args = parse_cli_args(&mut env::args_os());
+        let args = parse_cli_args(&mut env::args_os()).unwrap_or_else(|e| e.exit());
         let config = Config::from_args(&args)?;
-        check_supported_languages(&config)?;
+        check_proto_supported_languages(&config)?;
         Ok(config)
     }
 
     pub fn from_args(args: &ArgMatches) -> Result<Self> {
-        let output_root = parse_path_or_current_dir(OUTPUT_ROOT, &args)?;
+        let intermediate_dir = tempdir()?;
+        let input = parse_required_path_from_arg(INPUT, &args)?;
+        let output_root = parse_optional_path_from_arg(OUTPUT_ROOT, &args)?;
+        let template_root = parse_optional_path_from_arg(TEMPLATE_ROOT, &args)?;
+        let descriptor_set_path = parse_descriptor_path(intermediate_dir.path(), &args);
         let config = Self {
             idl: Idl::from_args(&args)?,
-            input: parse_input(&args)?,
-            template_root: parse_path_or_current_dir(TEMPLATE_ROOT, &args)?,
-            output_root: output_root.clone(),
-            descriptor_set_path: parse_descriptor_path(&output_root, &args),
-            proto: parse_outputs(PROTO, &args, &output_root)?,
-            direct: parse_outputs(DIRECT, &args, &output_root)?,
-            server: parse_outputs(SERVER, &args, &output_root)?,
-            client: parse_outputs(CLIENT, &args, &output_root)?,
+            input,
+            protos: parse_protos(&args, output_root.as_ref())?,
+            templates: parse_templates(&args, template_root.as_ref(), output_root.as_ref())?,
+            template_root,
+            output_root,
+            descriptor_set_path,
             extra_protoc_args: parse_extra_protoc_args(&args),
+            intermediate_dir,
         };
-        check_supported_languages(&config)?;
+        check_proto_supported_languages(&config)?;
         Ok(config)
     }
 }
 
-fn check_supported_languages(config: &Config) -> Result<()> {
-    _check_supported_languages(PROTO, &config.proto, &proto_supported_languages())?;
-    _check_supported_languages(
-        DIRECT,
-        &config.direct,
-        &generator::direct::SUPPORTED_LANGUAGES,
-    )?;
-    _check_supported_languages(
-        CLIENT,
-        &config.client,
-        &generator::client::SUPPORTED_LANGUAGES,
-    )?;
-    _check_supported_languages(
-        SERVER,
-        &config.server,
-        &generator::server::SUPPORTED_LANGUAGES,
-    )?;
-    Ok(())
+fn check_proto_supported_languages(config: &Config) -> Result<()> {
+    check_supported_languages(PROTO, &config.protos, &protoc::supported_languages())
 }
 
-fn _check_supported_languages(
+fn check_supported_languages(
     name: &str,
     config: &Vec<LangConfig>,
     supported_languages: &[Lang],
@@ -215,60 +194,78 @@ fn _check_supported_languages(
     Ok(())
 }
 
-fn proto_supported_languages() -> Vec<Lang> {
-    [
-        &protoc::SUPPORTED_LANGUAGES[..],
-        &generator::proto::SUPPORTED_LANGUAGES[..],
-    ]
-    .concat()
-}
-
-fn parse_input(args: &ArgMatches) -> Result<PathBuf> {
-    match args.value_of(INPUT) {
-        None => Err(error_missing_required_arg(INPUT)),
-        Some(input) => Ok(PathBuf::from(input)),
+fn parse_required_path_from_arg(arg_name: &str, args: &ArgMatches) -> Result<PathBuf> {
+    match args.value_of(arg_name) {
+        None => Err(error_missing_required_arg(arg_name)),
+        Some(input) => Ok(current_dir(arg_name)?.join(input)),
     }
 }
 
-fn parse_path_or_current_dir(arg_name: &str, args: &ArgMatches) -> Result<PathBuf> {
-    let root = args
-        .value_of(arg_name)
-        .and_then(|value| Some(PathBuf::from(value)))
-        .unwrap_or(current_dir()?);
-    Ok(root)
+fn parse_optional_path_from_arg(arg_name: &str, args: &ArgMatches) -> Result<Option<PathBuf>> {
+    match args.value_of(arg_name) {
+        None => Ok(None),
+        Some(input) => Ok(Some(current_dir(arg_name)?.join(input))),
+    }
 }
 
-fn current_dir() -> Result<PathBuf> {
+fn current_dir(arg_name: &str) -> Result<PathBuf> {
     env::current_dir().with_context(|| {
         format!(
             "Working directory does not exist or permission denied.\
                      Try specifying an explicit --{} or running from a different folder.",
-            OUTPUT_ROOT
+            arg_name
         )
     })
 }
 
-fn parse_descriptor_path(output_root: &PathBuf, args: &ArgMatches) -> PathBuf {
-    let path = args
-        .value_of(DESCRIPTOR_SET_OUT)
-        .unwrap_or(DEFAULT_DESCRIPTOR_SET_FILENAME);
-    output_root.join(path)
+fn parse_descriptor_path(intermediate_dir: &Path, args: &ArgMatches) -> PathBuf {
+    intermediate_dir.join(
+        args.value_of(DESCRIPTOR_SET_OUT)
+            .unwrap_or(DEFAULT_DESCRIPTOR_SET_FILENAME),
+    )
 }
 
-fn parse_outputs(
-    arg_name: &str,
-    args: &ArgMatches,
-    output_root: &PathBuf,
-) -> Result<Vec<LangConfig>> {
-    let mut outputs = Vec::new();
-    let values = match args.values_of(arg_name) {
-        None => return Ok(outputs),
+fn parse_protos(args: &ArgMatches, output_root: Option<&PathBuf>) -> Result<Vec<LangConfig>> {
+    let mut configs = Vec::new();
+    let values = match args.grouped_values_of(PROTO) {
+        None => return Ok(configs),
         Some(values) => values,
     };
     for value in values {
-        outputs.push(LangConfig::from_config(value, output_root, arg_name)?);
+        let lang = value.get(0).ok_or(anyhow!("--{} is missing LANG", PROTO))?;
+        let output = value
+            .get(1)
+            .ok_or(anyhow!("--{} is missing OUTPUT", PROTO))?;
+        configs.push(LangConfig::from_config(lang, output, output_root)?);
     }
-    Ok(outputs)
+    Ok(configs)
+}
+
+fn parse_templates(
+    args: &ArgMatches,
+    template_root: Option<&PathBuf>,
+    output_root: Option<&PathBuf>,
+) -> Result<Vec<TemplateConfig>> {
+    let mut configs = Vec::new();
+    let values = match args.grouped_values_of(TEMPLATE) {
+        None => return Ok(configs),
+        Some(values) => values,
+    };
+    for value in values {
+        let input = value
+            .get(0)
+            .ok_or(anyhow!("--{} is missing INPUT", TEMPLATE))?;
+        let output = value
+            .get(1)
+            .ok_or(anyhow!("--{} is missing OUTPUT", TEMPLATE))?;
+        configs.push(TemplateConfig::from_config(
+            input,
+            output,
+            template_root,
+            output_root,
+        )?);
+    }
+    Ok(configs)
 }
 
 fn parse_extra_protoc_args(args: &ArgMatches) -> Vec<String> {
@@ -303,77 +300,84 @@ impl ArgExt for Arg<'_> {
 #[cfg(test)]
 mod tests {
     use crate::config::{parse_cli_args, APP_NAME, INPUT, OUTPUT_ROOT, PROTO, PROTOC_ARGS};
-    use crate::Config;
+    use crate::{Config, DisplayNormalized};
     use anyhow::Result;
-    use std::path::PathBuf;
+    use std::env::current_dir;
 
     #[test]
     fn parse_input() -> Result<()> {
-        let input = "path/to/input";
+        let input = current_dir()?;
+        let output = current_dir()?;
         let config = Config::from_args(&parse_cli_args([
             APP_NAME,
             &arg(INPUT),
-            input,
+            &input.display_normalized(),
             &arg(PROTO),
             "cpp",
-        ]))?;
-        assert_eq!(config.input, PathBuf::from(input));
+            "proto_cpp",
+            &arg(OUTPUT_ROOT),
+            &output.display_normalized(),
+        ])?)?;
+        assert_eq!(config.input, input);
         Ok(())
     }
 
-    #[test]
-    fn parse_output_root() -> Result<()> {
-        let output_root = "path/to/output";
-        let config = config_with_required_args([&arg(OUTPUT_ROOT), output_root])?;
-        assert_eq!(config.output_root, PathBuf::from(output_root));
-        Ok(())
+    mod root_paths {
+        use crate::config::tests::{arg, config_with_required_args};
+        use crate::config::{OUTPUT_ROOT, TEMPLATE_ROOT};
+        use crate::DisplayNormalized;
+        use anyhow::Result;
+        use std::env::current_dir;
+
+        #[test]
+        fn relative() -> Result<()> {
+            let path = "path/to/output";
+            let config =
+                config_with_required_args([&arg(OUTPUT_ROOT), path, &arg(TEMPLATE_ROOT), path])?;
+            assert_eq!(config.output_root, Some(current_dir()?.join(path)));
+            assert_eq!(config.template_root, Some(current_dir()?.join(path)));
+            Ok(())
+        }
+
+        #[test]
+        fn absolute() -> Result<()> {
+            let path = current_dir()?.join("abs/path");
+            let config = config_with_required_args([
+                &arg(OUTPUT_ROOT),
+                &path.display_normalized(),
+                &arg(TEMPLATE_ROOT),
+                &path.display_normalized(),
+            ])?;
+            assert_eq!(config.output_root.as_ref(), Some(&path));
+            assert_eq!(config.template_root.as_ref(), Some(&path));
+            Ok(())
+        }
     }
 
     mod parse_descriptor_path {
         use crate::config::tests::{arg, config_with_required_args};
-        use crate::config::{DEFAULT_DESCRIPTOR_SET_FILENAME, DESCRIPTOR_SET_OUT, OUTPUT_ROOT};
+        use crate::config::{DEFAULT_DESCRIPTOR_SET_FILENAME, DESCRIPTOR_SET_OUT};
         use anyhow::Result;
-        use std::env::current_dir;
-        use std::path::PathBuf;
 
         #[test]
-        fn parse_descriptor_path_default() -> Result<()> {
-            let output_root = "path/to/output";
-            let config = config_with_required_args([&arg(OUTPUT_ROOT), output_root])?;
+        fn default() -> Result<()> {
+            let config = config_with_required_args(Vec::<String>::new())?;
+            let intermediate_dir = config.intermediate_dir.path();
             assert_eq!(
                 config.descriptor_set_path,
-                PathBuf::from(output_root).join(DEFAULT_DESCRIPTOR_SET_FILENAME)
+                intermediate_dir.join(DEFAULT_DESCRIPTOR_SET_FILENAME),
             );
             Ok(())
         }
 
         #[test]
-        fn parse_descriptor_path_absolute() -> Result<()> {
-            let output_root = "path/to/output";
-            let descriptor_path = current_dir()?;
-            let config = config_with_required_args([
-                &arg(OUTPUT_ROOT),
-                output_root,
-                &arg(DESCRIPTOR_SET_OUT),
-                descriptor_path.to_str().unwrap(),
-            ])?;
-            assert_eq!(config.descriptor_set_path, descriptor_path);
-            Ok(())
-        }
-
-        #[test]
-        fn parse_descriptor_path_relative() -> Result<()> {
-            let output_root = "path/to/output";
-            let descriptor_path = "path/to/descriptor/set";
-            let config = config_with_required_args([
-                &arg(OUTPUT_ROOT),
-                output_root,
-                &arg(DESCRIPTOR_SET_OUT),
-                descriptor_path,
-            ])?;
+        fn explicit() -> Result<()> {
+            let explicit_path = "path/to/desc/set";
+            let arg = arg(DESCRIPTOR_SET_OUT);
+            let config = config_with_required_args([&arg, explicit_path])?;
             assert_eq!(
                 config.descriptor_set_path,
-                PathBuf::from(output_root).join(descriptor_path)
+                config.intermediate_dir.path().join(explicit_path)
             );
             Ok(())
         }
@@ -403,13 +407,20 @@ mod tests {
     {
         let input_arg = arg(INPUT);
         let proto_arg = arg(PROTO);
-        let mut args: Vec<String> = [APP_NAME, &input_arg, "path/to/input", &proto_arg, "cpp"]
-            .map(|s| s.to_string())
-            .into();
+        let mut args: Vec<String> = [
+            APP_NAME,
+            &input_arg,
+            "path/to/input",
+            &proto_arg,
+            "cpp",
+            &current_dir()?.join("proto_cpp").display_normalized(),
+        ]
+        .map(|s| s.to_string())
+        .into();
         for arg in additional_args {
             args.push(arg.into());
         }
-        let config = Config::from_args(&parse_cli_args(args))?;
+        let config = Config::from_args(&parse_cli_args(args)?)?;
         Ok(config)
     }
 

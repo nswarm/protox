@@ -28,10 +28,9 @@ mod test_lang {
     protoc_test!(test_lang, rust, Lang::Rust);
 
     fn test_lang(lang: Lang) -> Result<()> {
-        let output_dir = util::test_with_args(&["--proto", &lang.as_config()])?;
-        let lang_output_dir = output_dir
-            .path()
-            .join(["proto_", &lang.as_config()].concat());
+        let lang_name = lang.as_config();
+        let output_dir = util::test_with_args(&["--proto", &lang_name, &lang_name])?;
+        let lang_output_dir = output_dir.path().join(&lang_name);
         let output_files = fs::read_dir(&lang_output_dir)
             .context("Missing output dir for lang")?
             .count();
@@ -71,7 +70,8 @@ mod test_protoc_extra_args {
             output_dir.path(),
             &[
                 "--proto",
-                &lang.as_config(),
+                &lang.as_config(), // INPUT
+                &lang.as_config(), // OUTPUT
                 "--protoc-args",
                 &format!("\"--dependency_out={}\"", expected_file_path),
             ],

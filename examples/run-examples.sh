@@ -14,10 +14,14 @@ rm -rf examples/output
 # This is more or less a passthrough to `protoc`, the protobuf compiler.
 #
 # Notes:
-# - The `js` output has a custom output folder specified: "proto_javascript".
+# - The argument is: --proto INPUT OUTPUT.
 # - Some languages like csharp and js do not produce folder hierarchies in the output.
 # - See protoffi --help for all supported languages.
 cargo run -- \
   --input examples/input/proto \
   --output-root examples/output/proto \
-  --proto cpp csharp java rust js=custom_javascript
+  --proto cpp proto_cpp \
+  --proto csharp proto_csharp \
+  --proto java proto_java \
+  --proto rust proto_rust \
+  --proto js proto_js
