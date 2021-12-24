@@ -24,4 +24,6 @@ cargo run -- \
   --proto csharp proto_csharp \
   --proto java proto_java \
   --proto rust proto_rust \
-  --proto js proto_js
+  --proto js proto_js \
+  --template-root examples/input/templates \
+  --template rust template_rust
