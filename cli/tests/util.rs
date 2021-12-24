@@ -13,7 +13,7 @@ mod tests {
     }
 
     pub fn test_with_args_in<A: AsRef<str>>(output: &Path, args: &[A]) -> Result<()> {
-        let mut cmd = protoffi();
+        let mut cmd = idlx();
         cmd.env("RUST_LOG", "debug,handlebars=off")
             .arg("--input")
             .arg(path_to_str(resources_dir())?)
@@ -53,8 +53,8 @@ mod tests {
             .ok_or(anyhow!("Invalid path: {:?}", path.as_ref()))
     }
 
-    pub fn protoffi() -> Command {
-        Command::new(env!("CARGO_BIN_EXE_protoffi"))
+    pub fn idlx() -> Command {
+        Command::new(env!("CARGO_BIN_EXE_idlx"))
     }
 }
 

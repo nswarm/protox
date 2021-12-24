@@ -10,7 +10,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use tempfile::{tempdir, TempDir};
 
-pub const APP_NAME: &str = "protoffi";
+pub const APP_NAME: &str = "idlx";
 pub const IDL: &str = "idl";
 pub const INPUT: &str = "input";
 pub const PROTO: &str = "proto";
@@ -30,7 +30,7 @@ where
     T: Into<OsString> + Clone,
 {
     App::new(APP_NAME)
-        .long_about("protoffi is an executable that generates C-ABI-compatible code in one or more languages for seamless and performant direct usage of those types across the library boundary.")
+        .long_about("idlx is an executable that generates C-ABI-compatible code in one or more languages for seamless and performant direct usage of those types across the library boundary.")
         .version(crate_version!())
         .args([
             Arg::new(IDL)
@@ -99,7 +99,7 @@ where
 
             Arg::new(PROTOC_ARGS)
                 .display_order(DISPLAY_ORDER_DEFAULT)
-                .long_about(&format!("Add any arguments directly to protoc invocation. Note they must be wrapped with \"\" as to not be picked up as arguments to protoffi.\nFor example: --{} \"--error_format=FORMAT\"", PROTOC_ARGS))
+                .long_about(&format!("Add any arguments directly to protoc invocation. Note they must be wrapped with \"\" as to not be picked up as arguments to idlx.\nFor example: --{} \"--error_format=FORMAT\"", PROTOC_ARGS))
                 .long(PROTOC_ARGS)
                 .takes_value(true)
                 .multiple_values(true),
