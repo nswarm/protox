@@ -1,5 +1,6 @@
 {
   "file_extension": "rs",
+  "metadata_file_name": "mod",
   "type_config": {
     "float": "f32",
     "double": "f64",

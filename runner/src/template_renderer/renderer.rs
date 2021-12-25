@@ -5,7 +5,7 @@ use crate::template_renderer::renderer_config::RendererConfig;
 use crate::{util, DisplayNormalized};
 use anyhow::{anyhow, Context, Result};
 use handlebars::Handlebars;
-use log::{debug, info, trace};
+use log::{debug, info};
 use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet};
 use serde::Serialize;
 use std::collections::HashSet;
@@ -183,7 +183,7 @@ impl Renderer<'_> {
         for context in contexts {
             let file_path = output_path
                 .join(context.relative_dir())
-                .join(Self::METADATA_TEMPLATE_NAME)
+                .join(self.metadata_file_name())
                 .with_extension(&self.config.file_extension);
             info!(
                 "Rendering metadata file: '{}'",
@@ -193,6 +193,15 @@ impl Renderer<'_> {
             self.render_metadata_context(&dirs, &files, context, &mut writer)?;
         }
         Ok(())
+    }
+
+    fn metadata_file_name(&self) -> &str {
+        &self
+            .config
+            .metadata_file_name
+            .as_ref()
+            .map(String::as_str)
+            .unwrap_or(Self::METADATA_TEMPLATE_NAME)
     }
 
     fn render_metadata_context<W: io::Write>(
@@ -584,6 +593,28 @@ mod tests {
             assert!(dirs.contains(&PathBuf::new()));
             assert!(dirs.contains(&PathBuf::from("test")));
             Ok(())
+        }
+    }
+
+    mod metadata_file_name {
+        use crate::template_renderer::renderer::Renderer;
+        use crate::template_renderer::renderer_config::RendererConfig;
+
+        #[test]
+        fn default() {
+            let renderer = Renderer::with_config(RendererConfig::default());
+            assert_eq!(
+                renderer.metadata_file_name(),
+                Renderer::METADATA_TEMPLATE_NAME
+            );
+        }
+
+        #[test]
+        fn with_config() {
+            let mut config = RendererConfig::default();
+            config.metadata_file_name = Some("test".to_string());
+            let renderer = Renderer::with_config(config);
+            assert_eq!(renderer.metadata_file_name(), "test");
         }
     }
 

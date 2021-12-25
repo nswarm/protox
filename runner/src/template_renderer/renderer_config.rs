@@ -13,6 +13,10 @@ pub struct RendererConfig {
     /// Each primitive::* type should have a value that will be used in templates.
     /// e.g. { "int64": "i64", "int32": "i32", ...etc }
     pub type_config: HashMap<String, String>,
+
+    /// Name of directory metadata files.
+    /// default: "metadata"
+    pub metadata_file_name: Option<String>,
 }
 
 impl Default for RendererConfig {
@@ -20,6 +24,7 @@ impl Default for RendererConfig {
         Self {
             file_extension: "".to_string(),
             type_config: default_type_config(),
+            metadata_file_name: None,
         }
     }
 }
