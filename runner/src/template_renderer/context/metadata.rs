@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 pub struct MetadataContext {
     directory: String,
     files: Vec<String>,
+    files_no_ext: Vec<String>,
     subdirectories: Vec<String>,
 
     #[serde(skip)]
@@ -24,6 +25,7 @@ impl MetadataContext {
                 ))?
                 .to_string(),
             files: vec![],
+            files_no_ext: vec![],
             subdirectories: vec![],
             directory_path: directory.to_path_buf(),
         };
@@ -38,6 +40,8 @@ impl MetadataContext {
         if self.is_direct_child(path)? {
             let file_name = util::file_name_or_error(path)?;
             self.files.push(file_name);
+            let file_name_no_ext = util::file_name_or_error(&path.with_extension(""))?;
+            self.files_no_ext.push(file_name_no_ext);
         }
         Ok(())
     }
@@ -80,6 +84,16 @@ mod tests {
             let mut context = MetadataContext::with_relative_dir(&root)?;
             context.push_file(&root.join("sub/file.txt"))?;
             assert!(context.files.is_empty());
+            Ok(())
+        }
+
+        #[test]
+        fn also_adds_no_ext_file_name() -> Result<()> {
+            let root = PathBuf::from("root");
+            let mut context = MetadataContext::with_relative_dir(&root)?;
+            context.push_file(&root.join("file.txt"))?;
+            assert_eq!(context.files.get(0), Some(&"file.txt".to_string()));
+            assert_eq!(context.files_no_ext.get(0), Some(&"file".to_string()));
             Ok(())
         }
     }
