@@ -5,9 +5,16 @@ use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize)]
 pub struct MetadataContext {
+    // Relative path to this directory.
     directory: String,
-    files: Vec<String>,
-    files_no_ext: Vec<String>,
+
+    // Names of files in this directory, without extensions.
+    file_names: Vec<String>,
+
+    // Names of tiles in this directory, with extensions.
+    file_names_with_ext: Vec<String>,
+
+    // Names of directories in this directory.
     subdirectories: Vec<String>,
 
     #[serde(skip)]
@@ -24,8 +31,8 @@ impl MetadataContext {
                     directory
                 ))?
                 .to_string(),
-            files: vec![],
-            files_no_ext: vec![],
+            file_names: vec![],
+            file_names_with_ext: vec![],
             subdirectories: vec![],
             directory_path: directory.to_path_buf(),
         };
@@ -39,9 +46,9 @@ impl MetadataContext {
     pub fn push_file(&mut self, path: &Path) -> Result<()> {
         if self.is_direct_child(path)? {
             let file_name = util::file_name_or_error(path)?;
-            self.files.push(file_name);
+            self.file_names_with_ext.push(file_name);
             let file_name_no_ext = util::file_name_or_error(&path.with_extension(""))?;
-            self.files_no_ext.push(file_name_no_ext);
+            self.file_names.push(file_name_no_ext);
         }
         Ok(())
     }
@@ -74,7 +81,7 @@ mod tests {
             let root = PathBuf::from("root");
             let mut context = MetadataContext::with_relative_dir(&root)?;
             context.push_file(&root.join("file.txt"))?;
-            assert_eq!(context.files.get(0), Some(&"file.txt".to_string()));
+            assert_eq!(context.file_names.get(0), Some(&"file".to_string()));
             Ok(())
         }
 
@@ -83,7 +90,7 @@ mod tests {
             let root = PathBuf::from("root");
             let mut context = MetadataContext::with_relative_dir(&root)?;
             context.push_file(&root.join("sub/file.txt"))?;
-            assert!(context.files.is_empty());
+            assert!(context.file_names.is_empty());
             Ok(())
         }
 
@@ -92,8 +99,11 @@ mod tests {
             let root = PathBuf::from("root");
             let mut context = MetadataContext::with_relative_dir(&root)?;
             context.push_file(&root.join("file.txt"))?;
-            assert_eq!(context.files.get(0), Some(&"file.txt".to_string()));
-            assert_eq!(context.files_no_ext.get(0), Some(&"file".to_string()));
+            assert_eq!(context.file_names.get(0), Some(&"file".to_string()));
+            assert_eq!(
+                context.file_names_with_ext.get(0),
+                Some(&"file.txt".to_string())
+            );
             Ok(())
         }
     }

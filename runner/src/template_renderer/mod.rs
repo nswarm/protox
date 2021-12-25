@@ -129,6 +129,10 @@ mod tests {
                 .with_extension(Renderer::TEMPLATE_EXT),
         )?;
         fs::File::create(
+            path.join(Renderer::IMPORT_TEMPLATE_NAME)
+                .with_extension(Renderer::TEMPLATE_EXT),
+        )?;
+        fs::File::create(
             path.join(Renderer::MESSAGE_TEMPLATE_NAME)
                 .with_extension(Renderer::TEMPLATE_EXT),
         )?;

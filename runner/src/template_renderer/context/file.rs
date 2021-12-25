@@ -10,6 +10,9 @@ pub struct FileContext<'a> {
     source_file: &'a str,
 
     // Must be rendered and supplied externally.
+    pub imports: Vec<RenderedField>,
+
+    // Must be rendered and supplied externally.
     pub messages: Vec<RenderedField>,
 }
 
@@ -17,6 +20,7 @@ impl<'a> FileContext<'a> {
     pub fn new(file: &'a FileDescriptorProto, _config: &RendererConfig) -> Result<Self> {
         let context = Self {
             source_file: source_file(file)?,
+            imports: Vec::new(),
             messages: Vec::new(),
         };
         Ok(context)

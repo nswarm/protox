@@ -6,7 +6,7 @@ use std::fs;
 use tempfile::tempdir_in;
 
 #[test]
-fn test_templates() -> Result<()> {
+fn smoketest_templates() -> Result<()> {
     let test_dir = tempdir_in(env!("CARGO_TARGET_TMPDIR"))?;
     let inputs = [
         resources_dir().join("template-a"),
