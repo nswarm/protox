@@ -1,11 +1,14 @@
-use crate::template_renderer::context::{FieldContext, FileContext, MessageContext};
+use crate::template_renderer::context::{
+    FieldContext, FileContext, MessageContext, MetadataContext,
+};
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::{util, DisplayNormalized};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use handlebars::Handlebars;
-use log::{debug, info};
+use log::{debug, info, trace};
 use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet};
 use serde::Serialize;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -22,6 +25,7 @@ impl Renderer<'_> {
     pub const CONFIG_FILE_NAME: &'static str = "config.json";
     pub const TEMPLATE_EXT: &'static str = "hbs";
 
+    pub const METADATA_TEMPLATE_NAME: &'static str = "metadata";
     pub const FILE_TEMPLATE_NAME: &'static str = "file";
     pub const MESSAGE_TEMPLATE_NAME: &'static str = "message";
     pub const FIELD_TEMPLATE_NAME: &'static str = "field";
@@ -51,6 +55,7 @@ impl Renderer<'_> {
     ///     root/file.hbs
     ///     root/message.hbs
     ///     root/field.hbs
+    ///     root/metadata.hbs (optional)
     /// ```
     pub fn load_all(&mut self, root: &Path) -> Result<()> {
         self.load_config(&root.join(Self::CONFIG_FILE_NAME))?;
@@ -69,6 +74,11 @@ impl Renderer<'_> {
             )
         })?;
         Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub fn load_metadata_template_string(&mut self, template: String) -> Result<()> {
+        self.load_template_string(Self::METADATA_TEMPLATE_NAME, template)
     }
 
     #[allow(dead_code)]
@@ -95,10 +105,20 @@ impl Renderer<'_> {
     }
 
     pub fn load_templates(&mut self, root: &Path) -> Result<()> {
+        self.load_metadata_template_file(&hbs_file_path(root, Self::METADATA_TEMPLATE_NAME))?;
         self.load_file_template_file(&hbs_file_path(root, Self::FILE_TEMPLATE_NAME))?;
         self.load_message_template_file(&hbs_file_path(root, Self::MESSAGE_TEMPLATE_NAME))?;
         self.load_field_template_file(&hbs_file_path(root, Self::FIELD_TEMPLATE_NAME))?;
         Ok(())
+    }
+
+    pub fn load_metadata_template_file(&mut self, path: &Path) -> Result<()> {
+        // Metadata is optional.
+        if path.exists() {
+            self.load_template_file(Self::METADATA_TEMPLATE_NAME, path)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn load_file_template_file(&mut self, path: &Path) -> Result<()> {
@@ -126,10 +146,16 @@ impl Renderer<'_> {
         Ok(())
     }
 
-    pub fn render(
+    pub fn render(&mut self, descriptor_set: &FileDescriptorSet, output_path: &Path) -> Result<()> {
+        self.render_files(descriptor_set, output_path)?;
+        self.render_all_metadata(descriptor_set, output_path)?;
+        Ok(())
+    }
+
+    fn render_files(
         &mut self,
         descriptor_set: &FileDescriptorSet,
-        output_path: &PathBuf,
+        output_path: &Path,
     ) -> Result<()> {
         for file in &descriptor_set.file {
             let file_name = file_name(file, self.output_ext())?;
@@ -139,6 +165,68 @@ impl Renderer<'_> {
             self.render_file(file, &mut writer)?;
         }
         Ok(())
+    }
+
+    fn render_all_metadata(
+        &mut self,
+        descriptor_set: &FileDescriptorSet,
+        output_path: &Path,
+    ) -> Result<()> {
+        if !self.hbs.has_template(Self::METADATA_TEMPLATE_NAME) {
+            return Ok(());
+        }
+        let (dirs, files) = collect_dirs_and_files(descriptor_set)?;
+        let mut contexts = Vec::new();
+        for dir in &dirs {
+            contexts.push(MetadataContext::with_relative_dir(dir)?);
+        }
+        for context in contexts {
+            let file_path = output_path
+                .join(context.relative_dir())
+                .join(Self::METADATA_TEMPLATE_NAME)
+                .with_extension(&self.config.file_extension);
+            info!(
+                "Rendering metadata file: '{}'",
+                file_path.display_normalized()
+            );
+            let mut writer = io::BufWriter::new(util::create_file_or_error(&file_path)?);
+            self.render_metadata_context(&dirs, &files, context, &mut writer)?;
+        }
+        Ok(())
+    }
+
+    fn render_metadata_context<W: io::Write>(
+        &mut self,
+        dirs: &HashSet<PathBuf>,
+        files: &Vec<PathBuf>,
+        mut context: MetadataContext,
+        writer: &mut W,
+    ) -> Result<()> {
+        for dir in dirs {
+            context.push_subdirectory(dir)?;
+        }
+        for file in files {
+            context.push_file(&file)?;
+        }
+        self.render_to_write(Self::METADATA_TEMPLATE_NAME, &context, writer)
+    }
+
+    #[allow(dead_code)]
+    fn render_metadata_context_to_string(
+        &mut self,
+        dirs: &HashSet<PathBuf>,
+        files: &Vec<PathBuf>,
+        context: MetadataContext,
+    ) -> Result<String> {
+        let mut bytes = Vec::new();
+        {
+            let mut writer = io::BufWriter::new(&mut bytes);
+            self.render_metadata_context(dirs, files, context, &mut writer)?;
+        }
+        Ok(
+            String::from_utf8(bytes)
+                .context("Failed to parse rendered metadata as utf8 string.")?,
+        )
     }
 
     fn render_file<W: io::Write>(&self, file: &FileDescriptorProto, writer: &mut W) -> Result<()> {
@@ -200,6 +288,32 @@ impl Renderer<'_> {
             .with_context(|| render_error_context(template, data))?;
         Ok(())
     }
+}
+
+fn collect_dirs_and_files(
+    descriptor_set: &FileDescriptorSet,
+) -> Result<(HashSet<PathBuf>, Vec<PathBuf>)> {
+    let mut dirs = HashSet::new();
+    let mut files = Vec::new();
+    for file in &descriptor_set.file {
+        let relative_path = PathBuf::from(
+            file.name
+                .as_ref()
+                .ok_or(anyhow!("No file name in descriptor."))?,
+        );
+        insert_all_parents(&mut dirs, &relative_path)?;
+        files.push(relative_path);
+    }
+    Ok((dirs, files))
+}
+
+fn insert_all_parents(dirs: &mut HashSet<PathBuf>, path: &Path) -> Result<()> {
+    let parent = util::path_parent_or_error(&path).context("insert_all_parents")?;
+    dirs.insert(parent.to_path_buf());
+    if parent != PathBuf::new() {
+        insert_all_parents(dirs, parent)?;
+    }
+    Ok(())
 }
 
 fn file_name(file: &FileDescriptorProto, new_ext: &str) -> Result<String> {
@@ -324,6 +438,153 @@ mod tests {
         )?;
         assert_eq!(result, "inner.TypeName");
         Ok(())
+    }
+
+    mod metadata {
+        use std::collections::HashSet;
+        use std::iter::FromIterator;
+        use std::path::PathBuf;
+
+        use anyhow::Result;
+
+        use crate::template_renderer::context::MetadataContext;
+        use crate::template_renderer::renderer::Renderer;
+        use crate::template_renderer::renderer_config::RendererConfig;
+
+        #[test]
+        fn directory() -> Result<()> {
+            let directory = "directory/path";
+            let mut renderer = Renderer::with_config(RendererConfig::default());
+            renderer.load_metadata_template_string("{{directory}}".to_string())?;
+            let result = renderer.render_metadata_context_to_string(
+                &HashSet::new(),
+                &Vec::new(),
+                MetadataContext::with_relative_dir(&PathBuf::from(directory))?,
+            )?;
+            assert_eq!(result, directory);
+            Ok(())
+        }
+
+        #[test]
+        fn subdirectories() -> Result<()> {
+            let root = PathBuf::from("root");
+            let mut renderer = Renderer::with_config(RendererConfig::default());
+            renderer.load_metadata_template_string(
+                "{{#each subdirectories}}{{this}}{{#unless @last}}:::{{/unless}}{{/each}}"
+                    .to_string(),
+            )?;
+            let result = renderer.render_metadata_context_to_string(
+                &HashSet::from_iter(
+                    vec![
+                        root.join("sub0"),
+                        root.join("sub1"),
+                        root.join("sub1/too_deep"),
+                        PathBuf::from("not_root"),
+                    ]
+                    .into_iter(),
+                ),
+                &Vec::new(),
+                MetadataContext::with_relative_dir(&PathBuf::from(root))?,
+            )?;
+            // Can't rely on order.
+            let dirs = result.split(":::").collect::<Vec<&str>>();
+            assert_eq!(dirs.len(), 2);
+            assert!(dirs.contains(&"sub0"));
+            assert!(dirs.contains(&"sub1"));
+            Ok(())
+        }
+
+        #[test]
+        fn files() -> Result<()> {
+            let root = PathBuf::from("root");
+            let mut renderer = Renderer::with_config(RendererConfig::default());
+            renderer
+                .load_metadata_template_string("{{#each files}}{{this}}{{/each}}".to_string())?;
+            let result = renderer.render_metadata_context_to_string(
+                &HashSet::new(),
+                &vec![
+                    root.join("file.txt"),
+                    root.join("_other_file.rs"),
+                    root.join("sub1/too_deep.txt"),
+                    PathBuf::from("not_root/file.txt"),
+                ],
+                MetadataContext::with_relative_dir(&PathBuf::from(root))?,
+            )?;
+            assert_eq!(result, "file.txt_other_file.rs");
+            Ok(())
+        }
+    }
+
+    mod collect_dirs_and_files {
+        use crate::template_renderer::renderer::collect_dirs_and_files;
+        use crate::template_renderer::renderer::tests::fake_file;
+        use anyhow::Result;
+        use prost_types::FileDescriptorSet;
+        use std::path::PathBuf;
+
+        #[test]
+        fn files() -> Result<()> {
+            let set = FileDescriptorSet {
+                file: vec![
+                    fake_file("file1", Vec::new()),
+                    fake_file("test/file2", Vec::new()),
+                    fake_file("test/sub/file3", Vec::new()),
+                    fake_file("other/sub/inner/file4", Vec::new()),
+                ],
+            };
+            let (_, files) = collect_dirs_and_files(&set)?;
+            assert!(files.contains(&PathBuf::from("file1")));
+            assert!(files.contains(&PathBuf::from("test/file2")));
+            assert!(files.contains(&PathBuf::from("test/sub/file3")));
+            assert!(files.contains(&PathBuf::from("other/sub/inner/file4")));
+            Ok(())
+        }
+
+        #[test]
+        fn directories() -> Result<()> {
+            let set = FileDescriptorSet {
+                file: vec![
+                    fake_file("file1", Vec::new()),
+                    fake_file("test/file2", Vec::new()),
+                    fake_file("test/sub/file3", Vec::new()),
+                ],
+            };
+            let (dirs, _) = collect_dirs_and_files(&set)?;
+            assert!(dirs.contains(&PathBuf::new()));
+            assert!(dirs.contains(&PathBuf::from("test")));
+            assert!(dirs.contains(&PathBuf::from("test/sub")));
+            Ok(())
+        }
+
+        #[test]
+        fn includes_directories_with_no_files() -> Result<()> {
+            let set = FileDescriptorSet {
+                file: vec![fake_file("test/sub/inner/file4", Vec::new())],
+            };
+            let (dirs, _) = collect_dirs_and_files(&set)?;
+            assert!(dirs.contains(&PathBuf::new()));
+            assert!(dirs.contains(&PathBuf::from("test")));
+            assert!(dirs.contains(&PathBuf::from("test/sub")));
+            assert!(dirs.contains(&PathBuf::from("test/sub/inner")));
+            Ok(())
+        }
+
+        #[test]
+        fn ignores_duplicate_dirs() -> Result<()> {
+            let set = FileDescriptorSet {
+                file: vec![
+                    fake_file("test/file1", Vec::new()),
+                    fake_file("test/file2", Vec::new()),
+                    fake_file("test/file3", Vec::new()),
+                ],
+            };
+            let (dirs, _) = collect_dirs_and_files(&set)?;
+            println!("{:?}", dirs);
+            assert_eq!(dirs.len(), 2);
+            assert!(dirs.contains(&PathBuf::new()));
+            assert!(dirs.contains(&PathBuf::from("test")));
+            Ok(())
+        }
     }
 
     fn fake_file(name: impl Into<String>, messages: Vec<DescriptorProto>) -> FileDescriptorProto {

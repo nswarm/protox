@@ -40,10 +40,33 @@ pub fn create_file_or_error(path: &Path) -> Result<fs::File> {
     }
     fs::File::create(&path).with_context(|| {
         format!(
-            "Failed to create file at path {}",
+            "Failed to create file at path '{}'",
             path.display_normalized()
         )
     })
+}
+
+pub fn path_parent_or_error(path: &Path) -> Result<&Path> {
+    path.parent().ok_or(anyhow!(
+        "File path has no parent: '{}'.",
+        path.display_normalized()
+    ))
+}
+
+pub fn file_name_or_error(path: &Path) -> Result<String> {
+    let result = path
+        .file_name()
+        .ok_or(anyhow!(
+            "File path has no file name: '{}'.",
+            path.display_normalized()
+        ))?
+        .to_str()
+        .ok_or(anyhow!(
+            "File path is not unicode: '{}'",
+            path.display_normalized()
+        ))?
+        .to_string();
+    Ok(result)
 }
 
 pub fn str_or_error<F: Fn() -> String>(value: &Option<String>, error: F) -> Result<&str> {
