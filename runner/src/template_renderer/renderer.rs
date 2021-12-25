@@ -151,23 +151,33 @@ impl Renderer<'_> {
         );
         let mut context = FileContext::new(file, &self.config)?;
         for message in &file.message_type {
-            context.messages.push(self.render_message(message)?);
+            context
+                .messages
+                .push(self.render_message(message, file.package.as_ref())?);
         }
         self.render_to_write(Self::FILE_TEMPLATE_NAME, &context, writer)
     }
 
-    fn render_message(&self, message: &DescriptorProto) -> Result<String> {
+    fn render_message(
+        &self,
+        message: &DescriptorProto,
+        package: Option<&String>,
+    ) -> Result<String> {
         debug!("Rendering message: {}", util::str_or_unknown(&message.name));
         let mut context = MessageContext::new(message, &self.config)?;
         for field in &message.field {
-            context.fields.push(self.render_field(field)?);
+            context.fields.push(self.render_field(field, package)?);
         }
         self.render_to_string(Self::MESSAGE_TEMPLATE_NAME, &context)
     }
 
-    fn render_field(&self, field: &FieldDescriptorProto) -> Result<String> {
+    fn render_field(
+        &self,
+        field: &FieldDescriptorProto,
+        package: Option<&String>,
+    ) -> Result<String> {
         debug!("Rendering field: {}", util::str_or_unknown(&field.name));
-        let context = FieldContext::new(field, &self.config)?;
+        let context = FieldContext::new(field, package, &self.config)?;
         self.render_to_string(Self::FIELD_TEMPLATE_NAME, &context)
     }
 
@@ -244,8 +254,8 @@ mod tests {
         let file_name = "file_name".to_string();
         let msg0 = fake_message("msg0", Vec::new());
         let msg1 = fake_message("msg1", Vec::new());
-        let msg0_rendered = renderer.render_message(&msg0)?;
-        let msg1_rendered = renderer.render_message(&msg1)?;
+        let msg0_rendered = renderer.render_message(&msg0, None)?;
+        let msg1_rendered = renderer.render_message(&msg1, None)?;
         let file = fake_file(&file_name, vec![msg0, msg1]);
 
         let mut bytes = Vec::<u8>::new();
@@ -268,11 +278,11 @@ mod tests {
         let msg_name = "msg_name".to_string();
         let field0 = fake_field("field0", primitive::FLOAT);
         let field1 = fake_field("field1", primitive::BOOL);
-        let field0_rendered = renderer.render_field(&field0)?;
-        let field1_rendered = renderer.render_field(&field1)?;
+        let field0_rendered = renderer.render_field(&field0, None)?;
+        let field1_rendered = renderer.render_field(&field1, None)?;
         let message = fake_message(&msg_name, vec![field0, field1]);
 
-        let result = renderer.render_message(&message)?;
+        let result = renderer.render_message(&message, None)?;
         assert_eq!(
             result,
             [msg_name, field0_rendered, field1_rendered].concat()
@@ -283,16 +293,36 @@ mod tests {
     #[test]
     fn field_template() -> Result<()> {
         let field_name = "field-name";
-        let native_type = ["TEST-", primitive::FLOAT].concat();
+        let type_name = ["TEST-", primitive::FLOAT].concat();
         let separator = ":::";
         let mut config = RendererConfig::default();
         config
             .type_config
-            .insert(primitive::FLOAT.to_string(), native_type.clone());
+            .insert(primitive::FLOAT.to_string(), type_name.clone());
         let mut renderer = Renderer::with_config(config);
-        renderer.load_field_template_string(["{{name}}", separator, "{{native_type}}"].concat())?;
-        let result = renderer.render_field(&fake_field("field-name", primitive::FLOAT))?;
-        assert_eq!(result, [field_name, separator, &native_type].concat());
+        renderer.load_field_template_string(
+            ["{{field_name}}", separator, "{{fully_qualified_type}}"].concat(),
+        )?;
+        let result = renderer.render_field(
+            &fake_field("field-name", primitive::FLOAT),
+            Some(&".test.package".to_string()),
+        )?;
+        assert_eq!(result, [field_name, separator, &type_name].concat());
+        Ok(())
+    }
+
+    #[test]
+    fn field_gets_package_from_file() -> Result<()> {
+        let config = RendererConfig::default();
+        let mut renderer = Renderer::with_config(config);
+        renderer.load_file_template_string("{{#each messages}}{{this}}{{/each}}".to_string())?;
+        renderer.load_message_template_string("{{#each fields}}{{this}}{{/each}}".to_string())?;
+        renderer.load_field_template_string("{{relative_type}}".to_string())?;
+        let result = renderer.render_field(
+            &fake_field("field-name", ".test.package.inner.TypeName"),
+            Some(&"test.package".to_string()),
+        )?;
+        assert_eq!(result, "inner.TypeName");
         Ok(())
     }
 
