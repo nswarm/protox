@@ -1,4 +1,5 @@
 use crate::template_renderer::primitive;
+use crate::template_renderer::renderer::Renderer;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -16,7 +17,30 @@ pub struct RendererConfig {
 
     /// Name of directory metadata files.
     /// default: "metadata"
-    pub metadata_file_name: Option<String>,
+    #[serde(default = "default_metadata_file_name")]
+    pub metadata_file_name: String,
+
+    /// Separator used in qualified type names.
+    /// e.g. root.sub.TypeName
+    ///          ^   ^
+    /// default: `.`
+    #[serde(default = "default_package_separator")]
+    pub package_separator: String,
+
+    /// Override field names declared by the proto, for example when a proto uses a keyword as a
+    /// field name in your target language.
+    /// e.g. { "enum": "new_name" }
+    /// Would replace any fields called `enum` with `new_name`.
+    #[serde(default)]
+    pub field_name_override: HashMap<String, String>,
+}
+
+fn default_metadata_file_name() -> String {
+    Renderer::METADATA_TEMPLATE_NAME.to_string()
+}
+
+fn default_package_separator() -> String {
+    ".".to_string()
 }
 
 impl Default for RendererConfig {
@@ -24,7 +48,9 @@ impl Default for RendererConfig {
         Self {
             file_extension: "".to_string(),
             type_config: default_type_config(),
-            metadata_file_name: None,
+            metadata_file_name: default_metadata_file_name(),
+            package_separator: default_package_separator(),
+            field_name_override: Default::default(),
         }
     }
 }

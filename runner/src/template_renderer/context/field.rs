@@ -1,10 +1,13 @@
 use anyhow::{anyhow, Result};
 use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::template_renderer::primitive;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
+
+const DEFAULT_PACKAGE_SEPARATOR: &str = ".";
 
 #[derive(Serialize, Deserialize)]
 pub struct FieldContext<'a> {
@@ -12,13 +15,13 @@ pub struct FieldContext<'a> {
     // Type as defined by type config or literal type name.
     // example:
     //      pkg.sub_pkg.TypeName
-    fully_qualified_type: &'a str,
+    fully_qualified_type: String,
     // Type relative to the owning file's package.
     // example:
     //      package:  pkg.sub
     //      type:     pkg.sub.deep.TypeName
     //      relative: deep.TypeName
-    relative_type: &'a str,
+    relative_type: String,
 }
 
 impl<'a> FieldContext<'a> {
@@ -28,17 +31,26 @@ impl<'a> FieldContext<'a> {
         config: &'a RendererConfig,
     ) -> Result<Self> {
         let fully_qualified_type = fully_qualified_type(field, config)?;
+        let relative_type = relative_type(fully_qualified_type, package);
+        let separator = &config.package_separator;
         let context = Self {
-            field_name: field_name(field)?,
-            fully_qualified_type,
-            relative_type: relative_type(fully_qualified_type, package),
+            field_name: field_name(field, &config.field_name_override)?,
+            fully_qualified_type: replace_separator(fully_qualified_type, separator),
+            relative_type: replace_separator(relative_type, separator),
         };
         Ok(context)
     }
 }
 
-fn field_name(field: &FieldDescriptorProto) -> Result<&str> {
-    util::str_or_error(&field.name, || "Field has no 'name'".to_string())
+fn field_name<'a>(
+    field: &'a FieldDescriptorProto,
+    overrides: &'a HashMap<String, String>,
+) -> Result<&'a str> {
+    let field_name = util::str_or_error(&field.name, || "Field has no 'name'".to_string())?;
+    Ok(overrides
+        .get(field_name)
+        .map(String::as_str)
+        .unwrap_or(field_name))
 }
 
 fn fully_qualified_type<'a>(
@@ -68,8 +80,17 @@ fn relative_type<'a>(fully_qualified_type: &'a str, package: Option<&String>) ->
     }
 }
 
+fn replace_separator(type_name: &str, separator: &str) -> String {
+    if separator == DEFAULT_PACKAGE_SEPARATOR {
+        type_name.to_string()
+    } else {
+        type_name.replace(DEFAULT_PACKAGE_SEPARATOR, separator)
+    }
+}
+
 fn normalize_prefix(path: &str) -> &str {
-    // Normalizes ".root.sub.TypeName" to "root.sub.TypeName"
+    // Normalizes a path by removing the first separator.
+    // e.g. ".root.sub.TypeName" to "root.sub.TypeName"
     if path.starts_with(".") {
         &path[1..path.len()]
     } else {
@@ -78,7 +99,9 @@ fn normalize_prefix(path: &str) -> &str {
 }
 
 fn package_prefix(package: &str) -> String {
-    // Add additional "." between package and type name, e.g. root.sub.TypeName.
+    // Add additional separator between package and type name
+    // e.g. root.sub.TypeName
+    //      package ^ type
     [package, "."].concat()
 }
 
@@ -140,7 +163,7 @@ mod tests {
     use crate::template_renderer::renderer_config::RendererConfig;
 
     #[test]
-    fn name() -> Result<()> {
+    fn field_name() -> Result<()> {
         let config = RendererConfig::default();
         let name = "test_name".to_string();
         let mut field = default_field();
@@ -148,6 +171,22 @@ mod tests {
         field.type_name = Some(primitive::FLOAT.to_string());
         let context = FieldContext::new(&field, None, &config)?;
         assert_eq!(context.field_name.to_string(), name);
+        Ok(())
+    }
+
+    #[test]
+    fn override_field_name() -> Result<()> {
+        let old_name = "old_name".to_string();
+        let new_name = "new_name".to_string();
+        let mut config = RendererConfig::default();
+        config
+            .field_name_override
+            .insert(old_name.clone(), new_name.clone());
+        let mut field = default_field();
+        field.name = Some(old_name);
+        field.type_name = Some(primitive::FLOAT.to_string());
+        let context = FieldContext::new(&field, None, &config)?;
+        assert_eq!(context.field_name.to_string(), new_name);
         Ok(())
     }
 
@@ -236,6 +275,19 @@ mod tests {
             let result = relative_type(qualified, Some(&"root.sub".to_string()));
             assert_eq!(result, "TypeName");
         }
+    }
+
+    #[test]
+    fn package_separator_replaced_in_types() -> Result<()> {
+        let mut field = default_field();
+        field.name = Some("test".to_string());
+        field.type_name = Some(".root.sub.TypeName".to_string());
+        let mut config = RendererConfig::default();
+        config.package_separator = "::".to_string();
+        let context = FieldContext::new(&field, Some(&"root".to_string()), &config)?;
+        assert_eq!(context.relative_type, "sub::TypeName");
+        assert_eq!(context.fully_qualified_type, "root::sub::TypeName");
+        Ok(())
     }
 
     #[test]

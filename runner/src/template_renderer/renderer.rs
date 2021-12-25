@@ -196,12 +196,7 @@ impl Renderer<'_> {
     }
 
     fn metadata_file_name(&self) -> &str {
-        &self
-            .config
-            .metadata_file_name
-            .as_ref()
-            .map(String::as_str)
-            .unwrap_or(Self::METADATA_TEMPLATE_NAME)
+        &self.config.metadata_file_name
     }
 
     fn render_metadata_context<W: io::Write>(
@@ -612,7 +607,7 @@ mod tests {
         #[test]
         fn with_config() {
             let mut config = RendererConfig::default();
-            config.metadata_file_name = Some("test".to_string());
+            config.metadata_file_name = "test".to_string();
             let renderer = Renderer::with_config(config);
             assert_eq!(renderer.metadata_file_name(), "test");
         }
