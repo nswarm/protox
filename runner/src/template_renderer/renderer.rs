@@ -8,7 +8,7 @@ use handlebars::Handlebars;
 use log::{debug, info};
 use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet};
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -158,8 +158,13 @@ impl Renderer<'_> {
     }
 
     pub fn render(&mut self, descriptor_set: &FileDescriptorSet, output_path: &Path) -> Result<()> {
-        self.render_files(descriptor_set, output_path)?;
-        self.render_all_metadata(descriptor_set, output_path)?;
+        if self.config.one_file_per_package {
+            self.render_files_collapsed(descriptor_set, output_path)?;
+            // todo single metadata file
+        } else {
+            self.render_files(descriptor_set, output_path)?;
+            self.render_all_metadata(descriptor_set, output_path)?;
+        }
         Ok(())
     }
 
@@ -176,6 +181,42 @@ impl Renderer<'_> {
             self.render_file(file, &mut writer)?;
         }
         Ok(())
+    }
+
+    fn render_files_collapsed(
+        &mut self,
+        descriptor_set: &FileDescriptorSet,
+        output_path: &Path,
+    ) -> Result<()> {
+        let package_to_files = self.collect_package_to_file_map(descriptor_set);
+        for (package, files) in package_to_files {
+            let path = self.package_to_file_path(output_path, package);
+            println!("package: {}, file: {}", package, path.display_normalized());
+            let mut writer = io::BufWriter::new(util::create_file_or_error(&path)?);
+            for file in files {
+                log_render_package_file(file, package);
+                self.render_file(file, &mut writer)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn collect_package_to_file_map<'a>(
+        &'a self,
+        descriptor_set: &'a FileDescriptorSet,
+    ) -> HashMap<&'a str, Vec<&'a FileDescriptorProto>> {
+        let mut map = HashMap::new();
+        for file in &descriptor_set.file {
+            let package = package(file, &self.config.default_package_file_name);
+            let files = map.entry(package).or_insert(Vec::new());
+            files.push(file);
+        }
+        map
+    }
+
+    fn package_to_file_path(&self, root: &Path, package: &str) -> PathBuf {
+        root.join(package.replace(".", "-"))
+            .with_extension(&self.config.file_extension)
     }
 
     fn render_all_metadata(
@@ -360,6 +401,10 @@ fn file_name(file: &FileDescriptorProto, new_ext: &str) -> Result<String> {
     ))
 }
 
+fn package<'a>(file: &'a FileDescriptorProto, default: &'a String) -> &'a str {
+    file.package.as_ref().unwrap_or(&default)
+}
+
 fn render_error_context<S: Serialize>(name: &str, data: &S) -> String {
     format!(
         "Failed to render template '{}' for data: {}",
@@ -381,6 +426,14 @@ fn log_render_file(file_name: &Option<String>, ext: &str) {
     );
 }
 
+fn log_render_package_file(file: &FileDescriptorProto, package: &str) {
+    info!(
+        "Rendering descriptor '{}' to file for package '{}'",
+        util::str_or_unknown(&file.name),
+        package,
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use crate::template_renderer::primitive;
@@ -388,6 +441,7 @@ mod tests {
     use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
     use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
+    use std::path::PathBuf;
 
     #[test]
     fn output_ext_from_config() {
@@ -686,6 +740,86 @@ mod tests {
             config.metadata_file_name = "test".to_string();
             let renderer = Renderer::with_config(config);
             assert_eq!(renderer.metadata_file_name(), "test");
+        }
+    }
+
+    mod collect_package_to_file_map {
+        use crate::template_renderer::renderer::tests::fake_file_with_package;
+        use crate::template_renderer::renderer::Renderer;
+        use crate::template_renderer::renderer_config::RendererConfig;
+        use anyhow::{anyhow, Result};
+        use prost_types::{FileDescriptorProto, FileDescriptorSet};
+
+        #[test]
+        fn collects_unique_package_to_multiple_files() -> Result<()> {
+            let mut config = RendererConfig::default();
+            config.default_package_file_name = "default".to_string();
+            let renderer = Renderer::with_config(RendererConfig::default());
+
+            let descriptor_set = FileDescriptorSet {
+                file: vec![
+                    fake_file_with_package("file0", "root"),
+                    fake_file_with_package("file1", "root"),
+                    fake_file_with_package("file2", "root.sub"),
+                    fake_file_with_package("file3", "other.sub"),
+                ],
+            };
+
+            let package_to_files = renderer.collect_package_to_file_map(&descriptor_set);
+            let files = package_to_files
+                .get("root")
+                .ok_or(anyhow!("missing root"))?;
+            check_has_file(files, "file0");
+            check_has_file(files, "file1");
+
+            let files = package_to_files
+                .get("root.sub")
+                .ok_or(anyhow!("missing root.sub"))?;
+            check_has_file(files, "file2");
+
+            let files = package_to_files
+                .get("other.sub")
+                .ok_or(anyhow!("missing other.sub"))?;
+            check_has_file(files, "file3");
+            Ok(())
+        }
+
+        fn check_has_file(files: &Vec<&FileDescriptorProto>, name: &str) {
+            assert!(files
+                .iter()
+                .find(|f| f.name.as_ref().map(String::as_str) == Some(name))
+                .is_some());
+        }
+    }
+
+    #[test]
+    fn package_to_file_path() {
+        let mut config = RendererConfig::default();
+        config.file_extension = "test".to_string();
+        let renderer = Renderer::with_config(config);
+        assert_eq!(
+            renderer.package_to_file_path(&PathBuf::from("root/path/to"), "package"),
+            PathBuf::from("root/path/to/package.test"),
+        );
+    }
+
+    fn fake_file_with_package(
+        name: impl Into<String>,
+        package: impl Into<String>,
+    ) -> FileDescriptorProto {
+        FileDescriptorProto {
+            name: Some(name.into()),
+            package: Some(package.into()),
+            dependency: vec![],
+            public_dependency: vec![],
+            weak_dependency: vec![],
+            message_type: vec![],
+            enum_type: vec![],
+            service: vec![],
+            extension: vec![],
+            options: None,
+            source_code_info: None,
+            syntax: None,
         }
     }
 

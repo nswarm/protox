@@ -30,6 +30,18 @@ pub struct RendererConfig {
     #[serde(default = "default_package_separator")]
     pub package_separator: String,
 
+    /// If true, each protobuf package is written out as a single file with all messages inside.
+    /// By default (false), the output structure will mirror the proto file structure.
+    ///
+    /// If a metadata template is specified, only one will be generated, as a sibling to the other files.
+    #[serde(default)]
+    pub one_file_per_package: bool,
+
+    /// When `one_file_per_package` is true, use this file name when a package is not specified in the proto file.
+    /// default: `_`
+    #[serde(default = "default_package_file_name")]
+    pub default_package_file_name: String,
+
     /// Override field names declared by the proto, for example when a proto uses a keyword as a
     /// field name in your target language.
     /// e.g. { "enum": "new_name" }
@@ -46,6 +58,10 @@ fn default_package_separator() -> String {
     ".".to_string()
 }
 
+fn default_package_file_name() -> String {
+    "_".to_string()
+}
+
 impl Default for RendererConfig {
     fn default() -> Self {
         Self {
@@ -53,6 +69,8 @@ impl Default for RendererConfig {
             type_config: default_type_config(),
             metadata_file_name: default_metadata_file_name(),
             package_separator: default_package_separator(),
+            one_file_per_package: false,
+            default_package_file_name: default_package_file_name(),
             field_name_override: Default::default(),
         }
     }

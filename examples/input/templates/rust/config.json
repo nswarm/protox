@@ -2,6 +2,7 @@
   "file_extension": "rs",
   "metadata_file_name": "mod",
   "package_separator": "::",
+  "one_file_per_package": true,
   "type_config": {
     "float": "f32",
     "double": "f64",
