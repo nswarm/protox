@@ -266,7 +266,7 @@ impl Renderer<'_> {
 
     fn render_import(&self, import_path: &String) -> Result<String> {
         debug!("Rendering import: {}", import_path);
-        let context = ImportContext::new(&PathBuf::from(import_path))?;
+        let context = ImportContext::new(&PathBuf::from(import_path), &self.config)?;
         self.render_to_string(Self::IMPORT_TEMPLATE_NAME, &context)
     }
 

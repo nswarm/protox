@@ -7,8 +7,6 @@ use crate::template_renderer::primitive;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 
-const DEFAULT_PACKAGE_SEPARATOR: &str = ".";
-
 #[derive(Serialize, Deserialize)]
 pub struct FieldContext<'a> {
     field_name: &'a str,
@@ -35,8 +33,8 @@ impl<'a> FieldContext<'a> {
         let separator = &config.package_separator;
         let context = Self {
             field_name: field_name(field, &config.field_name_override)?,
-            fully_qualified_type: replace_separator(fully_qualified_type, separator),
-            relative_type: replace_separator(relative_type, separator),
+            fully_qualified_type: util::replace_package_separator(fully_qualified_type, separator),
+            relative_type: util::replace_package_separator(relative_type, separator),
         };
         Ok(context)
     }
@@ -77,14 +75,6 @@ fn relative_type<'a>(fully_qualified_type: &'a str, package: Option<&String>) ->
         Some(package) => fully_qualified_type
             .strip_prefix(&package_prefix(package))
             .unwrap_or(fully_qualified_type),
-    }
-}
-
-fn replace_separator(type_name: &str, separator: &str) -> String {
-    if separator == DEFAULT_PACKAGE_SEPARATOR {
-        type_name.to_string()
-    } else {
-        type_name.replace(DEFAULT_PACKAGE_SEPARATOR, separator)
     }
 }
 

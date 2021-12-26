@@ -82,8 +82,9 @@ pub fn str_or_unknown(str: &Option<String>) -> &str {
     str.as_ref().map(|s| s.as_str()).unwrap_or(&UNKNOWN)
 }
 
+pub const NORMALIZED_SLASH: &str = "/";
 pub fn normalize_slashes(path: impl ToString) -> String {
-    path.to_string().replace("\\", "/")
+    path.to_string().replace("\\", NORMALIZED_SLASH)
 }
 
 pub fn replace_proto_ext(file_name: &str, new_ext: &str) -> String {
@@ -112,6 +113,15 @@ pub(crate) fn parse_rooted_path<P: AsRef<Path>>(
             root_arg_name,
         )),
         Some(root) => Ok(root.as_ref().join(path)),
+    }
+}
+
+pub fn replace_package_separator(path: &str, separator: &str) -> String {
+    static DEFAULT_PACKAGE_SEPARATOR: &str = ".";
+    if separator == DEFAULT_PACKAGE_SEPARATOR {
+        path.to_string()
+    } else {
+        path.replace(DEFAULT_PACKAGE_SEPARATOR, separator)
     }
 }
 
