@@ -8,11 +8,14 @@ pub struct RendererConfig {
     /// The file extension to use for generated files.
     pub file_extension: String,
 
-    /// Defines the primitive type mapping for proto -> lang.
+    /// Defines the type mapping for proto -> lang.
     /// https://developers.google.com/protocol-buffers/docs/proto3#scalar
     ///
-    /// Each primitive::* type should have a value that will be used in templates.
+    /// Each primitive::* type MUST have a value specified that will be used in templates.
     /// e.g. { "int64": "i64", "int32": "i32", ...etc }
+    ///
+    /// This can also be used to override types. You need to specify the fully-qualified type name.
+    /// e.g. { "root.sub.TypeName": "MyFancyType" }
     pub type_config: HashMap<String, String>,
 
     /// Name of directory metadata files.

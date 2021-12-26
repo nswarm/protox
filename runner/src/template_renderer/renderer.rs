@@ -1,5 +1,5 @@
 use crate::template_renderer::context::{
-    FieldContext, FileContext, ImportContext, MessageContext, MetadataContext,
+    FieldContext, FileContext, ImportContext, MessageContext, MetadataContext, RenderedField,
 };
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::{util, DisplayNormalized};
@@ -245,23 +245,34 @@ impl Renderer<'_> {
     }
 
     fn render_file<W: io::Write>(&self, file: &FileDescriptorProto, writer: &mut W) -> Result<()> {
-        debug!(
-            "Rendering file: {}",
-            util::replace_proto_ext(
-                util::str_or_unknown(&file.name),
-                &self.config.file_extension
-            )
-        );
+        log_render_file(&file.name, &self.config.file_extension);
         let mut context = FileContext::new(file, &self.config)?;
-        for import_path in &file.dependency {
-            context.imports.push(self.render_import(import_path)?);
-        }
-        for message in &file.message_type {
-            context
-                .messages
-                .push(self.render_message(message, file.package.as_ref())?);
-        }
+        self.render_imports_to(&mut context.imports, &file.dependency)?;
+        self.render_messages_to(&mut context.messages, &file.message_type, &file.package)?;
         self.render_to_write(Self::FILE_TEMPLATE_NAME, &context, writer)
+    }
+
+    fn render_imports_to(
+        &self,
+        target: &mut Vec<RenderedField>,
+        source: &Vec<String>,
+    ) -> Result<()> {
+        for import in source {
+            target.push(self.render_import(import)?);
+        }
+        Ok(())
+    }
+
+    fn render_messages_to(
+        &self,
+        target: &mut Vec<RenderedField>,
+        source: &Vec<DescriptorProto>,
+        file_package: &Option<String>,
+    ) -> Result<()> {
+        for message in source {
+            target.push(self.render_message(message, file_package.as_ref())?);
+        }
+        Ok(())
     }
 
     fn render_import(&self, import_path: &String) -> Result<String> {
@@ -361,6 +372,13 @@ fn hbs_file_path(root: &Path, file_name: &str) -> PathBuf {
     let mut path = root.join(file_name);
     path.set_extension(Renderer::TEMPLATE_EXT);
     path
+}
+
+fn log_render_file(file_name: &Option<String>, ext: &str) {
+    debug!(
+        "Rendering file: {}",
+        util::replace_proto_ext(util::str_or_unknown(file_name), ext)
+    );
 }
 
 #[cfg(test)]
