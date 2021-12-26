@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 pub struct FileContext<'a> {
     source_file: &'a str,
 
-    // Must be rendered and supplied externally.
+    /// Must be rendered and supplied externally.
     pub imports: Vec<RenderedField>,
 
-    // Must be rendered and supplied externally.
+    /// Must be rendered and supplied externally.
     pub messages: Vec<RenderedField>,
 }
 

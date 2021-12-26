@@ -6,29 +6,33 @@ use std::path::Path;
 
 #[derive(Serialize, Deserialize)]
 pub struct ImportContext {
-    // Relative (from root) path to the file to import.
-    // e.g. path/to/file_name.ext
+    /// Relative (from root) path to the file to import.
+    /// e.g. path/to/file_name.ext
     file_path: String,
 
-    // Name of the file with no extension.
-    // e.g. file_name
+    /// Name of the file with no extension.
+    /// e.g. file_name
     file_name: String,
 
-    // Name of the file including extension.
-    // e.g. file_name.ext
+    /// Name of the file including extension.
+    /// e.g. file_name.ext
     file_name_with_ext: String,
 
     /// Relative (from root) path to the file, interpreted as a package.
     /// This will use the configured package separator.
-    /// e.g.
-    /// root/sub/file_name.ext
-    /// root.sub
+    ///
+    /// ```txt
+    ///     root/sub/file_name.ext
+    ///     root.sub
+    /// ```
     package: String,
 
-    // Same as `package`, but includes the file name stem.
-    /// e.g.
-    /// root/sub/file_name.ext
-    /// root.sub.file_name
+    /// Same as `package`, but includes the file name stem.
+    ///
+    /// ```txt
+    ///     root/sub/file_name.ext
+    ///     root.sub.file_name
+    /// ```
     package_with_file: String,
 }
 

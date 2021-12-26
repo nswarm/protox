@@ -10,15 +10,19 @@ use crate::util;
 #[derive(Serialize, Deserialize)]
 pub struct FieldContext<'a> {
     field_name: &'a str,
-    // Type as defined by type config or literal type name.
-    // example:
-    //      pkg.sub_pkg.TypeName
+    /// Type as defined by type config or literal type name.
+    ///
+    /// ```txt
+    ///      pkg.sub_pkg.TypeName
+    /// ```
     fully_qualified_type: String,
-    // Type relative to the owning file's package.
-    // example:
-    //      package:  pkg.sub
-    //      type:     pkg.sub.deep.TypeName
-    //      relative: deep.TypeName
+    /// Type relative to the owning file's package.
+    ///
+    /// ```txt
+    ///      package:  pkg.sub
+    ///      type:     pkg.sub.deep.TypeName
+    ///      relative: deep.TypeName
+    /// ```
     relative_type: String,
 }
 

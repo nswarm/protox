@@ -1,6 +1,7 @@
-{{~#each subdirectories}}
-pub mod {{this}};
+{{~#each package_files}}
+pub mod {{package}} {
+include!("{{file_name}}");
 {{/each}}
-{{~#each file_names}}
-pub mod {{this}};
+{{~#each package_files}}
+}
 {{/each}}

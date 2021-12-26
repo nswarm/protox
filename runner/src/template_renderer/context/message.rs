@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct MessageContext<'a> {
     name: &'a str,
 
-    // Must be rendered and supplied externally.
+    /// Must be rendered and supplied externally.
     pub fields: Vec<RenderedField>,
 }
 
