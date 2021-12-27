@@ -34,7 +34,28 @@ pub struct MetadataContext {
     /// Using the {{> file_name}} handlebars operator, this data can be recursively iterated and
     /// printed to a file.
     ///
+    /// metadata.hbs
+    /// ```hbs
+    /// {{~#each package_file_tree}}
+    /// {{> package_tree_node}}
+    /// {{/each}}
+    /// ```
+    ///
+    /// package_tree_node.hbs
+    /// ```hbs
+    /// {{@key}}: {
+    /// {{#if file_name}}
+    ///     file_name: "{{file_name}}"
+    /// {{/if}}
+    /// {{#each children}}
+    ///     {{> package_tree_node}}
+    /// {{/each}}
+    /// }
+    /// ```
+    ///
+    /// Result:
     /// ```txt
+    ///
     ///     root: {
     ///         file_name: root.rs
     ///         children: {
@@ -47,6 +68,9 @@ pub struct MetadataContext {
     ///     }
     ///     other: { ...etc }
     ///```
+    ///
+    /// Note: Currently indentation does not work for partials.
+    ///
     package_file_tree: PackageTree,
 
     #[serde(skip)]
