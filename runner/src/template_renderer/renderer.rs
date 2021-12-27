@@ -11,6 +11,7 @@ use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::{fs, io};
+use walkdir::WalkDir;
 
 /// Renders final output files by using:
 /// 1. Data from a proto descriptor set.
@@ -112,36 +113,30 @@ impl Renderer<'_> {
     }
 
     pub fn load_templates(&mut self, root: &Path) -> Result<()> {
-        self.load_metadata_template_file(&hbs_file_path(root, Self::METADATA_TEMPLATE_NAME))?;
-        self.load_file_template_file(&hbs_file_path(root, Self::FILE_TEMPLATE_NAME))?;
-        self.load_import_template_file(&hbs_file_path(root, Self::IMPORT_TEMPLATE_NAME))?;
-        self.load_message_template_file(&hbs_file_path(root, Self::MESSAGE_TEMPLATE_NAME))?;
-        self.load_field_template_file(&hbs_file_path(root, Self::FIELD_TEMPLATE_NAME))?;
-        Ok(())
-    }
+        for entry in WalkDir::new(root)
+            .follow_links(false)
+            .max_depth(1)
+            .into_iter()
+            .filter_map(|r| r.ok())
+            .filter(|e| e.file_type().is_file())
+        {
+            let file = entry.path();
+            match file.extension() {
+                Some(ext) if ext == Self::TEMPLATE_EXT => {}
+                _ => continue,
+            };
 
-    pub fn load_metadata_template_file(&mut self, path: &Path) -> Result<()> {
-        // Metadata is optional.
-        if path.exists() {
-            self.load_template_file(Self::METADATA_TEMPLATE_NAME, path)
-        } else {
-            Ok(())
+            let template_name = match file.with_extension("").file_name() {
+                None => continue,
+                Some(file_name) => match file_name.to_str() {
+                    None => continue,
+                    Some(name) => name.to_string(),
+                },
+            };
+
+            self.load_template_file(&template_name, file)?;
         }
-    }
-
-    pub fn load_file_template_file(&mut self, path: &Path) -> Result<()> {
-        self.load_template_file(Self::FILE_TEMPLATE_NAME, path)
-    }
-    pub fn load_import_template_file(&mut self, path: &Path) -> Result<()> {
-        self.load_template_file(Self::IMPORT_TEMPLATE_NAME, path)
-    }
-
-    pub fn load_message_template_file(&mut self, path: &Path) -> Result<()> {
-        self.load_template_file(Self::MESSAGE_TEMPLATE_NAME, path)
-    }
-
-    pub fn load_field_template_file(&mut self, path: &Path) -> Result<()> {
-        self.load_template_file(Self::FIELD_TEMPLATE_NAME, path)
+        Ok(())
     }
 
     fn load_template_file(&mut self, name: &str, path: &Path) -> Result<()> {
@@ -431,12 +426,6 @@ fn render_error_context<S: Serialize>(name: &str, data: &S) -> String {
         name,
         serde_json::to_string(data).unwrap_or("(failed to serialize)".to_string()),
     )
-}
-
-fn hbs_file_path(root: &Path, file_name: &str) -> PathBuf {
-    let mut path = root.join(file_name);
-    path.set_extension(Renderer::TEMPLATE_EXT);
-    path
 }
 
 fn log_render_file(file_name: &Option<String>, ext: &str) {

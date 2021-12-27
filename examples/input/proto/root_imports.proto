@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "root_file.proto";
+import "other_file.proto";
 import "middle/middle_file.proto";
 import "middle/inner/inner_file.proto";
 
@@ -14,4 +15,5 @@ message Imports {
   root.SharedName root_shared = 4;
   root.middle.SharedName middle_shared = 5;
   root.middle.inner.SharedName inner_shared = 6;
+  other.SharedName other_shared = 7;
 }

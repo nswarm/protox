@@ -1,7 +1,3 @@
-{{~#each package_files}}
-pub mod {{package}} {
-include!("{{file_name}}");
-{{/each}}
-{{~#each package_files}}
-}
+{{~#each package_file_tree}}
+{{> package_tree_node}}
 {{/each}}

@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package other;
+
+// Same name across root/middle/inner.
+message SharedName {
+  string str = 1;
+}
