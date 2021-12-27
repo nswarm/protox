@@ -1,6 +1,7 @@
 use crate::template_renderer::context::{
     FieldContext, FileContext, ImportContext, MessageContext, MetadataContext, RenderedField,
 };
+use crate::template_renderer::indent_helper::IndentHelper;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::{util, DisplayNormalized};
 use anyhow::{anyhow, Context, Result};
@@ -33,8 +34,10 @@ impl Renderer<'_> {
     pub const FIELD_TEMPLATE_NAME: &'static str = "field";
 
     pub fn new() -> Self {
+        let mut hbs = Handlebars::new();
+        hbs.register_helper("indent", Box::new(IndentHelper));
         Self {
-            hbs: Handlebars::new(),
+            hbs,
             config: Default::default(),
         }
     }

@@ -2,7 +2,10 @@ pub mod {{@key}} {
 {{#if file_name}}
     include!("{{file_name}}");
 {{/if}}
-{{#each children}}
+
+{{~#each children}}
+{{#indent 4}}
     {{> package_tree_node}}
+{{/indent}}
 {{/each}}
 }
