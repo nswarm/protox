@@ -1,5 +1,5 @@
-use crate::template_renderer::primitive;
 use crate::template_renderer::renderer::Renderer;
+use crate::template_renderer::{primitive, proto};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -12,10 +12,22 @@ pub struct RendererConfig {
     /// https://developers.google.com/protocol-buffers/docs/proto3#scalar
     ///
     /// Each primitive::* type MUST have a value specified that will be used in templates.
-    /// e.g. { "int64": "i64", "int32": "i32", ...etc }
+    /// ```txt
+    /// e.g.
+    /// {
+    ///     "int64": "i64",
+    ///     "int32": "i32",
+    ///     ...etc
+    /// }
+    /// ```
     ///
     /// This can also be used to override types. You need to specify the fully-qualified type name.
-    /// e.g. { "root.sub.TypeName": "MyFancyType" }
+    /// ```txt
+    /// e.g.
+    /// {
+    ///     "root.sub.TypeName": "MyFancyType"
+    /// }
+    /// ```
     pub type_config: HashMap<String, String>,
 
     /// Name of directory metadata files.
@@ -48,6 +60,18 @@ pub struct RendererConfig {
     /// Would replace any fields called `enum` with `new_name`.
     #[serde(default)]
     pub field_name_override: HashMap<String, String>,
+
+    /// If set, relative types in parent scopes will be specified with this prefix _instead_ of using the
+    /// fully qualified type. Types from the root will still be fully qualified.
+    ///
+    /// ```txt
+    /// example using field_relative_parent_prefix = "super"
+    ///     qualified type => as referenced by grand.parent.me.Me
+    ///     grand.parent.Name   => super.Name
+    ///     grand.Root          => super.super.Root
+    ///     other.Other         => other.Other
+    /// ```
+    pub field_relative_parent_prefix: Option<String>,
 }
 
 fn default_metadata_file_name() -> String {
@@ -55,7 +79,7 @@ fn default_metadata_file_name() -> String {
 }
 
 fn default_package_separator() -> String {
-    ".".to_string()
+    proto::PACKAGE_SEPARATOR.to_string()
 }
 
 fn default_package_file_name() -> String {
@@ -72,6 +96,7 @@ impl Default for RendererConfig {
             one_file_per_package: false,
             default_package_file_name: default_package_file_name(),
             field_name_override: Default::default(),
+            field_relative_parent_prefix: None,
         }
     }
 }

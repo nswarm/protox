@@ -3,8 +3,8 @@ use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::template_renderer::primitive;
 use crate::template_renderer::renderer_config::RendererConfig;
+use crate::template_renderer::{primitive, proto};
 use crate::util;
 
 #[derive(Serialize, Deserialize)]
@@ -33,12 +33,13 @@ impl<'a> FieldContext<'a> {
         config: &'a RendererConfig,
     ) -> Result<Self> {
         let fully_qualified_type = fully_qualified_type(field, config)?;
-        let relative_type = relative_type(fully_qualified_type, package);
-        let separator = &config.package_separator;
+        let mut proto_type = proto::TypePath::from_type(fully_qualified_type);
+        proto_type.set_separator(&config.package_separator);
         let context = Self {
             field_name: field_name(field, &config.field_name_override)?,
-            fully_qualified_type: util::replace_package_separator(fully_qualified_type, separator),
-            relative_type: util::replace_package_separator(relative_type, separator),
+            fully_qualified_type: proto_type.to_string(),
+            relative_type: proto_type
+                .relative_to(package, config.field_relative_parent_prefix.as_ref()),
         };
         Ok(context)
     }
@@ -61,7 +62,7 @@ fn fully_qualified_type<'a>(
 ) -> Result<&'a str> {
     let fully_qualified_type = match &field.type_name {
         Some(type_name) => {
-            let type_name = normalize_prefix(type_name);
+            let type_name = proto::normalize_prefix(type_name);
             config
                 .type_config
                 .get(type_name)
@@ -71,32 +72,6 @@ fn fully_qualified_type<'a>(
         None => configured_primitive_type_name(field, config)?,
     };
     Ok(fully_qualified_type)
-}
-
-fn relative_type<'a>(fully_qualified_type: &'a str, package: Option<&String>) -> &'a str {
-    match package {
-        None => fully_qualified_type,
-        Some(package) => fully_qualified_type
-            .strip_prefix(&package_prefix(package))
-            .unwrap_or(fully_qualified_type),
-    }
-}
-
-fn normalize_prefix(path: &str) -> &str {
-    // Normalizes a path by removing the first separator.
-    // e.g. ".root.sub.TypeName" to "root.sub.TypeName"
-    if path.starts_with(".") {
-        &path[1..path.len()]
-    } else {
-        path
-    }
-}
-
-fn package_prefix(package: &str) -> String {
-    // Add additional separator between package and type name
-    // e.g. root.sub.TypeName
-    //      package ^ type
-    [package, "."].concat()
 }
 
 fn configured_primitive_type_name<'a>(
@@ -229,45 +204,6 @@ mod tests {
                 config.type_config.get(proto_type_name),
             );
             Ok(())
-        }
-    }
-
-    mod relative_type {
-        use crate::template_renderer::context::field::relative_type;
-
-        #[test]
-        fn no_package_uses_fully_qualified_type() {
-            let qualified = "root.sub.TypeName";
-            let result = relative_type(qualified, None);
-            assert_eq!(result, qualified);
-        }
-
-        #[test]
-        fn different_prefix_uses_fully_qualified_type() {
-            let qualified = "root.sub.TypeName";
-            let result = relative_type(qualified, Some(&"root.other".to_string()));
-            assert_eq!(result, qualified);
-        }
-
-        #[test]
-        fn matching_longer_prefix_uses_fully_qualified_type() {
-            let qualified = "root.sub.TypeName";
-            let result = relative_type(qualified, Some(&"root.sub.sub2.sub3".to_string()));
-            assert_eq!(result, "root.sub.TypeName");
-        }
-
-        #[test]
-        fn matching_shorter_prefix_uses_partially_qualified_type() {
-            let qualified = "root.sub.TypeName";
-            let result = relative_type(qualified, Some(&"root".to_string()));
-            assert_eq!(result, "sub.TypeName");
-        }
-
-        #[test]
-        fn matching_prefix_uses_non_qualified_type() {
-            let qualified = "root.sub.TypeName";
-            let result = relative_type(qualified, Some(&"root.sub".to_string()));
-            assert_eq!(result, "TypeName");
         }
     }
 

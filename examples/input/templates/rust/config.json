@@ -3,6 +3,7 @@
   "metadata_file_name": "mod",
   "package_separator": "::",
   "one_file_per_package": true,
+  "field_relative_parent_prefix": "super",
   "type_config": {
     "float": "f32",
     "double": "f64",

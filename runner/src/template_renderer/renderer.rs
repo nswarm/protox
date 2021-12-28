@@ -2,6 +2,7 @@ use crate::template_renderer::context::{
     FieldContext, FileContext, ImportContext, MessageContext, MetadataContext, RenderedField,
 };
 use crate::template_renderer::indent_helper::IndentHelper;
+use crate::template_renderer::proto;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::{util, DisplayNormalized};
 use anyhow::{anyhow, Context, Result};
@@ -213,7 +214,7 @@ impl Renderer<'_> {
     }
 
     fn package_to_file_path(&self, root: &Path, package: &str) -> PathBuf {
-        root.join(package.replace(".", "-"))
+        root.join(package.replace(proto::PACKAGE_SEPARATOR, "-"))
             .with_extension(&self.config.file_extension)
     }
 

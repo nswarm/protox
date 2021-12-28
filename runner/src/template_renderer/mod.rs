@@ -1,6 +1,7 @@
 mod context;
 mod indent_helper;
 mod primitive;
+mod proto;
 mod renderer;
 mod renderer_config;
 

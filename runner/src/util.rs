@@ -116,15 +116,6 @@ pub(crate) fn parse_rooted_path<P: AsRef<Path>>(
     }
 }
 
-pub fn replace_package_separator(path: &str, separator: &str) -> String {
-    static DEFAULT_PACKAGE_SEPARATOR: &str = ".";
-    if separator == DEFAULT_PACKAGE_SEPARATOR {
-        path.to_string()
-    } else {
-        path.replace(DEFAULT_PACKAGE_SEPARATOR, separator)
-    }
-}
-
 pub trait DisplayNormalized {
     fn display_normalized(&self) -> String;
 }
