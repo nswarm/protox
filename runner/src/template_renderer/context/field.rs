@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use log::debug;
 use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -32,6 +33,7 @@ impl<'a> FieldContext<'a> {
         package: Option<&String>,
         config: &'a RendererConfig,
     ) -> Result<Self> {
+        log_new_field(&field.name);
         let fully_qualified_type = fully_qualified_type(field, config)?;
         let mut proto_type = proto::TypePath::from_type(fully_qualified_type);
         proto_type.set_separator(&config.package_separator);
@@ -43,6 +45,10 @@ impl<'a> FieldContext<'a> {
         };
         Ok(context)
     }
+}
+
+fn log_new_field(name: &Option<String>) {
+    debug!("Creating field context: {}", util::str_or_unknown(name));
 }
 
 fn field_name<'a>(

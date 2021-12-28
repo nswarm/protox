@@ -344,10 +344,7 @@ impl Renderer<'_> {
         package: Option<&String>,
     ) -> Result<String> {
         debug!("Rendering message: {}", util::str_or_unknown(&message.name));
-        let mut context = MessageContext::new(message, &self.config)?;
-        for field in &message.field {
-            context.fields.push(self.render_field(field, package)?);
-        }
+        let context = MessageContext::new(message, package, &self.config)?;
         self.render_to_string(Self::MESSAGE_TEMPLATE_NAME, &context)
     }
 
@@ -612,7 +609,7 @@ mod tests {
         let config = RendererConfig::default();
         let mut renderer = Renderer::with_config(config);
         renderer.load_message_template_string(
-            "{{name}}{{#each fields}}{{this}}{{/each}}".to_string(),
+            "{{name}}{{#each fields}}{{> field}}{{/each}}".to_string(),
         )?;
         renderer.load_field_template_string("{{name}}:::{{native_type}}".to_string())?;
 

@@ -1,4 +1,4 @@
-use crate::template_renderer::context::RenderedField;
+use crate::template_renderer::context::FieldContext;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 use anyhow::Result;
@@ -8,16 +8,18 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct MessageContext<'a> {
     name: &'a str,
-
-    /// Must be rendered and supplied externally.
-    pub fields: Vec<RenderedField>,
+    fields: Vec<FieldContext<'a>>,
 }
 
 impl<'a> MessageContext<'a> {
-    pub fn new(message: &'a DescriptorProto, _config: &RendererConfig) -> Result<Self> {
+    pub fn new(
+        message: &'a DescriptorProto,
+        package: Option<&String>,
+        config: &'a RendererConfig,
+    ) -> Result<Self> {
         let context = Self {
             name: name(message)?,
-            fields: Vec::new(),
+            fields: fields(message, package, config)?,
         };
         Ok(context)
     }
@@ -25,6 +27,18 @@ impl<'a> MessageContext<'a> {
 
 fn name(message: &DescriptorProto) -> Result<&str> {
     util::str_or_error(&message.name, || "Message has no 'name'".to_string())
+}
+
+fn fields<'a>(
+    message: &'a DescriptorProto,
+    package: Option<&String>,
+    config: &'a RendererConfig,
+) -> Result<Vec<FieldContext<'a>>> {
+    let mut fields = Vec::new();
+    for field in &message.field {
+        fields.push(FieldContext::new(field, package, config)?);
+    }
+    Ok(fields)
 }
 
 #[cfg(test)]
@@ -40,7 +54,7 @@ mod tests {
         let msg_name = "msg_name".to_string();
         let mut message = default_message();
         message.name = Some(msg_name.clone());
-        let context = MessageContext::new(&message, &config)?;
+        let context = MessageContext::new(&message, None, &config)?;
         assert_eq!(context.name, msg_name);
         Ok(())
     }
@@ -49,7 +63,7 @@ mod tests {
     fn missing_name_errors() {
         let config = RendererConfig::default();
         let message = default_message();
-        let result = MessageContext::new(&message, &config);
+        let result = MessageContext::new(&message, None, &config);
         assert!(result.is_err());
     }
 
