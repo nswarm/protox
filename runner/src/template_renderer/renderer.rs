@@ -1,6 +1,4 @@
-use crate::template_renderer::context::{
-    FieldContext, FileContext, ImportContext, MessageContext, MetadataContext, RenderedField,
-};
+use crate::template_renderer::context::{FileContext, MetadataContext};
 use crate::template_renderer::indent_helper::IndentHelper;
 use crate::template_renderer::proto;
 use crate::template_renderer::renderer_config::RendererConfig;
@@ -8,7 +6,7 @@ use crate::{util, DisplayNormalized};
 use anyhow::{anyhow, Context, Result};
 use handlebars::Handlebars;
 use log::{debug, info};
-use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet};
+use prost_types::{FileDescriptorProto, FileDescriptorSet};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -27,12 +25,8 @@ pub struct Renderer<'a> {
 impl Renderer<'_> {
     pub const CONFIG_FILE_NAME: &'static str = "config.json";
     pub const TEMPLATE_EXT: &'static str = "hbs";
-
     pub const METADATA_TEMPLATE_NAME: &'static str = "metadata";
     pub const FILE_TEMPLATE_NAME: &'static str = "file";
-    pub const IMPORT_TEMPLATE_NAME: &'static str = "import";
-    pub const MESSAGE_TEMPLATE_NAME: &'static str = "message";
-    pub const FIELD_TEMPLATE_NAME: &'static str = "field";
 
     pub fn new() -> Self {
         let mut hbs = Handlebars::new();
@@ -84,32 +78,17 @@ impl Renderer<'_> {
     }
 
     #[allow(dead_code)]
-    pub fn load_metadata_template_string(&mut self, template: String) -> Result<()> {
+    fn load_metadata_template_string(&mut self, template: impl AsRef<str>) -> Result<()> {
         self.load_template_string(Self::METADATA_TEMPLATE_NAME, template)
     }
 
     #[allow(dead_code)]
-    pub fn load_file_template_string(&mut self, template: String) -> Result<()> {
+    fn load_file_template_string(&mut self, template: impl AsRef<str>) -> Result<()> {
         self.load_template_string(Self::FILE_TEMPLATE_NAME, template)
     }
 
     #[allow(dead_code)]
-    pub fn load_import_template_string(&mut self, template: String) -> Result<()> {
-        self.load_template_string(Self::IMPORT_TEMPLATE_NAME, template)
-    }
-
-    #[allow(dead_code)]
-    pub fn load_message_template_string(&mut self, template: String) -> Result<()> {
-        self.load_template_string(Self::MESSAGE_TEMPLATE_NAME, template)
-    }
-
-    #[allow(dead_code)]
-    pub fn load_field_template_string(&mut self, template: String) -> Result<()> {
-        self.load_template_string(Self::FIELD_TEMPLATE_NAME, template)
-    }
-
-    #[allow(dead_code)]
-    fn load_template_string(&mut self, name: &str, template: String) -> Result<()> {
+    fn load_template_string(&mut self, name: &str, template: impl AsRef<str>) -> Result<()> {
         self.hbs
             .register_template_string(name, template)
             .with_context(|| format!("Failed to load '{}' template from string", name))?;
@@ -281,83 +260,13 @@ impl Renderer<'_> {
         self.render_to_write(Self::METADATA_TEMPLATE_NAME, &context, writer)
     }
 
-    #[allow(dead_code)]
-    fn render_metadata_context_to_string(
-        &mut self,
-        dirs: HashSet<PathBuf>,
-        files: Vec<PathBuf>,
-        mut context: MetadataContext,
-    ) -> Result<String> {
-        let mut bytes = Vec::new();
-        {
-            let mut writer = io::BufWriter::new(&mut bytes);
-            context.append_subdirectories(dirs.into_iter())?;
-            context.append_files(&files)?;
-            self.render_metadata_context(context, &mut writer)?;
-        }
-        Ok(
-            String::from_utf8(bytes)
-                .context("Failed to parse rendered metadata as utf8 string.")?,
-        )
-    }
-
     fn render_file<W: io::Write>(&self, file: &FileDescriptorProto, writer: &mut W) -> Result<()> {
         log_render_file(&file.name, &self.config.file_extension);
-        let mut context = FileContext::new(file, &self.config)?;
-        self.render_imports_to(&mut context.imports, &file.dependency)?;
-        self.render_messages_to(&mut context.messages, &file.message_type, &file.package)?;
+        let context = FileContext::new(file, &self.config)?;
         self.render_to_write(Self::FILE_TEMPLATE_NAME, &context, writer)
     }
 
-    fn render_imports_to(
-        &self,
-        target: &mut Vec<RenderedField>,
-        source: &Vec<String>,
-    ) -> Result<()> {
-        for import in source {
-            target.push(self.render_import(import)?);
-        }
-        Ok(())
-    }
-
-    fn render_messages_to(
-        &self,
-        target: &mut Vec<RenderedField>,
-        source: &Vec<DescriptorProto>,
-        file_package: &Option<String>,
-    ) -> Result<()> {
-        for message in source {
-            target.push(self.render_message(message, file_package.as_ref())?);
-        }
-        Ok(())
-    }
-
-    fn render_import(&self, import_path: &String) -> Result<String> {
-        debug!("Rendering import: {}", import_path);
-        let context = ImportContext::new(&PathBuf::from(import_path), &self.config)?;
-        self.render_to_string(Self::IMPORT_TEMPLATE_NAME, &context)
-    }
-
-    fn render_message(
-        &self,
-        message: &DescriptorProto,
-        package: Option<&String>,
-    ) -> Result<String> {
-        debug!("Rendering message: {}", util::str_or_unknown(&message.name));
-        let context = MessageContext::new(message, package, &self.config)?;
-        self.render_to_string(Self::MESSAGE_TEMPLATE_NAME, &context)
-    }
-
-    fn render_field(
-        &self,
-        field: &FieldDescriptorProto,
-        package: Option<&String>,
-    ) -> Result<String> {
-        debug!("Rendering field: {}", util::str_or_unknown(&field.name));
-        let context = FieldContext::new(field, package, &self.config)?;
-        self.render_to_string(Self::FIELD_TEMPLATE_NAME, &context)
-    }
-
+    #[allow(dead_code)]
     fn render_to_string<S: Serialize>(&self, template: &str, data: &S) -> Result<String> {
         let rendered = self
             .hbs
@@ -453,6 +362,7 @@ fn log_render_metadata(file_path: &Path) {
 
 #[cfg(test)]
 mod tests {
+    use crate::template_renderer::context::{FieldContext, FileContext, MessageContext};
     use crate::template_renderer::primitive;
     use crate::template_renderer::renderer::Renderer;
     use crate::template_renderer::renderer_config::RendererConfig;
@@ -525,11 +435,8 @@ mod tests {
 
         fn renderer_with_templates(config: RendererConfig) -> Result<Renderer<'static>> {
             let mut renderer = Renderer::with_config(config);
-            renderer.load_file_template_string("{{name}}".to_string())?;
-            renderer.load_message_template_string("{{name}}".to_string())?;
-            renderer.load_field_template_string("{{name}}".to_string())?;
-            renderer.load_import_template_string("{{name}}".to_string())?;
-            renderer.load_metadata_template_string("metadata".to_string())?;
+            renderer.load_file_template_string("{{name}}")?;
+            renderer.load_metadata_template_string("metadata")?;
             Ok(renderer)
         }
     }
@@ -546,17 +453,15 @@ mod tests {
     fn file_template() -> Result<()> {
         let config = RendererConfig::default();
         let mut renderer = Renderer::with_config(config);
-        renderer.load_file_template_string(
-            "{{source_file}}{{#each messages}}{{this}}{{/each}}".to_string(),
-        )?;
-        renderer.load_message_template_string("{{name}}".to_string())?;
-        renderer.load_field_template_string("{{name}}".to_string())?;
+        renderer
+            .load_file_template_string("{{source_file}}{{#each messages}}{{> message}}{{/each}}")?;
+        load_message_template(&mut renderer, "{{name}}")?;
 
         let file_name = "file_name".to_string();
         let msg0 = fake_message("msg0", Vec::new());
         let msg1 = fake_message("msg1", Vec::new());
-        let msg0_rendered = renderer.render_message(&msg0, None)?;
-        let msg1_rendered = renderer.render_message(&msg1, None)?;
+        let msg0_rendered = render_message(&mut renderer, &msg0)?;
+        let msg1_rendered = render_message(&mut renderer, &msg1)?;
         let file = fake_file(&file_name, vec![msg0, msg1]);
 
         let mut bytes = Vec::<u8>::new();
@@ -571,12 +476,11 @@ mod tests {
     fn import_template() -> Result<()> {
         let config = RendererConfig::default();
         let mut renderer = Renderer::with_config(config);
-        renderer.load_file_template_string("{{#each imports}}{{this}}{{/each}}".to_string())?;
-        renderer.load_import_template_string(
-            "{{file_path}}{{file_name}}{{file_name_with_ext}}".to_string(),
+        renderer.load_file_template_string("{{#each imports}}{{> import}}{{/each}}")?;
+        load_import_template_string(
+            &mut renderer,
+            "{{file_path}}{{file_name}}{{file_name_with_ext}}",
         )?;
-        renderer.load_message_template_string("".to_string())?;
-        renderer.load_field_template_string("".to_string())?;
 
         let file_name = "file_name".to_string();
         let mut file = fake_file(&file_name, vec![]);
@@ -608,19 +512,20 @@ mod tests {
     fn message_template() -> Result<()> {
         let config = RendererConfig::default();
         let mut renderer = Renderer::with_config(config);
-        renderer.load_message_template_string(
+        load_message_template(
+            &mut renderer,
             "{{name}}{{#each fields}}{{> field}}{{/each}}".to_string(),
         )?;
-        renderer.load_field_template_string("{{name}}:::{{native_type}}".to_string())?;
+        load_field_template(&mut renderer, "{{name}}:::{{native_type}}".to_string())?;
 
         let msg_name = "msg_name".to_string();
         let field0 = fake_field("field0", primitive::FLOAT);
         let field1 = fake_field("field1", primitive::BOOL);
-        let field0_rendered = renderer.render_field(&field0, None)?;
-        let field1_rendered = renderer.render_field(&field1, None)?;
+        let field0_rendered = render_field(&renderer, &field0, None)?;
+        let field1_rendered = render_field(&renderer, &field1, None)?;
         let message = fake_message(&msg_name, vec![field0, field1]);
 
-        let result = renderer.render_message(&message, None)?;
+        let result = render_message(&mut renderer, &message)?;
         assert_eq!(
             result,
             [msg_name, field0_rendered, field1_rendered].concat()
@@ -638,13 +543,13 @@ mod tests {
             .type_config
             .insert(primitive::FLOAT.to_string(), type_name.clone());
         let mut renderer = Renderer::with_config(config);
-        renderer.load_field_template_string(
+        load_field_template(
+            &mut renderer,
             ["{{field_name}}", separator, "{{fully_qualified_type}}"].concat(),
         )?;
-        let result = renderer.render_field(
-            &fake_field("field-name", primitive::FLOAT),
-            Some(&".test.package".to_string()),
-        )?;
+
+        let field = fake_field("field-name", primitive::FLOAT);
+        let result = render_field(&mut renderer, &field, Some(&".test.package".to_string()))?;
         assert_eq!(result, [field_name, separator, &type_name].concat());
         Ok(())
     }
@@ -653,23 +558,31 @@ mod tests {
     fn field_gets_package_from_file() -> Result<()> {
         let config = RendererConfig::default();
         let mut renderer = Renderer::with_config(config);
-        renderer.load_file_template_string("{{#each messages}}{{this}}{{/each}}".to_string())?;
-        renderer.load_message_template_string("{{#each fields}}{{this}}{{/each}}".to_string())?;
-        renderer.load_field_template_string("{{relative_type}}".to_string())?;
-        let result = renderer.render_field(
-            &fake_field("field-name", ".test.package.inner.TypeName"),
-            Some(&"test.package".to_string()),
+        renderer.load_file_template_string("{{#each messages}}{{> message}}{{/each}}")?;
+        load_message_template(
+            &mut renderer,
+            "{{#each fields}}{{> field}}{{/each}}".to_string(),
         )?;
+        load_field_template(&mut renderer, "{{relative_type}}".to_string())?;
+
+        let field = fake_field("field-name", ".test.package.inner.TypeName");
+        let message = fake_message("msg-name", vec![field]);
+        let mut file = fake_file("file-name", vec![message]);
+        file.package = Some(".test.package".to_string());
+        let file_context = FileContext::new(&file, &renderer.config)?;
+
+        let result = renderer.render_to_string(Renderer::FILE_TEMPLATE_NAME, &file_context)?;
         assert_eq!(result, "inner.TypeName");
         Ok(())
     }
 
     mod metadata {
         use std::collections::HashSet;
+        use std::io;
         use std::iter::FromIterator;
         use std::path::PathBuf;
 
-        use anyhow::Result;
+        use anyhow::{Context, Result};
 
         use crate::template_renderer::context::MetadataContext;
         use crate::template_renderer::renderer::Renderer;
@@ -679,8 +592,9 @@ mod tests {
         fn directory() -> Result<()> {
             let directory = "directory/path";
             let mut renderer = Renderer::with_config(RendererConfig::default());
-            renderer.load_metadata_template_string("{{directory}}".to_string())?;
-            let result = renderer.render_metadata_context_to_string(
+            renderer.load_metadata_template_string("{{directory}}")?;
+            let result = render_metadata_context_to_string(
+                &mut renderer,
                 HashSet::new(),
                 Vec::new(),
                 MetadataContext::with_relative_dir(&PathBuf::from(directory))?,
@@ -694,10 +608,10 @@ mod tests {
             let root = PathBuf::from("root");
             let mut renderer = Renderer::with_config(RendererConfig::default());
             renderer.load_metadata_template_string(
-                "{{#each subdirectories}}{{this}}{{#unless @last}}:::{{/unless}}{{/each}}"
-                    .to_string(),
+                "{{#each subdirectories}}{{this}}{{#unless @last}}:::{{/unless}}{{/each}}",
             )?;
-            let result = renderer.render_metadata_context_to_string(
+            let result = render_metadata_context_to_string(
+                &mut renderer,
                 HashSet::from_iter(
                     vec![
                         root.join("sub0"),
@@ -722,10 +636,10 @@ mod tests {
         fn files() -> Result<()> {
             let root = PathBuf::from("root");
             let mut renderer = Renderer::with_config(RendererConfig::default());
-            renderer.load_metadata_template_string(
-                "{{#each file_names_with_ext}}{{this}}{{/each}}".to_string(),
-            )?;
-            let result = renderer.render_metadata_context_to_string(
+            renderer
+                .load_metadata_template_string("{{#each file_names_with_ext}}{{this}}{{/each}}")?;
+            let result = render_metadata_context_to_string(
+                &mut renderer,
                 HashSet::new(),
                 vec![
                     root.join("file.txt"),
@@ -737,6 +651,23 @@ mod tests {
             )?;
             assert_eq!(result, "file.txt_other_file.rs");
             Ok(())
+        }
+
+        fn render_metadata_context_to_string(
+            renderer: &mut Renderer,
+            dirs: HashSet<PathBuf>,
+            files: Vec<PathBuf>,
+            mut context: MetadataContext,
+        ) -> Result<String> {
+            let mut bytes = Vec::new();
+            {
+                let mut writer = io::BufWriter::new(&mut bytes);
+                context.append_subdirectories(dirs.into_iter())?;
+                context.append_files(&files)?;
+                renderer.render_metadata_context(context, &mut writer)?;
+            }
+            Ok(String::from_utf8(bytes)
+                .context("Failed to parse rendered metadata as utf8 string.")?)
         }
     }
 
@@ -959,5 +890,40 @@ mod tests {
             options: None,
             proto3_optional: None,
         }
+    }
+
+    const IMPORT_TEMPLATE_NAME: &str = "import";
+    const MESSAGE_TEMPLATE_NAME: &str = "message";
+    const FIELD_TEMPLATE_NAME: &str = "field";
+
+    fn load_import_template_string(
+        renderer: &mut Renderer,
+        template: impl AsRef<str>,
+    ) -> Result<()> {
+        renderer.load_template_string(IMPORT_TEMPLATE_NAME, template)
+    }
+
+    fn load_message_template(renderer: &mut Renderer, template: impl AsRef<str>) -> Result<()> {
+        renderer.load_template_string(MESSAGE_TEMPLATE_NAME, template)
+    }
+
+    fn load_field_template(renderer: &mut Renderer, template: impl AsRef<str>) -> Result<()> {
+        renderer.load_template_string(FIELD_TEMPLATE_NAME, template)
+    }
+
+    fn render_message(renderer: &mut Renderer, message: &DescriptorProto) -> Result<String> {
+        renderer.render_to_string(
+            MESSAGE_TEMPLATE_NAME,
+            &MessageContext::new(&message, None, &renderer.config)?,
+        )
+    }
+
+    fn render_field(
+        renderer: &Renderer,
+        field: &FieldDescriptorProto,
+        package: Option<&String>,
+    ) -> Result<String> {
+        let context = FieldContext::new(field, package, &renderer.config)?;
+        renderer.render_to_string(FIELD_TEMPLATE_NAME, &context)
     }
 }

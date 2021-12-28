@@ -1,27 +1,28 @@
-use crate::template_renderer::context::RenderedField;
+use crate::template_renderer::context::{ImportContext, MessageContext};
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 use anyhow::Result;
+use log::debug;
 use prost_types::FileDescriptorProto;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct FileContext<'a> {
     source_file: &'a str,
-
-    /// Must be rendered and supplied externally.
-    pub imports: Vec<RenderedField>,
-
-    /// Must be rendered and supplied externally.
-    pub messages: Vec<RenderedField>,
+    imports: Vec<ImportContext>,
+    messages: Vec<MessageContext<'a>>,
 }
 
 impl<'a> FileContext<'a> {
-    pub fn new(file: &'a FileDescriptorProto, _config: &RendererConfig) -> Result<Self> {
+    pub fn new(file: &'a FileDescriptorProto, config: &'a RendererConfig) -> Result<Self> {
+        debug!(
+            "Creating file context: {}",
+            util::str_or_unknown(&file.name)
+        );
         let context = Self {
             source_file: source_file(file)?,
-            imports: Vec::new(),
-            messages: Vec::new(),
+            imports: imports(file, config)?,
+            messages: messages(file, file.package.as_ref(), config)?,
         };
         Ok(context)
     }
@@ -29,6 +30,26 @@ impl<'a> FileContext<'a> {
 
 fn source_file(file: &FileDescriptorProto) -> Result<&str> {
     util::str_or_error(&file.name, || "File has no 'name'".to_string())
+}
+
+fn imports(file: &FileDescriptorProto, config: &RendererConfig) -> Result<Vec<ImportContext>> {
+    let mut imports = Vec::new();
+    for import in &file.dependency {
+        imports.push(ImportContext::new(import, config)?);
+    }
+    Ok(imports)
+}
+
+fn messages<'a>(
+    file: &'a FileDescriptorProto,
+    package: Option<&String>,
+    config: &'a RendererConfig,
+) -> Result<Vec<MessageContext<'a>>> {
+    let mut messages = Vec::new();
+    for message in &file.message_type {
+        messages.push(MessageContext::new(message, package, config)?);
+    }
+    Ok(messages)
 }
 
 #[cfg(test)]

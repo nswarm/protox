@@ -2,6 +2,7 @@ use crate::template_renderer::context::FieldContext;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 use anyhow::Result;
+use log::debug;
 use prost_types::DescriptorProto;
 use serde::{Deserialize, Serialize};
 
@@ -17,12 +18,17 @@ impl<'a> MessageContext<'a> {
         package: Option<&String>,
         config: &'a RendererConfig,
     ) -> Result<Self> {
+        log_new_field(&message.name);
         let context = Self {
             name: name(message)?,
             fields: fields(message, package, config)?,
         };
         Ok(context)
     }
+}
+
+fn log_new_field(name: &Option<String>) {
+    debug!("Creating message context: {}", util::str_or_unknown(name));
 }
 
 fn name(message: &DescriptorProto) -> Result<&str> {
