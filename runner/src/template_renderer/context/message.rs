@@ -18,7 +18,7 @@ impl<'a> MessageContext<'a> {
         package: Option<&String>,
         config: &'a RendererConfig,
     ) -> Result<Self> {
-        log_new_field(&message.name);
+        log_new_message(&message.name);
         let context = Self {
             name: name(message)?,
             fields: fields(message, package, config)?,
@@ -27,7 +27,7 @@ impl<'a> MessageContext<'a> {
     }
 }
 
-fn log_new_field(name: &Option<String>) {
+fn log_new_message(name: &Option<String>) {
     debug!("Creating message context: {}", util::str_or_unknown(name));
 }
 
@@ -52,7 +52,7 @@ mod tests {
     use crate::template_renderer::context::message::MessageContext;
     use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
-    use prost_types::DescriptorProto;
+    use prost_types::{DescriptorProto, FieldDescriptorProto};
 
     #[test]
     fn name() -> Result<()> {
@@ -71,6 +71,35 @@ mod tests {
         let message = default_message();
         let result = MessageContext::new(&message, None, &config);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn creates_fields_from_proto() -> Result<()> {
+        let config = RendererConfig::default();
+        let mut proto = default_message();
+        proto.name = Some("enum_name".to_string());
+        proto.field.push(field("field0"));
+        proto.field.push(field("field1"));
+        let context = MessageContext::new(&proto, None, &config)?;
+        assert_eq!(context.fields.get(0).map(|f| f.name()), Some("field0"));
+        assert_eq!(context.fields.get(1).map(|f| f.name()), Some("field1"));
+        Ok(())
+    }
+
+    fn field(name: impl ToString) -> FieldDescriptorProto {
+        FieldDescriptorProto {
+            name: Some(name.to_string()),
+            number: None,
+            label: None,
+            r#type: None,
+            type_name: Some("type".to_string()),
+            extendee: None,
+            default_value: None,
+            oneof_index: None,
+            json_name: None,
+            options: None,
+            proto3_optional: None,
+        }
     }
 
     fn default_message() -> DescriptorProto {

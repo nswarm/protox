@@ -1,4 +1,4 @@
-use crate::template_renderer::context::{ImportContext, MessageContext};
+use crate::template_renderer::context::{EnumContext, ImportContext, MessageContext};
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 use anyhow::Result;
@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct FileContext<'a> {
     source_file: &'a str,
     imports: Vec<ImportContext>,
+    enums: Vec<EnumContext<'a>>,
     messages: Vec<MessageContext<'a>>,
 }
 
@@ -22,6 +23,7 @@ impl<'a> FileContext<'a> {
         let context = Self {
             source_file: source_file(file)?,
             imports: imports(file, config)?,
+            enums: enums(file, config)?,
             messages: messages(file, file.package.as_ref(), config)?,
         };
         Ok(context)
@@ -38,6 +40,17 @@ fn imports(file: &FileDescriptorProto, config: &RendererConfig) -> Result<Vec<Im
         imports.push(ImportContext::new(import, config)?);
     }
     Ok(imports)
+}
+
+fn enums<'a>(
+    file: &'a FileDescriptorProto,
+    config: &'a RendererConfig,
+) -> Result<Vec<EnumContext<'a>>> {
+    let mut enums = Vec::new();
+    for proto in &file.enum_type {
+        enums.push(EnumContext::new(proto, config)?);
+    }
+    Ok(enums)
 }
 
 fn messages<'a>(

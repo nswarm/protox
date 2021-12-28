@@ -1,6 +1,10 @@
 /////////////////////////////////////////////////
 // Messages from: {{source_file}}
 
+{{#each enums}}
+{{> enum}}
+
+{{/each}}
 {{#each messages}}
 {{> message}}
 

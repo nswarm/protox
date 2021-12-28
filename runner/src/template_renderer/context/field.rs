@@ -45,6 +45,11 @@ impl<'a> FieldContext<'a> {
         };
         Ok(context)
     }
+
+    #[allow(dead_code)]
+    pub fn name(&self) -> &str {
+        &self.field_name
+    }
 }
 
 fn log_new_field(name: &Option<String>) {

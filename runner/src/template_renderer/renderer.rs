@@ -362,16 +362,21 @@ fn log_render_metadata(file_path: &Path) {
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::context::{FieldContext, FileContext, MessageContext};
+    use crate::template_renderer::context::{
+        EnumContext, FieldContext, FileContext, MessageContext,
+    };
     use crate::template_renderer::primitive;
     use crate::template_renderer::renderer::Renderer;
     use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
-    use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
+    use prost_types::{
+        DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+        FileDescriptorProto,
+    };
     use std::path::PathBuf;
 
     mod render {
-        use crate::template_renderer::renderer::tests::{fake_file, fake_file_with_package};
+        use crate::template_renderer::renderer::tests::{fake_file_empty, fake_file_with_package};
         use crate::template_renderer::renderer::Renderer;
         use crate::template_renderer::renderer_config::RendererConfig;
         use anyhow::Result;
@@ -380,18 +385,9 @@ mod tests {
 
         #[test]
         fn render_files() -> Result<()> {
-            let set = FileDescriptorSet {
-                file: vec![
-                    fake_file("file1", vec![]), // no package
-                    fake_file_with_package("test/file2", "test"),
-                    fake_file_with_package("test/file3", "test"),
-                    fake_file_with_package("test/sub/file4", "test.sub"),
-                    fake_file_with_package("other/sub/inner/file5", "other.sub.inner"),
-                ],
-            };
             let renderer = renderer_with_templates(RendererConfig::default())?;
             let test_dir = tempdir()?;
-            renderer.render(&set, test_dir.path())?;
+            renderer.render(&test_file_set(), test_dir.path())?;
 
             assert!(test_dir.path().join("file1").exists());
             assert!(test_dir.path().join("test/file2").exists());
@@ -408,21 +404,12 @@ mod tests {
 
         #[test]
         fn render_files_collapsed() -> Result<()> {
-            let set = FileDescriptorSet {
-                file: vec![
-                    fake_file("file1", vec![]), // no package
-                    fake_file_with_package("test/file2", "test"),
-                    fake_file_with_package("test/file3", "test"),
-                    fake_file_with_package("test/sub/file4", "test.sub"),
-                    fake_file_with_package("other/sub/inner/file5", "other.sub.inner"),
-                ],
-            };
             let mut config = RendererConfig::default();
             config.one_file_per_package = true;
             config.default_package_file_name = "pkg_root".to_string();
             let renderer = renderer_with_templates(config)?;
             let test_dir = tempdir()?;
-            renderer.render(&set, test_dir.path())?;
+            renderer.render(&test_file_set(), test_dir.path())?;
 
             assert!(test_dir.path().join("pkg_root").exists());
             assert!(test_dir.path().join("test").exists());
@@ -431,6 +418,18 @@ mod tests {
 
             assert!(test_dir.path().join("metadata").exists());
             Ok(())
+        }
+
+        fn test_file_set() -> FileDescriptorSet {
+            FileDescriptorSet {
+                file: vec![
+                    fake_file_empty("file1"), // no package
+                    fake_file_with_package("test/file2", "test"),
+                    fake_file_with_package("test/file3", "test"),
+                    fake_file_with_package("test/sub/file4", "test.sub"),
+                    fake_file_with_package("other/sub/inner/file5", "other.sub.inner"),
+                ],
+            }
         }
 
         fn renderer_with_templates(config: RendererConfig) -> Result<Renderer<'static>> {
@@ -454,21 +453,28 @@ mod tests {
         let config = RendererConfig::default();
         let mut renderer = Renderer::with_config(config);
         renderer
-            .load_file_template_string("{{source_file}}{{#each messages}}{{> message}}{{/each}}")?;
+            .load_file_template_string("{{source_file}}{{#each enums}}{{> enum}}{{/each}}{{#each messages}}{{>message}}{{/each}}")?;
+        load_enum_template(&mut renderer, "{{name}}")?;
+        load_message_template(&mut renderer, "{{name}}")?;
         load_message_template(&mut renderer, "{{name}}")?;
 
         let file_name = "file_name".to_string();
+        let enum0 = fake_enum::<&str, &str>("enum0", &[]);
         let msg0 = fake_message("msg0", Vec::new());
         let msg1 = fake_message("msg1", Vec::new());
+        let enum0_rendered = render_enum(&mut renderer, &enum0)?;
         let msg0_rendered = render_message(&mut renderer, &msg0)?;
         let msg1_rendered = render_message(&mut renderer, &msg1)?;
-        let file = fake_file(&file_name, vec![msg0, msg1]);
+        let file = fake_file(&file_name, vec![enum0], vec![msg0, msg1]);
 
         let mut bytes = Vec::<u8>::new();
         renderer.render_file(&file, &mut bytes)?;
 
         let result = String::from_utf8(bytes)?;
-        assert_eq!(result, [file_name, msg0_rendered, msg1_rendered].concat());
+        assert_eq!(
+            result,
+            [file_name, enum0_rendered, msg0_rendered, msg1_rendered].concat()
+        );
         Ok(())
     }
 
@@ -483,7 +489,7 @@ mod tests {
         )?;
 
         let file_name = "file_name".to_string();
-        let mut file = fake_file(&file_name, vec![]);
+        let mut file = fake_file_empty(&file_name);
         let import0 = "root/test/value.txt".to_string();
         let import1 = "root/other/value2.rs".to_string();
         file.dependency.push(import0.clone());
@@ -567,7 +573,7 @@ mod tests {
 
         let field = fake_field("field-name", ".test.package.inner.TypeName");
         let message = fake_message("msg-name", vec![field]);
-        let mut file = fake_file("file-name", vec![message]);
+        let mut file = fake_file("file-name", vec![], vec![message]);
         file.package = Some(".test.package".to_string());
         let file_context = FileContext::new(&file, &renderer.config)?;
 
@@ -673,7 +679,7 @@ mod tests {
 
     mod collect_dirs_and_files {
         use crate::template_renderer::renderer::collect_dirs_and_files;
-        use crate::template_renderer::renderer::tests::fake_file;
+        use crate::template_renderer::renderer::tests::fake_file_empty;
         use anyhow::Result;
         use prost_types::FileDescriptorSet;
         use std::path::PathBuf;
@@ -682,10 +688,10 @@ mod tests {
         fn files() -> Result<()> {
             let set = FileDescriptorSet {
                 file: vec![
-                    fake_file("file1", Vec::new()),
-                    fake_file("test/file2", Vec::new()),
-                    fake_file("test/sub/file3", Vec::new()),
-                    fake_file("other/sub/inner/file4", Vec::new()),
+                    fake_file_empty("file1"),
+                    fake_file_empty("test/file2"),
+                    fake_file_empty("test/sub/file3"),
+                    fake_file_empty("other/sub/inner/file4"),
                 ],
             };
             let (_, files) = collect_dirs_and_files(&set)?;
@@ -700,9 +706,9 @@ mod tests {
         fn directories() -> Result<()> {
             let set = FileDescriptorSet {
                 file: vec![
-                    fake_file("file1", Vec::new()),
-                    fake_file("test/file2", Vec::new()),
-                    fake_file("test/sub/file3", Vec::new()),
+                    fake_file_empty("file1"),
+                    fake_file_empty("test/file2"),
+                    fake_file_empty("test/sub/file3"),
                 ],
             };
             let (dirs, _) = collect_dirs_and_files(&set)?;
@@ -715,7 +721,7 @@ mod tests {
         #[test]
         fn includes_directories_with_no_files() -> Result<()> {
             let set = FileDescriptorSet {
-                file: vec![fake_file("test/sub/inner/file4", Vec::new())],
+                file: vec![fake_file_empty("test/sub/inner/file4")],
             };
             let (dirs, _) = collect_dirs_and_files(&set)?;
             assert!(dirs.contains(&PathBuf::new()));
@@ -729,9 +735,9 @@ mod tests {
         fn ignores_duplicate_dirs() -> Result<()> {
             let set = FileDescriptorSet {
                 file: vec![
-                    fake_file("test/file1", Vec::new()),
-                    fake_file("test/file2", Vec::new()),
-                    fake_file("test/file3", Vec::new()),
+                    fake_file_empty("test/file1"),
+                    fake_file_empty("test/file2"),
+                    fake_file_empty("test/file3"),
                 ],
             };
             let (dirs, _) = collect_dirs_and_files(&set)?;
@@ -844,7 +850,15 @@ mod tests {
         }
     }
 
-    fn fake_file(name: impl Into<String>, messages: Vec<DescriptorProto>) -> FileDescriptorProto {
+    fn fake_file_empty(name: impl Into<String>) -> FileDescriptorProto {
+        fake_file(name, vec![], vec![])
+    }
+
+    fn fake_file(
+        name: impl Into<String>,
+        enums: Vec<EnumDescriptorProto>,
+        messages: Vec<DescriptorProto>,
+    ) -> FileDescriptorProto {
         FileDescriptorProto {
             name: Some(name.into()),
             package: None,
@@ -852,12 +866,33 @@ mod tests {
             public_dependency: vec![],
             weak_dependency: vec![],
             message_type: messages,
-            enum_type: vec![],
+            enum_type: enums,
             service: vec![],
             extension: vec![],
             options: None,
             source_code_info: None,
             syntax: None,
+        }
+    }
+
+    fn fake_enum<N, V>(name: N, values: &[(&V, i32)]) -> EnumDescriptorProto
+    where
+        N: Into<String>,
+        V: ToString,
+    {
+        EnumDescriptorProto {
+            name: Option::<String>::Some(name.into()),
+            value: values
+                .into_iter()
+                .map(|(name, number)| EnumValueDescriptorProto {
+                    name: Some(name.to_string()),
+                    number: Some(number.clone()),
+                    options: None,
+                })
+                .collect(),
+            options: None,
+            reserved_range: vec![],
+            reserved_name: vec![],
         }
     }
 
@@ -893,6 +928,7 @@ mod tests {
     }
 
     const IMPORT_TEMPLATE_NAME: &str = "import";
+    const ENUM_TEMPLATE_NAME: &str = "enum";
     const MESSAGE_TEMPLATE_NAME: &str = "message";
     const FIELD_TEMPLATE_NAME: &str = "field";
 
@@ -903,12 +939,23 @@ mod tests {
         renderer.load_template_string(IMPORT_TEMPLATE_NAME, template)
     }
 
+    fn load_enum_template(renderer: &mut Renderer, template: impl AsRef<str>) -> Result<()> {
+        renderer.load_template_string(ENUM_TEMPLATE_NAME, template)
+    }
+
     fn load_message_template(renderer: &mut Renderer, template: impl AsRef<str>) -> Result<()> {
         renderer.load_template_string(MESSAGE_TEMPLATE_NAME, template)
     }
 
     fn load_field_template(renderer: &mut Renderer, template: impl AsRef<str>) -> Result<()> {
         renderer.load_template_string(FIELD_TEMPLATE_NAME, template)
+    }
+
+    fn render_enum(renderer: &mut Renderer, enum_proto: &EnumDescriptorProto) -> Result<String> {
+        renderer.render_to_string(
+            ENUM_TEMPLATE_NAME,
+            &EnumContext::new(&enum_proto, &renderer.config)?,
+        )
     }
 
     fn render_message(renderer: &mut Renderer, message: &DescriptorProto) -> Result<String> {
