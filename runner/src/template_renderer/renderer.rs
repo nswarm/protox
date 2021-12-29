@@ -9,6 +9,7 @@ use log::{debug, info};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 use walkdir::WalkDir;
@@ -148,11 +149,10 @@ impl Renderer<'_> {
 
     fn render_files(&self, descriptor_set: &FileDescriptorSet, output_path: &Path) -> Result<()> {
         for file in &descriptor_set.file {
-            let case = &self.config.case_config.file_name;
             let file_name = &file_name(file, self.output_ext())?;
             info!("Rendering file for descriptor '{}'", file_name);
-            let path = case.rename_file_name(&output_path.join(file_name));
-            let mut writer = io::BufWriter::new(util::create_file_or_error(&path)?);
+            let path = &output_path.join(file_name);
+            let mut writer = self.file_writer(&path)?;
             self.render_file(file, &mut writer)?;
         }
         Ok(())
@@ -166,12 +166,8 @@ impl Renderer<'_> {
         let package_to_files = self.collect_package_to_file_map(descriptor_set);
         let mut package_files = HashMap::new();
         for (package, files) in package_to_files {
-            let path = self
-                .config
-                .case_config
-                .file_name
-                .rename_file_name(&self.package_to_file_path(output_path, package));
-            let mut writer = io::BufWriter::new(util::create_file_or_error(&path)?);
+            let path = &self.package_to_file_path(output_path, package);
+            let mut writer = self.file_writer(&path)?;
             for file in files {
                 log_render_package_file(file, package);
                 self.render_file(file, &mut writer)?;
@@ -182,6 +178,11 @@ impl Renderer<'_> {
             );
         }
         Ok(package_files)
+    }
+
+    fn file_writer(&self, path: &Path) -> Result<io::BufWriter<File>> {
+        let path = self.config.case_config.file_name.rename_file_name(path);
+        Ok(io::BufWriter::new(util::create_file_or_error(&path)?))
     }
 
     fn collect_package_to_file_map<'a>(
