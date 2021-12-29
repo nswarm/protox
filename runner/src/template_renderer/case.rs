@@ -3,6 +3,7 @@ use heck::{
     ToUpperCamelCase,
 };
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Case {
@@ -75,6 +76,20 @@ impl Case {
             Case::LowerCamel => str.to_lower_camel_case(),
             Case::UpperCamel => str.to_upper_camel_case(),
         }
+    }
+
+    pub fn rename_file_name(&self, path: &Path) -> PathBuf {
+        let file_name = match path.file_name() {
+            None => return path.to_path_buf(),
+            Some(file_name) => match file_name.to_str() {
+                None => return path.to_path_buf(),
+                Some(file_name) => file_name,
+            },
+        };
+        path.parent()
+            .map(Path::to_path_buf)
+            .unwrap_or(PathBuf::new())
+            .join(self.rename(file_name))
     }
 }
 

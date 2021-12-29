@@ -148,9 +148,10 @@ impl Renderer<'_> {
 
     fn render_files(&self, descriptor_set: &FileDescriptorSet, output_path: &Path) -> Result<()> {
         for file in &descriptor_set.file {
-            let file_name = file_name(file, self.output_ext())?;
+            let case = &self.config.case_config.file_name;
+            let file_name = &file_name(file, self.output_ext())?;
             info!("Rendering file for descriptor '{}'", file_name);
-            let path = output_path.join(file_name);
+            let path = case.rename_file_name(&output_path.join(file_name));
             let mut writer = io::BufWriter::new(util::create_file_or_error(&path)?);
             self.render_file(file, &mut writer)?;
         }
@@ -376,6 +377,7 @@ mod tests {
     use std::path::PathBuf;
 
     mod render {
+        use crate::template_renderer::case::Case;
         use crate::template_renderer::renderer::tests::{fake_file_empty, fake_file_with_package};
         use crate::template_renderer::renderer::Renderer;
         use crate::template_renderer::renderer_config::RendererConfig;
@@ -417,6 +419,23 @@ mod tests {
             assert!(test_dir.path().join("other-sub-inner").exists());
 
             assert!(test_dir.path().join("metadata").exists());
+            Ok(())
+        }
+
+        #[test]
+        fn renders_file_with_configured_case() -> Result<()> {
+            let mut config = RendererConfig::default();
+            config.case_config.file_name = Case::UpperSnake;
+            let renderer = renderer_with_templates(config)?;
+            let test_dir = tempdir()?;
+
+            let set = FileDescriptorSet {
+                file: vec![fake_file_empty("fileName")],
+            };
+            renderer.render(&set, test_dir.path())?;
+
+            assert!(test_dir.path().join("FILE_NAME").exists());
+            assert!(test_dir.path().join("METADATA").exists());
             Ok(())
         }
 

@@ -96,12 +96,12 @@ fn default_package_file_name() -> String {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CaseConfig {
-    file_name: Case,
-    import: Case,
-    enum_name: Case,
-    enum_value_name: Case,
-    message_name: Case,
-    field_name: Case,
+    pub file_name: Case,
+    pub import: Case,
+    pub enum_name: Case,
+    pub enum_value_name: Case,
+    pub message_name: Case,
+    pub field_name: Case,
 }
 
 impl Default for CaseConfig {
