@@ -22,7 +22,7 @@ impl<'a> FileContext<'a> {
         );
         let context = Self {
             source_file: source_file(file)?,
-            imports: imports(file, config)?,
+            imports: imports(file)?,
             enums: enums(file, config)?,
             messages: messages(file, file.package.as_ref(), config)?,
         };
@@ -34,10 +34,10 @@ fn source_file(file: &FileDescriptorProto) -> Result<&str> {
     util::str_or_error(&file.name, || "File has no 'name'".to_string())
 }
 
-fn imports(file: &FileDescriptorProto, config: &RendererConfig) -> Result<Vec<ImportContext>> {
+fn imports(file: &FileDescriptorProto) -> Result<Vec<ImportContext>> {
     let mut imports = Vec::new();
     for import in &file.dependency {
-        imports.push(ImportContext::new(import, config)?);
+        imports.push(ImportContext::new(import)?);
     }
     Ok(imports)
 }

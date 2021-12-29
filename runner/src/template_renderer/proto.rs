@@ -8,6 +8,7 @@ pub struct TypePath<'a> {
     type_name: Option<String>,
     separator: Option<&'a str>,
     type_name_case: Option<Case>,
+    package_case: Option<Case>,
 }
 
 impl<'a> TypePath<'a> {
@@ -18,6 +19,7 @@ impl<'a> TypePath<'a> {
             type_name: None,
             separator: None,
             type_name_case: None,
+            package_case: None,
         }
     }
 
@@ -32,6 +34,7 @@ impl<'a> TypePath<'a> {
             type_name: type_name.map(str::to_string),
             separator: None,
             type_name_case: None,
+            package_case: None,
         }
     }
 
@@ -63,23 +66,27 @@ impl<'a> TypePath<'a> {
         self.type_name_case = case;
     }
 
+    pub fn set_package_case(&mut self, case: Option<Case>) {
+        self.package_case = case;
+    }
+
     pub fn separator(&self) -> &str {
         self.separator.unwrap_or(PACKAGE_SEPARATOR_STR)
     }
 
     pub fn to_string(&self) -> String {
-        match &self.type_name_with_case() {
-            None => self.components.join(self.separator()),
-            Some(type_name) => {
-                let mut v = self
-                    .components
-                    .iter()
-                    .map(String::as_str)
-                    .collect::<Vec<&str>>();
-                v.push(type_name);
-                v.join(self.separator())
-            }
-        }
+        let mut components = self
+            .components
+            .iter()
+            .map(|s| match self.package_case {
+                None => s.to_string(),
+                Some(case) => case.rename(s),
+            })
+            .collect::<Vec<String>>();
+        if let Some(type_name) = &self.type_name_with_case() {
+            components.push(type_name.to_string());
+        };
+        components.join(self.separator())
     }
 
     pub fn relative_to<P: AsRef<str>, F: AsRef<str>>(
@@ -340,10 +347,17 @@ mod tests {
         }
 
         #[test]
-        fn with_case() {
+        fn with_name_case() {
             let mut path = TypePath::from_type("root.sub.TypeName");
             path.set_name_case(Some(Case::UpperSnake));
             assert_eq!(path.to_string(), "root.sub.TYPE_NAME");
+        }
+
+        #[test]
+        fn with_package_case() {
+            let mut path = TypePath::from_type("rootPkg.subPkg.TypeName");
+            path.set_package_case(Some(Case::UpperSnake));
+            assert_eq!(path.to_string(), "ROOT_PKG.SUB_PKG.TypeName");
         }
     }
 

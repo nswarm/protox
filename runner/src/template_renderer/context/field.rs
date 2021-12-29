@@ -70,6 +70,7 @@ fn create_type_path<'a>(
         Some(type_name) => {
             let mut type_path = proto::TypePath::from_type(type_name);
             type_path.set_name_case(Some(config.case_config.message_name));
+            type_path.set_package_case(Some(config.case_config.import));
             type_path
         }
     };
