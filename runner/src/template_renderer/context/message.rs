@@ -1,3 +1,4 @@
+use crate::template_renderer::case::Case;
 use crate::template_renderer::context::FieldContext;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
@@ -7,20 +8,20 @@ use prost_types::DescriptorProto;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct MessageContext<'a> {
-    name: &'a str,
+pub struct MessageContext {
+    name: String,
     fields: Vec<FieldContext>,
 }
 
-impl<'a> MessageContext<'a> {
+impl MessageContext {
     pub fn new(
-        message: &'a DescriptorProto,
+        message: &DescriptorProto,
         package: Option<&String>,
-        config: &'a RendererConfig,
+        config: &RendererConfig,
     ) -> Result<Self> {
         log_new_message(&message.name);
         let context = Self {
-            name: name(message)?,
+            name: name(message, config.case_config.message_name)?,
             fields: fields(message, package, config)?,
         };
         Ok(context)
@@ -31,14 +32,15 @@ fn log_new_message(name: &Option<String>) {
     debug!("Creating message context: {}", util::str_or_unknown(name));
 }
 
-fn name(message: &DescriptorProto) -> Result<&str> {
-    util::str_or_error(&message.name, || "Message has no 'name'".to_string())
+fn name(message: &DescriptorProto, case: Case) -> Result<String> {
+    let name = util::str_or_error(&message.name, || "Message has no 'name'".to_string())?;
+    Ok(case.rename(name))
 }
 
-fn fields<'a>(
-    message: &'a DescriptorProto,
+fn fields(
+    message: &DescriptorProto,
     package: Option<&String>,
-    config: &'a RendererConfig,
+    config: &RendererConfig,
 ) -> Result<Vec<FieldContext>> {
     let mut fields = Vec::new();
     for field in &message.field {
@@ -49,6 +51,7 @@ fn fields<'a>(
 
 #[cfg(test)]
 mod tests {
+    use crate::template_renderer::case::Case;
     use crate::template_renderer::context::message::MessageContext;
     use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
@@ -57,11 +60,23 @@ mod tests {
     #[test]
     fn name() -> Result<()> {
         let config = RendererConfig::default();
-        let msg_name = "msg_name".to_string();
+        let msg_name = "MsgName".to_string();
         let mut message = default_message();
         message.name = Some(msg_name.clone());
         let context = MessageContext::new(&message, None, &config)?;
         assert_eq!(context.name, msg_name);
+        Ok(())
+    }
+
+    #[test]
+    fn name_with_case() -> Result<()> {
+        let mut config = RendererConfig::default();
+        config.case_config.message_name = Case::UpperSnake;
+        let msg_name = "msgName".to_string();
+        let mut message = default_message();
+        message.name = Some(msg_name.clone());
+        let context = MessageContext::new(&message, None, &config)?;
+        assert_eq!(context.name, "MSG_NAME");
         Ok(())
     }
 

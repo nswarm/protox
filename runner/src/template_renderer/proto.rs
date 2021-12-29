@@ -1,3 +1,5 @@
+use crate::template_renderer::case::Case;
+
 pub const PACKAGE_SEPARATOR: char = '.';
 pub const PACKAGE_SEPARATOR_STR: &str = ".";
 
@@ -5,6 +7,7 @@ pub struct TypePath<'a> {
     components: Vec<String>,
     type_name: Option<String>,
     separator: Option<&'a str>,
+    type_name_case: Option<Case>,
 }
 
 impl<'a> TypePath<'a> {
@@ -14,6 +17,7 @@ impl<'a> TypePath<'a> {
             components: break_into_components(package),
             type_name: None,
             separator: None,
+            type_name_case: None,
         }
     }
 
@@ -27,12 +31,22 @@ impl<'a> TypePath<'a> {
                 .unwrap_or_else(|| Vec::new()),
             type_name: type_name.map(str::to_string),
             separator: None,
+            type_name_case: None,
         }
     }
 
     /// Components of the package, not including any type name.
     pub fn components(&self) -> &Vec<String> {
         &self.components
+    }
+
+    pub fn type_name_with_case(&self) -> Option<String> {
+        self.type_name
+            .as_ref()
+            .map(|name| match self.type_name_case {
+                None => name.to_string(),
+                Some(case) => case.rename(&name),
+            })
     }
 
     /// Aka number of components in our package.
@@ -45,12 +59,16 @@ impl<'a> TypePath<'a> {
         self.separator = Some(sep);
     }
 
+    pub fn set_name_case(&mut self, case: Option<Case>) {
+        self.type_name_case = case;
+    }
+
     pub fn separator(&self) -> &str {
         self.separator.unwrap_or(PACKAGE_SEPARATOR_STR)
     }
 
     pub fn to_string(&self) -> String {
-        match &self.type_name {
+        match &self.type_name_with_case() {
             None => self.components.join(self.separator()),
             Some(type_name) => {
                 let mut v = self
@@ -112,7 +130,7 @@ impl<'a> TypePath<'a> {
             }
             depth += 1;
         }
-        if let Some(type_name) = &self.type_name {
+        if let Some(type_name) = &self.type_name_with_case() {
             result.push_str(type_name);
         }
         result
@@ -287,6 +305,7 @@ mod tests {
     }
 
     mod to_string {
+        use crate::template_renderer::case::Case;
         use crate::template_renderer::proto::TypePath;
 
         #[test]
@@ -319,9 +338,17 @@ mod tests {
             let path = TypePath::from_type("TypeName");
             assert_eq!(path.to_string(), "TypeName");
         }
+
+        #[test]
+        fn with_case() {
+            let mut path = TypePath::from_type("root.sub.TypeName");
+            path.set_name_case(Some(Case::UpperSnake));
+            assert_eq!(path.to_string(), "root.sub.TYPE_NAME");
+        }
     }
 
     mod relative_type {
+        use crate::template_renderer::case::Case;
         use crate::template_renderer::proto::TypePath;
 
         #[test]
@@ -357,6 +384,22 @@ mod tests {
             let qualified = TypePath::from_type("root.sub.TypeName");
             let result = qualified.relative_to::<&str, &str>(Some("root.sub"), None);
             assert_eq!(result, "TypeName");
+        }
+
+        #[test]
+        fn fully_qualified_with_case() {
+            let mut qualified = TypePath::from_type("root.sub.TypeName");
+            qualified.set_name_case(Some(Case::UpperSnake));
+            let result = qualified.relative_to::<&str, &str>(None, None);
+            assert_eq!(result, "root.sub.TYPE_NAME");
+        }
+
+        #[test]
+        fn relative_with_case() {
+            let mut qualified = TypePath::from_type("root.sub.TypeName");
+            qualified.set_name_case(Some(Case::UpperSnake));
+            let result = qualified.relative_to::<&str, &str>(Some("root"), None);
+            assert_eq!(result, "sub.TYPE_NAME");
         }
 
         mod with_parent_prefix {

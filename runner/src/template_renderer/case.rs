@@ -5,24 +5,24 @@ use heck::{
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum Case {
     #[serde(alias = "UpperCase")]
     #[serde(alias = "UPPER")]
     #[serde(alias = "UPPERCASE")]
-    #[serde(rename = "UPPERCASE")]
+    #[serde(rename(serialize = "UPPERCASE"))]
     Upper,
 
     #[serde(alias = "LowerCase")]
     #[serde(alias = "lower")]
     #[serde(alias = "lowercase")]
-    #[serde(rename = "lowercase")]
+    #[serde(rename(serialize = "lowercase"))]
     Lower,
 
     #[serde(alias = "LowerSnakeCase")]
     #[serde(alias = "lower_snake")]
     #[serde(alias = "lower_snake_case")]
-    #[serde(rename = "lower_snake_case")]
+    #[serde(rename(serialize = "lower_snake_case"))]
     LowerSnake,
 
     #[serde(alias = "ScreamingSnake")]
@@ -32,13 +32,13 @@ pub enum Case {
     #[serde(alias = "UpperSnakeCase")]
     #[serde(alias = "UPPER_SNAKE")]
     #[serde(alias = "UPPER_SNAKE_CASE")]
-    #[serde(rename = "UPPER_SNAKE_CASE")]
+    #[serde(rename(serialize = "UPPER_SNAKE_CASE"))]
     UpperSnake,
 
     #[serde(alias = "LowerKebabCase")]
     #[serde(alias = "lower-kebab")]
     #[serde(alias = "lower-kebab-case")]
-    #[serde(rename = "lower-kebab-case")]
+    #[serde(rename(serialize = "lower-kebab-case"))]
     LowerKebab,
 
     #[serde(alias = "ScreamingKebab")]
@@ -48,19 +48,19 @@ pub enum Case {
     #[serde(alias = "UpperKebabCase")]
     #[serde(alias = "UPPER-KEBAB")]
     #[serde(alias = "UPPER-KEBAB-CASE")]
-    #[serde(rename = "UPPER-KEBAB-CASE")]
+    #[serde(rename(serialize = "UPPER-KEBAB-CASE"))]
     UpperKebab,
 
     #[serde(alias = "LowerCamelCase")]
     #[serde(alias = "lowerCamel")]
     #[serde(alias = "lowerCamelCase")]
-    #[serde(rename = "lowerCamelCase")]
+    #[serde(rename(serialize = "lowerCamelCase"))]
     LowerCamel,
 
     #[serde(alias = "Pascal")]
     #[serde(alias = "PascalCase")]
     #[serde(alias = "UpperCamelCase")]
-    #[serde(rename = "UpperCamelCase")]
+    #[serde(rename(serialize = "UpperCamelCase"))]
     UpperCamel,
 }
 

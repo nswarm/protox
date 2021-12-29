@@ -543,7 +543,7 @@ mod tests {
         )?;
         load_field_template(&mut renderer, "{{name}}:::{{native_type}}".to_string())?;
 
-        let msg_name = "msg_name".to_string();
+        let msg_name = "MsgName".to_string();
         let field0 = fake_field("field0", primitive::FLOAT);
         let field1 = fake_field("field1", primitive::BOOL);
         let field0_rendered = render_field(&renderer, &field0, None)?;
@@ -561,7 +561,7 @@ mod tests {
     #[test]
     fn field_template() -> Result<()> {
         let field_name = "field_name";
-        let type_name = ["TEST-", primitive::FLOAT].concat();
+        let type_name = ["Test", primitive::FLOAT].concat();
         let separator = ":::";
         let mut config = RendererConfig::default();
         config

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::template_renderer::case::Case;
+use crate::template_renderer::proto::TypePath;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::template_renderer::{primitive, proto};
 use crate::util;
@@ -35,14 +36,13 @@ impl FieldContext {
         config: &RendererConfig,
     ) -> Result<Self> {
         log_new_field(&field.name);
-        let fully_qualified_type = fully_qualified_type(field, config)?;
-        let mut proto_type = proto::TypePath::from_type(fully_qualified_type);
+        let mut proto_type = create_type_path(field, config)?;
         proto_type.set_separator(&config.package_separator);
         let context = Self {
             field_name: field_name(
                 field,
                 &config.field_name_override,
-                &config.case_config.field_name,
+                config.case_config.field_name,
             )?,
             fully_qualified_type: proto_type.to_string(),
             relative_type: proto_type
@@ -61,10 +61,25 @@ fn log_new_field(name: &Option<String>) {
     debug!("Creating field context: {}", util::str_or_unknown(name));
 }
 
+fn create_type_path<'a>(
+    field: &'a FieldDescriptorProto,
+    config: &'a RendererConfig,
+) -> Result<TypePath<'a>> {
+    let result = match fully_qualified_type(field, config)? {
+        None => proto::TypePath::from_type(configured_primitive_type_name(field, config)?),
+        Some(type_name) => {
+            let mut type_path = proto::TypePath::from_type(type_name);
+            type_path.set_name_case(Some(config.case_config.message_name));
+            type_path
+        }
+    };
+    Ok(result)
+}
+
 fn field_name(
     field: &FieldDescriptorProto,
     overrides: &HashMap<String, String>,
-    case: &Case,
+    case: Case,
 ) -> Result<String> {
     let field_name = util::str_or_error(&field.name, || "Field has no 'name'".to_string())?;
     let result = case.rename(
@@ -79,19 +94,19 @@ fn field_name(
 fn fully_qualified_type<'a>(
     field: &'a FieldDescriptorProto,
     config: &'a RendererConfig,
-) -> Result<&'a str> {
-    let fully_qualified_type = match &field.type_name {
+) -> Result<Option<&'a str>> {
+    match &field.type_name {
         Some(type_name) => {
             let type_name = proto::normalize_prefix(type_name);
-            config
+            let type_name = config
                 .type_config
                 .get(type_name)
                 .map(String::as_str)
-                .unwrap_or(type_name)
+                .unwrap_or(type_name);
+            Ok(Some(type_name))
         }
-        None => configured_primitive_type_name(field, config)?,
-    };
-    Ok(fully_qualified_type)
+        None => Ok(None),
+    }
 }
 
 fn configured_primitive_type_name<'a>(
@@ -227,7 +242,7 @@ mod tests {
             let mut config = RendererConfig::default();
             config.type_config.insert(
                 proto_type_name.to_string(),
-                ["TEST", proto_type_name].concat(),
+                ["Test", proto_type_name].concat(),
             );
             let mut field = default_field();
             field.name = Some("field_name".to_string());
@@ -270,6 +285,33 @@ mod tests {
         field.name = Some("field_name".to_string());
         let result = FieldContext::new(&field, None, &config);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn type_name_case() -> Result<()> {
+        let mut config = RendererConfig::default();
+        config.case_config.message_name = Case::UpperSnake;
+        let mut field = default_field();
+        field.name = Some("field_name".to_string());
+        field.type_name = Some("TypeName".to_string());
+        let context = FieldContext::new(&field, None, &config)?;
+        assert_eq!(context.fully_qualified_type, "TYPE_NAME");
+        Ok(())
+    }
+
+    #[test]
+    fn type_name_case_ignored_for_primitives() -> Result<()> {
+        let mut config = RendererConfig::default();
+        config.case_config.message_name = Case::UpperSnake;
+        let mut field = default_field();
+        field.name = Some("field_name".to_string());
+        field.r#type = Some(2);
+        let context = FieldContext::new(&field, None, &config)?;
+        assert_eq!(
+            context.fully_qualified_type,
+            primitive::FLOAT.to_ascii_lowercase()
+        );
+        Ok(())
     }
 
     fn default_field() -> FieldDescriptorProto {

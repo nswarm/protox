@@ -11,7 +11,7 @@ pub struct FileContext<'a> {
     source_file: &'a str,
     imports: Vec<ImportContext>,
     enums: Vec<EnumContext<'a>>,
-    messages: Vec<MessageContext<'a>>,
+    messages: Vec<MessageContext>,
 }
 
 impl<'a> FileContext<'a> {
@@ -57,7 +57,7 @@ fn messages<'a>(
     file: &'a FileDescriptorProto,
     package: Option<&String>,
     config: &'a RendererConfig,
-) -> Result<Vec<MessageContext<'a>>> {
+) -> Result<Vec<MessageContext>> {
     let mut messages = Vec::new();
     for message in &file.message_type {
         messages.push(MessageContext::new(message, package, config)?);
