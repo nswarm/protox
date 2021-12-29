@@ -1,3 +1,4 @@
+use crate::template_renderer::case::Case;
 use crate::template_renderer::renderer::Renderer;
 use crate::template_renderer::{primitive, proto};
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,9 @@ pub struct RendererConfig {
     /// }
     /// ```
     pub type_config: HashMap<String, String>,
+
+    #[serde(default = "default_case_config")]
+    pub case_config: CaseConfig,
 
     /// Name of directory metadata files.
     /// default: "metadata"
@@ -74,6 +78,10 @@ pub struct RendererConfig {
     pub field_relative_parent_prefix: Option<String>,
 }
 
+fn default_case_config() -> CaseConfig {
+    CaseConfig::default()
+}
+
 fn default_metadata_file_name() -> String {
     Renderer::METADATA_TEMPLATE_NAME.to_string()
 }
@@ -86,11 +94,35 @@ fn default_package_file_name() -> String {
     "_".to_string()
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CaseConfig {
+    file_name: Case,
+    import: Case,
+    enum_name: Case,
+    enum_value_name: Case,
+    message_name: Case,
+    field_name: Case,
+}
+
+impl Default for CaseConfig {
+    fn default() -> Self {
+        Self {
+            file_name: Case::LowerKebab,
+            import: Case::LowerSnake,
+            enum_name: Case::UpperCamel,
+            enum_value_name: Case::UpperCamel,
+            message_name: Case::UpperCamel,
+            field_name: Case::LowerSnake,
+        }
+    }
+}
+
 impl Default for RendererConfig {
     fn default() -> Self {
         Self {
             file_extension: "".to_string(),
             type_config: default_type_config(),
+            case_config: Default::default(),
             metadata_file_name: default_metadata_file_name(),
             package_separator: default_package_separator(),
             one_file_per_package: false,

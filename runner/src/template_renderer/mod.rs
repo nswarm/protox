@@ -1,3 +1,4 @@
+mod case;
 mod context;
 mod indent_helper;
 mod primitive;
