@@ -79,7 +79,7 @@ impl Case {
     }
 
     pub fn rename_file_name(&self, path: &Path) -> PathBuf {
-        let file_name = match path.file_name() {
+        let file_name = match path.file_stem() {
             None => return path.to_path_buf(),
             Some(file_name) => match file_name.to_str() {
                 None => return path.to_path_buf(),
@@ -90,6 +90,7 @@ impl Case {
             .map(Path::to_path_buf)
             .unwrap_or(PathBuf::new())
             .join(self.rename(file_name))
+            .with_extension(path.extension().unwrap_or("".as_ref()))
     }
 }
 
@@ -261,5 +262,17 @@ mod tests {
         .into_iter()
         .map(str::to_string)
         .collect()
+    }
+
+    mod rename_file_name {
+        use crate::template_renderer::case::Case;
+        use std::path::PathBuf;
+
+        #[test]
+        fn renames_only_file_name() {
+            let path = PathBuf::from("testPath/testName.ext");
+            let result = Case::UpperSnake.rename_file_name(&path);
+            assert_eq!(result, PathBuf::from("testPath/TEST_NAME.ext"));
+        }
     }
 }

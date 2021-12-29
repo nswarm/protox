@@ -109,7 +109,7 @@ impl Renderer<'_> {
                 _ => continue,
             };
 
-            let template_name = match file.with_extension("").file_name() {
+            let template_name = match file.file_stem() {
                 None => continue,
                 Some(file_name) => match file_name.to_str() {
                     None => continue,
@@ -166,7 +166,11 @@ impl Renderer<'_> {
         let package_to_files = self.collect_package_to_file_map(descriptor_set);
         let mut package_files = HashMap::new();
         for (package, files) in package_to_files {
-            let path = self.package_to_file_path(output_path, package);
+            let path = self
+                .config
+                .case_config
+                .file_name
+                .rename_file_name(&self.package_to_file_path(output_path, package));
             let mut writer = io::BufWriter::new(util::create_file_or_error(&path)?);
             for file in files {
                 log_render_package_file(file, package);
@@ -408,12 +412,12 @@ mod tests {
         fn render_files_collapsed() -> Result<()> {
             let mut config = RendererConfig::default();
             config.one_file_per_package = true;
-            config.default_package_file_name = "pkg_root".to_string();
+            config.default_package_file_name = "pkg-root".to_string();
             let renderer = renderer_with_templates(config)?;
             let test_dir = tempdir()?;
             renderer.render(&test_file_set(), test_dir.path())?;
 
-            assert!(test_dir.path().join("pkg_root").exists());
+            assert!(test_dir.path().join("pkg-root").exists());
             assert!(test_dir.path().join("test").exists());
             assert!(test_dir.path().join("test-sub").exists());
             assert!(test_dir.path().join("other-sub-inner").exists());
@@ -435,6 +439,25 @@ mod tests {
             renderer.render(&set, test_dir.path())?;
 
             assert!(test_dir.path().join("FILE_NAME").exists());
+            assert!(test_dir.path().join("METADATA").exists());
+            Ok(())
+        }
+
+        #[test]
+        fn render_files_collapsed_with_configured_case() -> Result<()> {
+            let mut config = RendererConfig::default();
+            config.one_file_per_package = true;
+            config.default_package_file_name = "pkgRoot".to_string();
+            config.case_config.file_name = Case::UpperSnake;
+            let renderer = renderer_with_templates(config)?;
+            let test_dir = tempdir()?;
+
+            let set = FileDescriptorSet {
+                file: vec![fake_file_empty("fileName")],
+            };
+            renderer.render(&set, test_dir.path())?;
+
+            assert!(test_dir.path().join("PKG_ROOT").exists());
             assert!(test_dir.path().join("METADATA").exists());
             Ok(())
         }

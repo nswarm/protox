@@ -22,7 +22,7 @@
     "bytes": "Vec<u8>"
   },
   "case_config": {
-    "file_name": "UpperCamel",
+    "file_name": "lower-kebab",
     "import": "lower_snake",
     "enum_name":  "UpperCamel",
     "enum_value_name": "UpperCamel",
