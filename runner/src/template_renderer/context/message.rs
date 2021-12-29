@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct MessageContext<'a> {
     name: &'a str,
-    fields: Vec<FieldContext<'a>>,
+    fields: Vec<FieldContext>,
 }
 
 impl<'a> MessageContext<'a> {
@@ -39,7 +39,7 @@ fn fields<'a>(
     message: &'a DescriptorProto,
     package: Option<&String>,
     config: &'a RendererConfig,
-) -> Result<Vec<FieldContext<'a>>> {
+) -> Result<Vec<FieldContext>> {
     let mut fields = Vec::new();
     for field in &message.field {
         fields.push(FieldContext::new(field, package, config)?);

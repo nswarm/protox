@@ -560,7 +560,7 @@ mod tests {
 
     #[test]
     fn field_template() -> Result<()> {
-        let field_name = "field-name";
+        let field_name = "field_name";
         let type_name = ["TEST-", primitive::FLOAT].concat();
         let separator = ":::";
         let mut config = RendererConfig::default();

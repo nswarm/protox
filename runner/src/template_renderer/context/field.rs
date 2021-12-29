@@ -4,13 +4,14 @@ use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::template_renderer::case::Case;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::template_renderer::{primitive, proto};
 use crate::util;
 
 #[derive(Serialize, Deserialize)]
-pub struct FieldContext<'a> {
-    field_name: &'a str,
+pub struct FieldContext {
+    field_name: String,
     /// Type as defined by type config or literal type name.
     ///
     /// ```txt
@@ -27,18 +28,22 @@ pub struct FieldContext<'a> {
     relative_type: String,
 }
 
-impl<'a> FieldContext<'a> {
+impl FieldContext {
     pub fn new(
-        field: &'a FieldDescriptorProto,
+        field: &FieldDescriptorProto,
         package: Option<&String>,
-        config: &'a RendererConfig,
+        config: &RendererConfig,
     ) -> Result<Self> {
         log_new_field(&field.name);
         let fully_qualified_type = fully_qualified_type(field, config)?;
         let mut proto_type = proto::TypePath::from_type(fully_qualified_type);
         proto_type.set_separator(&config.package_separator);
         let context = Self {
-            field_name: field_name(field, &config.field_name_override)?,
+            field_name: field_name(
+                field,
+                &config.field_name_override,
+                &config.case_config.field_name,
+            )?,
             fully_qualified_type: proto_type.to_string(),
             relative_type: proto_type
                 .relative_to(package, config.field_relative_parent_prefix.as_ref()),
@@ -56,15 +61,19 @@ fn log_new_field(name: &Option<String>) {
     debug!("Creating field context: {}", util::str_or_unknown(name));
 }
 
-fn field_name<'a>(
-    field: &'a FieldDescriptorProto,
-    overrides: &'a HashMap<String, String>,
-) -> Result<&'a str> {
+fn field_name(
+    field: &FieldDescriptorProto,
+    overrides: &HashMap<String, String>,
+    case: &Case,
+) -> Result<String> {
     let field_name = util::str_or_error(&field.name, || "Field has no 'name'".to_string())?;
-    Ok(overrides
-        .get(field_name)
-        .map(String::as_str)
-        .unwrap_or(field_name))
+    let result = case.rename(
+        overrides
+            .get(field_name)
+            .map(String::as_str)
+            .unwrap_or(field_name),
+    );
+    Ok(result)
 }
 
 fn fully_qualified_type<'a>(
@@ -135,6 +144,7 @@ fn i32_to_proto_type(val: i32) -> Result<prost_types::field::Kind> {
 
 #[cfg(test)]
 mod tests {
+    use crate::template_renderer::case::Case;
     use anyhow::Result;
     use prost_types::FieldDescriptorProto;
 
@@ -167,6 +177,19 @@ mod tests {
         field.type_name = Some(primitive::FLOAT.to_string());
         let context = FieldContext::new(&field, None, &config)?;
         assert_eq!(context.field_name.to_string(), new_name);
+        Ok(())
+    }
+
+    #[test]
+    fn field_name_case_change() -> Result<()> {
+        let mut config = RendererConfig::default();
+        config.case_config.field_name = Case::UpperSnake;
+        let name = "testName".to_string();
+        let mut field = default_field();
+        field.name = Some(name.clone());
+        field.type_name = Some(primitive::FLOAT.to_string());
+        let context = FieldContext::new(&field, None, &config)?;
+        assert_eq!(context.field_name.to_string(), "TEST_NAME");
         Ok(())
     }
 
