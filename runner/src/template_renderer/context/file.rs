@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct FileContext<'a> {
     source_file: &'a str,
     imports: Vec<ImportContext>,
-    enums: Vec<EnumContext<'a>>,
+    enums: Vec<EnumContext>,
     messages: Vec<MessageContext>,
 }
 
@@ -45,7 +45,7 @@ fn imports(file: &FileDescriptorProto) -> Result<Vec<ImportContext>> {
 fn enums<'a>(
     file: &'a FileDescriptorProto,
     config: &'a RendererConfig,
-) -> Result<Vec<EnumContext<'a>>> {
+) -> Result<Vec<EnumContext>> {
     let mut enums = Vec::new();
     for proto in &file.enum_type {
         enums.push(EnumContext::new(proto, config)?);

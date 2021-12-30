@@ -6,8 +6,8 @@ use prost_types::EnumDescriptorProto;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct EnumContext<'a> {
-    name: &'a str,
+pub struct EnumContext {
+    name: String,
     values: Vec<EnumValueContext>,
 }
 
@@ -17,12 +17,12 @@ pub struct EnumValueContext {
     number: i32,
 }
 
-impl<'a> EnumContext<'a> {
-    pub fn new(proto: &'a EnumDescriptorProto, _config: &'a RendererConfig) -> Result<Self> {
+impl EnumContext {
+    pub fn new(proto: &EnumDescriptorProto, config: &RendererConfig) -> Result<Self> {
         log_new_enum(&proto.name);
         let context = Self {
-            name: name(&proto)?,
-            values: values(&proto)?,
+            name: name(&proto, config)?,
+            values: values(&proto, config)?,
         };
         Ok(context)
     }
@@ -32,18 +32,23 @@ fn log_new_enum(name: &Option<String>) {
     debug!("Creating message context: {}", util::str_or_unknown(name));
 }
 
-fn name(proto: &EnumDescriptorProto) -> Result<&str> {
-    util::str_or_error(&proto.name, || "Enum has no 'name'".to_string())
+fn name(proto: &EnumDescriptorProto, config: &RendererConfig) -> Result<String> {
+    let name = util::str_or_error(&proto.name, || "Enum has no 'name'".to_string())?;
+    Ok(config.case_config.enum_name.rename(name))
 }
 
-fn values(proto: &EnumDescriptorProto) -> Result<Vec<EnumValueContext>> {
+fn values(proto: &EnumDescriptorProto, config: &RendererConfig) -> Result<Vec<EnumValueContext>> {
     let mut values = Vec::new();
     for value in &proto.value {
         let (name, number) = match (value.name.clone(), value.number) {
             (Some(name), Some(number)) => (name, number),
             _ => return Err(error_invalid_value(&value.name)),
         };
-        values.push(EnumValueContext { name, number });
+        let case = &config.case_config.enum_value_name;
+        values.push(EnumValueContext {
+            name: case.rename(&name),
+            number,
+        });
     }
     Ok(values)
 }
@@ -57,6 +62,7 @@ fn error_invalid_value(name: &Option<String>) -> anyhow::Error {
 
 #[cfg(test)]
 mod tests {
+    use crate::template_renderer::case::Case;
     use crate::template_renderer::context::EnumContext;
     use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
@@ -65,11 +71,23 @@ mod tests {
     #[test]
     fn name() -> Result<()> {
         let config = RendererConfig::default();
-        let enum_name = "msg_name".to_string();
+        let enum_name = "MsgName".to_string();
         let mut proto = default_enum();
         proto.name = Some(enum_name.clone());
         let context = EnumContext::new(&proto, &config)?;
         assert_eq!(context.name, enum_name);
+        Ok(())
+    }
+
+    #[test]
+    fn name_with_case() -> Result<()> {
+        let mut config = RendererConfig::default();
+        config.case_config.enum_name = Case::UpperSnake;
+        let enum_name = "MsgName".to_string();
+        let mut proto = default_enum();
+        proto.name = Some(enum_name.clone());
+        let context = EnumContext::new(&proto, &config)?;
+        assert_eq!(context.name, "MSG_NAME");
         Ok(())
     }
 
@@ -82,10 +100,10 @@ mod tests {
     }
 
     #[test]
-    fn creates_values_from_proto() -> Result<()> {
+    fn values() -> Result<()> {
         let config = RendererConfig::default();
         let mut proto = default_enum();
-        proto.name = Some("enum_name".to_string());
+        proto.name = Some("EnumName".to_string());
         proto.value.push(enum_value(1));
         proto.value.push(enum_value(2));
         let context = EnumContext::new(&proto, &config)?;
@@ -96,9 +114,33 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn values_with_case() -> Result<()> {
+        let mut config = RendererConfig::default();
+        config.case_config.enum_value_name = Case::UpperSnake;
+        let mut proto = default_enum();
+        proto.name = Some("EnumName".to_string());
+        proto.value.push(named_enum_value("ValueName1", 1));
+        proto.value.push(named_enum_value("ValueName2", 2));
+        let context = EnumContext::new(&proto, &config)?;
+        assert_eq!(context.values[0].name, "VALUE_NAME1");
+        assert_eq!(context.values[0].number, 1);
+        assert_eq!(context.values[1].name, "VALUE_NAME2");
+        assert_eq!(context.values[1].number, 2);
+        Ok(())
+    }
+
     fn enum_value(number: i32) -> EnumValueDescriptorProto {
         EnumValueDescriptorProto {
             name: Some(number.to_string()),
+            number: Some(number),
+            options: None,
+        }
+    }
+
+    fn named_enum_value(name: &str, number: i32) -> EnumValueDescriptorProto {
+        EnumValueDescriptorProto {
+            name: Some(name.to_string()),
             number: Some(number),
             options: None,
         }
