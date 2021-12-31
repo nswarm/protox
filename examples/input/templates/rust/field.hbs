@@ -1,1 +1,5 @@
+{{#if is_map}}
+    {{field_name}}: ::std::collections::HashMap<{{relative_key_type}}, {{relative_value_type}}>,
+{{else}}
     {{field_name}}: {{relative_type}},
+{{/if}}

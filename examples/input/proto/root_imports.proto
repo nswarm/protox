@@ -11,9 +11,21 @@ message Imports {
   BasicTypes root = 1;
   middle.Middle middle = 2;
   middle.inner.Inner inner = 3;
+  repeated BasicTypes root_arr = 4;
+  repeated middle.Middle middle_arr = 5;
+  repeated middle.inner.Inner inner_arr = 6;
+  map<string, BasicTypes> root_map = 7;
+  map<string, middle.Middle> middle_map = 8;
+  map<string, middle.inner.Inner> inner_map = 9;
 
-  root.SharedName root_shared = 4;
-  root.middle.SharedName middle_shared = 5;
-  root.middle.inner.SharedName inner_shared = 6;
-  other.SharedName other_shared = 7;
+  root.SharedName root_shared = 10;
+  root.middle.SharedName middle_shared = 11;
+  root.middle.inner.SharedName inner_shared = 12;
+  other.SharedName other_shared = 13;
+  repeated root.SharedName root_shared_arr = 14;
+  repeated root.middle.SharedName middle_shared_arr = 15;
+  repeated root.middle.inner.SharedName inner_shared_arr = 16;
+  map<string, root.SharedName> root_shared_map = 17;
+  map<string, root.middle.SharedName> middle_shared_map = 18;
+  map<string, root.middle.inner.SharedName> inner_shared_map = 19;
 }

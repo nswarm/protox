@@ -4,6 +4,7 @@ mod file;
 mod import;
 mod message;
 mod metadata;
+mod proto_type;
 
 pub use field::FieldContext;
 pub use file::FileContext;

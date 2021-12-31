@@ -379,6 +379,7 @@ mod tests {
         DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
         FileDescriptorProto,
     };
+    use std::collections::HashMap;
     use std::path::PathBuf;
 
     mod render {
@@ -1013,7 +1014,7 @@ mod tests {
         field: &FieldDescriptorProto,
         package: Option<&String>,
     ) -> Result<String> {
-        let context = FieldContext::new(field, package, &renderer.config)?;
+        let context = FieldContext::new(field, package, &HashMap::new(), &renderer.config)?;
         renderer.render_to_string(FIELD_TEMPLATE_NAME, &context)
     }
 }

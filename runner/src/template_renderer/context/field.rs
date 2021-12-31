@@ -1,52 +1,109 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use log::debug;
 use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
-use crate::template_renderer::case::Case;
-use crate::template_renderer::proto::TypePath;
+use crate::template_renderer::context::message;
+use crate::template_renderer::context::proto_type::ProtoType;
 use crate::template_renderer::renderer_config::RendererConfig;
-use crate::template_renderer::{primitive, proto};
 use crate::util;
 
 #[derive(Serialize, Deserialize)]
 pub struct FieldContext {
+    // Name of the field.
     field_name: String,
-    /// Type as defined by type config or literal type name.
+
+    /// Type as defined by type config or literal type name. Only valid if `is_map` is false.
+    ///
+    /// If `is_map` is true, use `*_key_type` and `*_value_type` fields instead.
     ///
     /// ```txt
     ///      pkg.sub_pkg.TypeName
     /// ```
-    fully_qualified_type: String,
-    /// Type relative to the owning file's package.
+    fully_qualified_type: Option<String>,
+
+    /// Type relative to the owning file's package. Only valid if `is_map` is false.
+    ///
+    /// If `is_map` is true, use `*_key_type` and `*_value_type` fields instead.
     ///
     /// ```txt
     ///      package:  pkg.sub
     ///      type:     pkg.sub.deep.TypeName
     ///      relative: deep.TypeName
     /// ```
-    relative_type: String,
+    relative_type: Option<String>,
+
+    /// This field's type is a map. Use the `*_key_type` and `*_value_type` fields.
+    is_map: bool,
+
+    /// When `is_map` is true, equivalent to `fully_qualified_type` for the key type of the map.
+    fully_qualified_key_type: Option<String>,
+
+    /// When `is_map` is true, equivalent to `fully_qualified_type` for the value type of the map.
+    fully_qualified_value_type: Option<String>,
+
+    /// When `is_map` is true, equivalent to `relative_type` for the key type of the map.
+    relative_key_type: Option<String>,
+
+    /// When `is_map` is true, equivalent to `relative_type` for the value type of the map.
+    relative_value_type: Option<String>,
 }
 
 impl FieldContext {
     pub fn new(
         field: &FieldDescriptorProto,
         package: Option<&String>,
+        map_data: &message::MapData,
         config: &RendererConfig,
     ) -> Result<Self> {
         log_new_field(&field.name);
-        let mut proto_type = create_type_path(field, config)?;
-        proto_type.set_separator(&config.package_separator);
+        match &field.type_name {
+            None => FieldContext::new_basic(field, package, config),
+            Some(type_name) => match map_data.get(type_name) {
+                None => FieldContext::new_basic(field, package, config),
+                Some(entry_data) => FieldContext::new_map(field, package, entry_data, config),
+            },
+        }
+    }
+
+    fn new_basic(
+        field: &FieldDescriptorProto,
+        package: Option<&String>,
+        config: &RendererConfig,
+    ) -> Result<Self> {
+        let type_path = ProtoType::from_field(field)?.to_type_path(config)?;
+        let parent_prefix = config.field_relative_parent_prefix.as_ref();
         let context = Self {
-            field_name: field_name(
-                field,
-                &config.field_name_override,
-                config.case_config.field_name,
-            )?,
-            fully_qualified_type: proto_type.to_string(),
-            relative_type: proto_type
-                .relative_to(package, config.field_relative_parent_prefix.as_ref()),
+            field_name: field_name(field, &config)?,
+            fully_qualified_type: Some(type_path.to_string()),
+            relative_type: Some(type_path.relative_to(package, parent_prefix)),
+            is_map: false,
+            fully_qualified_key_type: None,
+            fully_qualified_value_type: None,
+            relative_key_type: None,
+            relative_value_type: None,
+        };
+        Ok(context)
+    }
+
+    fn new_map(
+        field: &FieldDescriptorProto,
+        package: Option<&String>,
+        entry: &message::MapEntryData,
+        config: &RendererConfig,
+    ) -> Result<Self> {
+        let key_type_path = entry.key.to_type_path(config)?;
+        let value_type_path = entry.value.to_type_path(config)?;
+        let parent_prefix = config.field_relative_parent_prefix.as_ref();
+        let context = Self {
+            field_name: field_name(field, &config)?,
+            fully_qualified_type: None,
+            relative_type: None,
+            is_map: true,
+            fully_qualified_key_type: Some(key_type_path.to_string()),
+            fully_qualified_value_type: Some(value_type_path.to_string()),
+            relative_key_type: Some(key_type_path.relative_to(package, parent_prefix)),
+            relative_value_type: Some(value_type_path.relative_to(package, parent_prefix)),
         };
         Ok(context)
     }
@@ -61,101 +118,17 @@ fn log_new_field(name: &Option<String>) {
     debug!("Creating field context: {}", util::str_or_unknown(name));
 }
 
-fn create_type_path<'a>(
-    field: &'a FieldDescriptorProto,
-    config: &'a RendererConfig,
-) -> Result<TypePath<'a>> {
-    let result = match fully_qualified_type(field, config)? {
-        None => proto::TypePath::from_type(configured_primitive_type_name(field, config)?),
-        Some(type_name) => {
-            let mut type_path = proto::TypePath::from_type(type_name);
-            type_path.set_name_case(Some(config.case_config.message_name));
-            type_path.set_package_case(Some(config.case_config.import));
-            type_path
-        }
-    };
-    Ok(result)
-}
-
-fn field_name(
-    field: &FieldDescriptorProto,
-    overrides: &HashMap<String, String>,
-    case: Case,
-) -> Result<String> {
+fn field_name(field: &FieldDescriptorProto, config: &RendererConfig) -> Result<String> {
     let field_name = util::str_or_error(&field.name, || "Field has no 'name'".to_string())?;
+    let case = config.case_config.field_name;
     let result = case.rename(
-        overrides
+        config
+            .field_name_override
             .get(field_name)
             .map(String::as_str)
             .unwrap_or(field_name),
     );
     Ok(result)
-}
-
-fn fully_qualified_type<'a>(
-    field: &'a FieldDescriptorProto,
-    config: &'a RendererConfig,
-) -> Result<Option<&'a str>> {
-    match &field.type_name {
-        Some(type_name) => {
-            let type_name = proto::normalize_prefix(type_name);
-            let type_name = config
-                .type_config
-                .get(type_name)
-                .map(String::as_str)
-                .unwrap_or(type_name);
-            Ok(Some(type_name))
-        }
-        None => Ok(None),
-    }
-}
-
-fn configured_primitive_type_name<'a>(
-    field: &FieldDescriptorProto,
-    config: &'a RendererConfig,
-) -> Result<&'a String> {
-    let primitive_name = primitive::from_proto_type(proto_type(field)?)?;
-    match config.type_config.get(primitive_name) {
-        None => Err(anyhow!(
-            "No native type is configured for proto primitive '{}'",
-            primitive_name
-        )),
-        Some(primitive_name) => Ok(primitive_name),
-    }
-}
-
-fn proto_type(field: &FieldDescriptorProto) -> Result<prost_types::field::Kind> {
-    match field.r#type {
-        None => Err(anyhow!(
-            "Field '{}' has no type.",
-            util::str_or_unknown(&field.name)
-        )),
-        Some(value) => i32_to_proto_type(value),
-    }
-}
-
-fn i32_to_proto_type(val: i32) -> Result<prost_types::field::Kind> {
-    match val {
-        1 => Ok(prost_types::field::Kind::TypeDouble),
-        2 => Ok(prost_types::field::Kind::TypeFloat),
-        3 => Ok(prost_types::field::Kind::TypeInt64),
-        4 => Ok(prost_types::field::Kind::TypeUint64),
-        5 => Ok(prost_types::field::Kind::TypeInt32),
-        6 => Ok(prost_types::field::Kind::TypeFixed64),
-        7 => Ok(prost_types::field::Kind::TypeFixed32),
-        8 => Ok(prost_types::field::Kind::TypeBool),
-        9 => Ok(prost_types::field::Kind::TypeString),
-        10 => Ok(prost_types::field::Kind::TypeGroup),
-        11 => Ok(prost_types::field::Kind::TypeMessage),
-        12 => Ok(prost_types::field::Kind::TypeBytes),
-        13 => Ok(prost_types::field::Kind::TypeUint32),
-        14 => Ok(prost_types::field::Kind::TypeEnum),
-        15 => Ok(prost_types::field::Kind::TypeSfixed32),
-        16 => Ok(prost_types::field::Kind::TypeSfixed64),
-        17 => Ok(prost_types::field::Kind::TypeSint32),
-        18 => Ok(prost_types::field::Kind::TypeSint64),
-        _ => Err(anyhow!("i32 '{}' does not map to a valid proto type.", val)),
-    }
 }
 
 #[cfg(test)]
@@ -165,6 +138,7 @@ mod tests {
     use prost_types::FieldDescriptorProto;
 
     use crate::template_renderer::context::field::FieldContext;
+    use crate::template_renderer::context::message;
     use crate::template_renderer::primitive;
     use crate::template_renderer::renderer_config::RendererConfig;
 
@@ -175,7 +149,7 @@ mod tests {
         let mut field = default_field();
         field.name = Some(name.clone());
         field.type_name = Some(primitive::FLOAT.to_string());
-        let context = FieldContext::new(&field, None, &config)?;
+        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
         assert_eq!(context.field_name.to_string(), name);
         Ok(())
     }
@@ -191,7 +165,7 @@ mod tests {
         let mut field = default_field();
         field.name = Some(old_name);
         field.type_name = Some(primitive::FLOAT.to_string());
-        let context = FieldContext::new(&field, None, &config)?;
+        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
         assert_eq!(context.field_name.to_string(), new_name);
         Ok(())
     }
@@ -204,7 +178,7 @@ mod tests {
         let mut field = default_field();
         field.name = Some(name.clone());
         field.type_name = Some(primitive::FLOAT.to_string());
-        let context = FieldContext::new(&field, None, &config)?;
+        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
         assert_eq!(context.field_name.to_string(), "TEST_NAME");
         Ok(())
     }
@@ -214,6 +188,7 @@ mod tests {
 
         use crate::template_renderer::context::field::tests::default_field;
         use crate::template_renderer::context::field::FieldContext;
+        use crate::template_renderer::context::message;
         use crate::template_renderer::renderer_config::RendererConfig;
 
         macro_rules! test_type_config {
@@ -248,9 +223,9 @@ mod tests {
             let mut field = default_field();
             field.name = Some("field_name".to_string());
             field.type_name = Some(proto_type_name.to_string());
-            let context = FieldContext::new(&field, None, &config)?;
+            let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
             assert_eq!(
-                Some(&context.fully_qualified_type.to_string()),
+                context.fully_qualified_type.as_ref(),
                 config.type_config.get(proto_type_name),
             );
             Ok(())
@@ -264,9 +239,20 @@ mod tests {
         field.type_name = Some(".root.sub.TypeName".to_string());
         let mut config = RendererConfig::default();
         config.package_separator = "::".to_string();
-        let context = FieldContext::new(&field, Some(&"root".to_string()), &config)?;
-        assert_eq!(context.relative_type, "sub::TypeName");
-        assert_eq!(context.fully_qualified_type, "root::sub::TypeName");
+        let context = FieldContext::new(
+            &field,
+            Some(&"root".to_string()),
+            &message::MapData::new(),
+            &config,
+        )?;
+        assert_eq!(
+            context.relative_type.as_ref().map(String::as_str),
+            Some("sub::TypeName")
+        );
+        assert_eq!(
+            context.fully_qualified_type.as_ref().map(String::as_str),
+            Some("root::sub::TypeName")
+        );
         Ok(())
     }
 
@@ -275,7 +261,7 @@ mod tests {
         let config = RendererConfig::default();
         let mut field = default_field();
         field.type_name = Some(primitive::FLOAT.to_string());
-        let result = FieldContext::new(&field, None, &config);
+        let result = FieldContext::new(&field, None, &message::MapData::new(), &config);
         assert!(result.is_err());
     }
 
@@ -284,7 +270,7 @@ mod tests {
         let config = RendererConfig::default();
         let mut field = default_field();
         field.name = Some("field_name".to_string());
-        let result = FieldContext::new(&field, None, &config);
+        let result = FieldContext::new(&field, None, &message::MapData::new(), &config);
         assert!(result.is_err());
     }
 
@@ -295,8 +281,11 @@ mod tests {
         let mut field = default_field();
         field.name = Some("field_name".to_string());
         field.type_name = Some("TypeName".to_string());
-        let context = FieldContext::new(&field, None, &config)?;
-        assert_eq!(context.fully_qualified_type, "TYPE_NAME");
+        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        assert_eq!(
+            context.fully_qualified_type.as_ref().map(String::as_str),
+            Some("TYPE_NAME")
+        );
         Ok(())
     }
 
@@ -307,10 +296,10 @@ mod tests {
         let mut field = default_field();
         field.name = Some("field_name".to_string());
         field.r#type = Some(2);
-        let context = FieldContext::new(&field, None, &config)?;
+        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
         assert_eq!(
             context.fully_qualified_type,
-            primitive::FLOAT.to_ascii_lowercase()
+            Some(primitive::FLOAT.to_ascii_lowercase())
         );
         Ok(())
     }

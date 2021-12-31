@@ -1,11 +1,14 @@
 use crate::template_renderer::case::Case;
+use crate::template_renderer::context::proto_type::ProtoType;
 use crate::template_renderer::context::FieldContext;
+use crate::template_renderer::proto::PACKAGE_SEPARATOR;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use log::debug;
-use prost_types::DescriptorProto;
+use prost_types::{DescriptorProto, FieldDescriptorProto};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 pub struct MessageContext {
@@ -28,6 +31,12 @@ impl MessageContext {
     }
 }
 
+pub type MapData = HashMap<String, MapEntryData>;
+pub struct MapEntryData {
+    pub key: ProtoType,
+    pub value: ProtoType,
+}
+
 fn log_new_message(name: &Option<String>) {
     debug!("Creating message context: {}", util::str_or_unknown(name));
 }
@@ -42,11 +51,95 @@ fn fields(
     package: Option<&String>,
     config: &RendererConfig,
 ) -> Result<Vec<FieldContext>> {
+    let map_data = collect_map_data(message, package)?;
     let mut fields = Vec::new();
     for field in &message.field {
-        fields.push(FieldContext::new(field, package, config)?);
+        fields.push(FieldContext::new(field, package, &map_data, config)?);
     }
     Ok(fields)
+}
+
+fn collect_map_data(message: &DescriptorProto, package: Option<&String>) -> Result<MapData> {
+    let message_name = util::str_or_error(&message.name, || {
+        "collect_map_data: No message name.".to_string()
+    })?;
+    let mut map_data = MapData::new();
+    for nested in message.nested_type.iter().filter(is_map) {
+        let (key, value) = find_map_key_value(nested, message_name)?;
+        let fully_qualified_nested_type =
+            fully_qualify_map_type(&nested_name(&nested, message_name)?, message_name, package);
+        map_data.insert(fully_qualified_nested_type, MapEntryData { key, value });
+    }
+    Ok(map_data)
+}
+
+fn find_map_key_value(
+    nested: &DescriptorProto,
+    outer_msg_name: &str,
+) -> Result<(ProtoType, ProtoType)> {
+    static KEY_FIELD_NAME: &str = "key";
+    static VALUE_FIELD_NAME: &str = "value";
+    let key = find_field_type(KEY_FIELD_NAME, &nested.field)
+        .with_context(|| error_context_failed_collect_map_data(outer_msg_name, &nested.name))?;
+    let value = find_field_type(VALUE_FIELD_NAME, &nested.field)
+        .with_context(|| error_context_failed_collect_map_data(outer_msg_name, &nested.name))?;
+    Ok((key, value))
+}
+
+fn find_field_type(field_name: &str, fields: &[FieldDescriptorProto]) -> Result<ProtoType> {
+    for field in fields {
+        if let Some(name) = &field.name {
+            if name == field_name {
+                return ProtoType::from_field(field);
+            }
+        }
+    }
+    Err(anyhow!(
+        "Could not find required field name: {}.",
+        field_name
+    ))
+}
+
+fn is_map(message: &&DescriptorProto) -> bool {
+    match &message.options {
+        None => false,
+        Some(options) => match options.map_entry {
+            None => false,
+            Some(is_map) => is_map,
+        },
+    }
+}
+
+fn nested_name(nested: &DescriptorProto, message_name: &str) -> Result<String> {
+    nested.name.clone().ok_or(anyhow!(
+        "Nested message has no name, outer message: {}",
+        message_name
+    ))
+}
+
+fn fully_qualify_map_type(entry_type: &str, outer_type: &str, package: Option<&String>) -> String {
+    let mut fully_qualified = String::new();
+    // All fully-qualified proto paths start with a separator.
+    fully_qualified.push(PACKAGE_SEPARATOR);
+    if let Some(package) = package {
+        fully_qualified.push_str(package);
+        fully_qualified.push(PACKAGE_SEPARATOR);
+    }
+    fully_qualified.push_str(outer_type);
+    fully_qualified.push(PACKAGE_SEPARATOR);
+    fully_qualified.push_str(entry_type);
+    fully_qualified
+}
+
+fn error_context_failed_collect_map_data(
+    message_name: &str,
+    nested_name: &Option<String>,
+) -> String {
+    format!(
+        "collect_map_data - Message '{}', nested message '{}'",
+        message_name,
+        util::str_or_unknown(&nested_name)
+    )
 }
 
 #[cfg(test)]
