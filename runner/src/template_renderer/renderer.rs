@@ -54,11 +54,12 @@ impl Renderer<'_> {
     /// ```txt
     ///     root/config.json
     ///     root/file.hbs
-    ///     root/import.hbs
-    ///     root/message.hbs
-    ///     root/field.hbs
     ///     root/metadata.hbs (optional)
     /// ```
+    ///
+    /// Any other `*.hbs` files will also be loaded as templates based on the file name, and can
+    /// be used in other templates as partials with the syntax {{> file_name}}.
+    /// (See also: https://handlebarsjs.com/guide/partials.html)
     pub fn load_all(&mut self, root: &Path) -> Result<()> {
         self.load_config(&root.join(Self::CONFIG_FILE_NAME))?;
         self.load_templates(root)?;
