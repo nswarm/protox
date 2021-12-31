@@ -45,7 +45,7 @@ fn complex_type_path<'a>(type_name: &str, config: &'a RendererConfig) -> TypePat
     type_path
 }
 
-fn primitive_type_name(proto_type_id: i32, config: &RendererConfig) -> Result<&str> {
+pub fn primitive_type_name(proto_type_id: i32, config: &RendererConfig) -> Result<&str> {
     let primitive_name = primitive::from_proto_type(i32_to_proto_type(proto_type_id)?)?;
     match config.type_config.get(primitive_name) {
         None => Err(anyhow!(

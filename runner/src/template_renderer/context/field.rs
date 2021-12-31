@@ -1,5 +1,6 @@
 use anyhow::Result;
 use log::debug;
+use prost_types::field_descriptor_proto::Label;
 use prost_types::FieldDescriptorProto;
 use serde::{Deserialize, Serialize};
 
@@ -32,6 +33,9 @@ pub struct FieldContext {
     ///      relative: deep.TypeName
     /// ```
     relative_type: Option<String>,
+
+    /// This field's type is an array of the type specified in `fully_qualified_type` and `relative_type`.
+    is_array: bool,
 
     /// This field's type is a map. Use the `*_key_type` and `*_value_type` fields.
     is_map: bool,
@@ -77,6 +81,7 @@ impl FieldContext {
             field_name: field_name(field, &config)?,
             fully_qualified_type: Some(type_path.to_string()),
             relative_type: Some(type_path.relative_to(package, parent_prefix)),
+            is_array: is_array(field),
             is_map: false,
             fully_qualified_key_type: None,
             fully_qualified_value_type: None,
@@ -99,6 +104,7 @@ impl FieldContext {
             field_name: field_name(field, &config)?,
             fully_qualified_type: None,
             relative_type: None,
+            is_array: false,
             is_map: true,
             fully_qualified_key_type: Some(key_type_path.to_string()),
             fully_qualified_value_type: Some(value_type_path.to_string()),
@@ -131,10 +137,18 @@ fn field_name(field: &FieldDescriptorProto, config: &RendererConfig) -> Result<S
     Ok(result)
 }
 
+fn is_array(field: &FieldDescriptorProto) -> bool {
+    field
+        .label
+        .map(|label| label == Label::Repeated as i32)
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::template_renderer::case::Case;
     use anyhow::Result;
+    use prost_types::field_descriptor_proto::Label;
     use prost_types::FieldDescriptorProto;
 
     use crate::template_renderer::context::field::FieldContext;
@@ -302,6 +316,123 @@ mod tests {
             Some(primitive::FLOAT.to_ascii_lowercase())
         );
         Ok(())
+    }
+
+    #[test]
+    fn array() -> Result<()> {
+        let mut field = field_with_required();
+        field.label = Some(Label::Repeated as i32);
+        let config = RendererConfig::default();
+        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        assert!(context.is_array);
+        Ok(())
+    }
+
+    mod map {
+        use crate::template_renderer::context::field::tests::field_with_required;
+        use crate::template_renderer::context::message::MapEntryData;
+        use crate::template_renderer::context::proto_type::{primitive_type_name, ProtoType};
+        use crate::template_renderer::context::{message, FieldContext};
+        use crate::template_renderer::renderer_config::RendererConfig;
+        use anyhow::Result;
+        use prost_types::FieldDescriptorProto;
+
+        #[test]
+        fn complex_value() -> Result<()> {
+            let field = map_field();
+            let config = RendererConfig::default();
+            let mut map_data = message::MapData::new();
+            let int_proto_type = prost_types::field::Kind::TypeInt32 as i32;
+            let package = ".root.sub".to_string();
+            map_data.insert(
+                MAP_TYPE_NAME.to_string(),
+                MapEntryData {
+                    key: ProtoType::Type(int_proto_type),
+                    value: ProtoType::TypeName(".root.sub.inner.TypeName".to_string()),
+                },
+            );
+
+            let expected_key = primitive_type_name(int_proto_type, &config)?;
+            let context = FieldContext::new(&field, Some(&package), &map_data, &config)?;
+            assert!(context.is_map);
+            assert_eq!(
+                context.fully_qualified_key_type,
+                Some(expected_key.to_string())
+            );
+            assert_eq!(
+                context.fully_qualified_value_type,
+                Some("root.sub.inner.TypeName".to_string())
+            );
+            assert_eq!(context.relative_key_type, Some(expected_key.to_string()));
+            assert_eq!(
+                context.relative_value_type,
+                Some("inner.TypeName".to_string())
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn primitive_key_value() -> Result<()> {
+            let field = map_field();
+            let config = RendererConfig::default();
+            let mut map_data = message::MapData::new();
+            let int_proto_type = prost_types::field::Kind::TypeInt32 as i32;
+            let float_proto_type = prost_types::field::Kind::TypeFloat as i32;
+            map_data.insert(
+                MAP_TYPE_NAME.to_string(),
+                MapEntryData {
+                    key: ProtoType::Type(int_proto_type),
+                    value: ProtoType::Type(float_proto_type),
+                },
+            );
+
+            let expected_key = primitive_type_name(int_proto_type, &config)?;
+            let expected_value = primitive_type_name(float_proto_type, &config)?;
+            let context = FieldContext::new(&field, None, &map_data, &config)?;
+            assert!(context.is_map);
+            assert_eq!(
+                context.fully_qualified_key_type,
+                Some(expected_key.to_string())
+            );
+            assert_eq!(
+                context.fully_qualified_value_type,
+                Some(expected_value.to_string())
+            );
+            assert_eq!(context.relative_key_type, Some(expected_key.to_string()));
+            assert_eq!(
+                context.relative_value_type,
+                Some(expected_value.to_string())
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn non_map_has_no_map_fields() -> Result<()> {
+            let field = field_with_required();
+            let config = RendererConfig::default();
+            let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+            assert!(!context.is_map);
+            assert!(context.fully_qualified_key_type.is_none());
+            assert!(context.fully_qualified_value_type.is_none());
+            assert!(context.relative_key_type.is_none());
+            assert!(context.relative_value_type.is_none());
+            Ok(())
+        }
+
+        const MAP_TYPE_NAME: &str = ".MapType";
+
+        fn map_field() -> FieldDescriptorProto {
+            let mut field = field_with_required();
+            field.type_name = Some(MAP_TYPE_NAME.to_string());
+            field
+        }
+    }
+
+    fn field_with_required() -> FieldDescriptorProto {
+        let mut field = default_field();
+        field.name = Some("field_name".to_string());
+        field.r#type = Some(2);
+        field
     }
 
     fn default_field() -> FieldDescriptorProto {
