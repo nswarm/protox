@@ -28,4 +28,13 @@ message Imports {
   map<string, root.SharedName> root_shared_map = 17;
   map<string, root.middle.SharedName> middle_shared_map = 18;
   map<string, root.middle.inner.SharedName> inner_shared_map = 19;
+
+
+  oneof type {
+    string str = 20;
+    int64 i32 = 21;
+    BasicTypes oneof_root = 22;
+    middle.Middle oneof_middle = 23;
+    middle.inner.Inner oneof_inner = 24;
+  }
 }

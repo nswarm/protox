@@ -21,6 +21,11 @@ message BasicTypes {
 message ComplexTypes {
   ExampleEnum enum = 1;
   BasicTypes inner = 2;
+  oneof type {
+    string str = 3;
+    int64 i32 = 4;
+    BasicTypes msg = 5;
+  }
 }
 
 message Arrays {

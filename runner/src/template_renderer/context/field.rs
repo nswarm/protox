@@ -40,6 +40,9 @@ pub struct FieldContext {
     /// This field's type is a map. Use the `*_key_type` and `*_value_type` fields.
     is_map: bool,
 
+    /// This field is part of a oneof type.
+    is_oneof: bool,
+
     /// When `is_map` is true, equivalent to `fully_qualified_type` for the key type of the map.
     fully_qualified_key_type: Option<String>,
 
@@ -83,6 +86,7 @@ impl FieldContext {
             relative_type: Some(type_path.relative_to(package, parent_prefix)),
             is_array: is_array(field),
             is_map: false,
+            is_oneof: is_oneof(field),
             fully_qualified_key_type: None,
             fully_qualified_value_type: None,
             relative_key_type: None,
@@ -106,6 +110,7 @@ impl FieldContext {
             relative_type: None,
             is_array: false,
             is_map: true,
+            is_oneof: is_oneof(field),
             fully_qualified_key_type: Some(key_type_path.to_string()),
             fully_qualified_value_type: Some(value_type_path.to_string()),
             relative_key_type: Some(key_type_path.relative_to(package, parent_prefix)),
@@ -144,6 +149,10 @@ fn is_array(field: &FieldDescriptorProto) -> bool {
         .unwrap_or(false)
 }
 
+fn is_oneof(field: &FieldDescriptorProto) -> bool {
+    field.oneof_index.is_some()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::template_renderer::case::Case;
@@ -153,6 +162,7 @@ mod tests {
 
     use crate::template_renderer::context::field::FieldContext;
     use crate::template_renderer::context::message;
+    use crate::template_renderer::context::message::MapData;
     use crate::template_renderer::primitive;
     use crate::template_renderer::renderer_config::RendererConfig;
 
@@ -426,6 +436,16 @@ mod tests {
             field.type_name = Some(MAP_TYPE_NAME.to_string());
             field
         }
+    }
+
+    #[test]
+    fn is_oneof_field() -> Result<()> {
+        let config = RendererConfig::default();
+        let mut field = field_with_required();
+        field.oneof_index = Some(0);
+        let context = FieldContext::new(&field, None, &MapData::new(), &config)?;
+        assert!(context.is_oneof);
+        Ok(())
     }
 
     fn field_with_required() -> FieldDescriptorProto {
