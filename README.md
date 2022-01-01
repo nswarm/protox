@@ -1,6 +1,19 @@
 # idlx
 
-idlx is an executable that generates C-ABI-compatible code in one or more languages for seamless and performant direct usage of those types across the library boundary.
+idlx is an executable that generates code, type definitions, or related output based on an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). It uses types defined by the IDL as input to render [handlebars](https://handlebarsjs.com/) templates.
+
+You as a user provide:
+- A set of files written in a supported IDL.
+- A configuration file that defines the specifics of your output, for example the naming convention of your output language.
+- A set of handlebars template files that structure the context data.
+
+idlx is built to generate output based on a set of types or APIs, it's especially easy if you already use one of the supported IDLs. idlx can eliminate the need to write IDL parsing logic or a protobuf compiler plugin by letting you get straight to writing templates for the existing context hierarchy.
+
+idlx fills a fairly niche use case, but it is fairly flexible within that niche. Depending on how complex the use case, you may need to modify idlx to support additional data in your templates, but it should be a solid base to build on.
+
+### Built-in Templates
+
+idlx was primarily built to generate boilerplate code for [FFI](https://en.wikipedia.org/wiki/Foreign_function_interface) between two languages. The built-in templates provide an example of this between Rust and C#.
 
 The user designates a **server** language and a **client** language. Code is generated slightly differently for each:
 - Server language: Classes and a set of C functions for accessing the fields through an opaque pointer.
@@ -8,19 +21,23 @@ The user designates a **server** language and a **client** language. Code is gen
 
 At runtime this gives the server language ownership over objects of the generated types, and the client language a familiar interface into the objects owned by the server language, without needing to serialize or copy the entire object.
 
-## Supported Languages
+See `Server/Client Templates Background` below for more context.
+
+## Usage
+
+Take a look at `examples/run-examples.sh` which runs idlx on the input inside `examples/input` and will produce sets of output in `examples/output`.
+
+You can also run `idlx --help` to get more information on the command line usage.
+
+
+## Built-in Support
 
 IDLs:
 - Protobuf
 
-Server languages:
-- Rust
-
-Client languages:
-- C#
-
-Direct type output:
-- (none)
+Templates:
+- Rust "Server" types and FFI
+- C# "Client" types and FFI
 
 Protobuf generated code:
 - All [supported protobuf languages](https://developers.google.com/protocol-buffers) via the protobuf compiler itself (protoc)
@@ -28,37 +45,121 @@ Protobuf generated code:
 
 See the `examples/run-examples.sh` script for various ways of using idlx.
 
+## Roadmap
+
+- Protobuf `oneof` types.
+- Protobuf nested types.
+- Support for always using the fully qualified type name.
+- Filtering input descriptor set based on e.g. message options.
+- Template validation tests, so users can specify the expected output of their set of templates to verify nothing breaks e.g. when upgrading idlx's version.
+
+### Creating a new template set
+
+*** todo ***
+
 ## Architecture
 
-idlx consumes an [IDL](https://en.wikipedia.org/wiki/Interface_description_language) and produces "client" and "server" structs in target languages using [mustache templates](https://mustache.github.io/).
+idlx operates in three main stages:
+1. IDL -> Protobuf.
+2. Protobuf -> Template Contexts.
+3. Template Contexts -> Rendered Templates.
 
-### Plugins
+### 1. IDL -> Protobuf
 
-idlx is built around plugins to allow incremental support for new languages. There are multiple types of plugins that can be added:
-- IDL
-- Server language
-- Client language
-- Direct type output (e.g. mirror the IDL types in target language syntax)
+Google's protobuf compiler `protoc` already can compile `.proto` files to a "descriptor_set" which describes every file, message, field, etc. within the set of input files. The other main supported IDL flatbuffers has support to transform flatbuffers files into protobuf files. Any other IDL support would be easiest to do something similar.
 
-### Cargo Crates
-The project is split into two main crates:
-- core: The core library that does the IDL -> code generation.
-- cli:
+### 2. Protobuf -> Template Contexts
 
-::: todo :::
+The major thing idlx does is convert a protobuf descriptor set into a hierarchy of "Context" objects.
 
-Other crates:
-- protoc-plugin: An executable passed to the protoc executable as a plugin.
+### 3. Template Contexts -> Rendered Templates.
 
-#### Protobuf Compiler
+The [Handlebars template library](https://handlebarsjs.com/) (specifically, idlx uses [handlebars-rust](https://github.com/sunng87/handlebars-rust)) takes in objects defined in json which can be directly referenced within the template. This step serializes the context objects into json, and writes out files using the user-defined templates with the context as data sources.
+
+### Examples
+
+The `examples` folder contains a set of protos in `proto/inputs` that use nearly every available protobuf feature for the sake of testing output.
+
+The templates within `input/templates` are fully functional template sets built for specific purposes. You may use them directly or as a basis for your own template sets.
+
+#### Conceptual Example
+
+A protobuf message defined like so:
+```protobuf
+message Msg {
+  int64 i = 1;
+  string str = 2;
+}
+```
+
+Would be parsed into a `MessageContext` and two `FieldContexts` that would look something like this when serialized to json:
+
+```json
+{
+  "name": "Msg",
+  "fields": [
+    {
+      "field_name": "i",
+      "relative_type": "i64"
+    },
+    {
+      "field_name": "str",
+      "relative_type": "String"
+    }
+  ]
+}
+```
+
+The above json is a simplification, you can see all the provided values inside the `runner/src/template_renderer/context` structs.
+
+idlx takes a `config.json` file alongside the template files that can customize the styles, name casing, and more that are provided in the context objects. The intent is to simplify the template files themselves as much as possible, within reason. idlx is built to grow to new use cases over time, expanding its flexibility through configuration.
+
+Using a template like below defined in `file.hbs`...
+
+```handlebars
+pub struct {{name}} {
+{{#each fields}}
+    {{> field}}
+{{/each}}
+}
+```
+
+and `field.hbs`...
+```handlebars
+    {{field_name}}: {{relative_type}},
+```
+
+...the resulting output would be:
+```rust
+pub struct Msg {
+    i: i64,
+    str: String,
+}
+```
+
+Blammo, code generation using only templates and some configuration.
+
+Check out `examples/input/templates` for complete examples of templates and configuration files.
+
+### Crates 
+- cli: Thin wrapper to run the main library as a binary.
+- runner: The core library that does the IDL -> code generation.
+
+### Modules
+- runner: Handles command line parsing into a `Config` class used by the other modules.
+- protoc: Handles running the protobuf compiler `protoc` to generate the descriptor set file. It can also run protoc directly to generate protobuf code for various languages (See Built-in Support above).
+- template_renderer: Handles converting a protobuf descriptor set file to a set of template context objects, and rendering those templates to files.
+- context: Template context objects serialized to json for the rendering process.
+
+### Protobuf Compiler
 
 The way that **protoc**, the protobuf compiler, works is it is an executable that can run another executable as a plugin, passing it data on stdin and receiving results on stdout. For this to work inside of idlx, we have the **cli** executable call the protoc executable with our **protoc-plugin** executable. **protoc-plugin** then calls into our **core** library code.
 
 The **protoc** executable is assumed to be on your PATH. You can directly specify which protoc to use by setting the environment variable `PROTOC_EXE` to the path of the executable.
 
-## Background
+### "Server/Client" Templates Background
 
-idlx is built to solve a very specific problem: you have a large amount of owned by one language that you want to inspect in another language, for example a complex data model for an app but with UI is built in another language.
+The "server" and "client" template sets exist to solve a specific problem: you have a large amount of owned by one language that you want to inspect in another language, for example a complex data model for an app but with UI is built in another language.
 
 Given this struct hierarchy in C++:
 ```c++
