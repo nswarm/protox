@@ -12,7 +12,10 @@ use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 pub struct MessageContext {
+    /// Name of this message.
     name: String,
+
+    /// Fields available in this message.
     fields: Vec<FieldContext>,
 }
 

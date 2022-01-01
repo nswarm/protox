@@ -20,10 +20,10 @@ rm -rf examples/output
 cargo run -- \
   --input examples/input/proto \
   --output-root examples/output/proto \
-  --proto cpp proto_cpp \
-  --proto csharp proto_csharp \
-  --proto java proto_java \
-  --proto rust proto_rust \
-  --proto js proto_js \
+  --proto cpp proto-cpp \
+  --proto csharp proto-csharp \
+  --proto java proto-java \
+  --proto rust proto-rust \
+  --proto js proto-js \
   --template-root examples/input/templates \
-  --template rust template_rust
+  --template rust-server rust-server

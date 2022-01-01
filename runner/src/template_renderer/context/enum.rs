@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct EnumContext {
+    // Name of this enum.
     name: String,
+
+    // Values defined by this enum.
     values: Vec<EnumValueContext>,
 }
 

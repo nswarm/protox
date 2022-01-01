@@ -1,17 +1,45 @@
 # idlx
 
-idlx is an executable that generates code, type definitions, or related output based on an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). It uses types defined by the IDL as input to render [handlebars](https://handlebarsjs.com/) templates.
+idlx is an executable that generates code, type definitions, or related output based on an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). It uses types defined by the IDL and renders [handlebars](https://handlebarsjs.com/) templates.
+
+idlx is built to generate output based on a set of types or APIs. idlx can eliminate the need to write IDL parsing logic or a protobuf compiler plugin by letting you get straight to writing templates for the existing context hierarchy.
 
 You as a user provide:
-- A set of files written in a supported IDL.
-- A configuration file that defines the specifics of your output, for example the naming convention of your output language.
-- A set of handlebars template files that structure the context data.
+- A set of files written in a supported IDL, e.g. Google's protobuf IDL.
+- A configuration file that defines the specifics of your output, e.g. naming conventions of your output.
+- A set of handlebars template files that structure the data when rendering.
 
-idlx is built to generate output based on a set of types or APIs, it's especially easy if you already use one of the supported IDLs. idlx can eliminate the need to write IDL parsing logic or a protobuf compiler plugin by letting you get straight to writing templates for the existing context hierarchy.
+idlx produces:
+- A set of files based on the IDL definitions, e.g. equivalent type definitions across multiple languages.
 
-idlx fills a fairly niche use case, but it is fairly flexible within that niche. Depending on how complex the use case, you may need to modify idlx to support additional data in your templates, but it should be a solid base to build on.
+## Installation
 
-### Built-in Templates
+Currently idlx must be cloned/downloaded from source and built with `cargo build`. Then you can run it with `cargo run -- <idlx args go here>`.
+
+## Usage
+
+Run `idlx --help` to get information on the command line usage.
+
+Take a look at `examples/run-examples.sh` which runs idlx on the input inside `examples/input` and will produce sets of output in `examples/output`.
+
+See Templates below for defining your own template set.
+
+### Built-in Support
+
+IDLs:
+- Protobuf
+
+Templates:
+- Rust "Server" types and FFI (see below)
+- C# "Client" types and FFI (see below)
+
+Protobuf generated code:
+- All [supported protobuf languages](https://developers.google.com/protocol-buffers) via the protobuf compiler itself (protoc)
+- Rust via [prost](https://github.com/tokio-rs/prost)
+
+See the `examples/run-examples.sh` script for various ways of using idlx.
+
+#### Built-in Templates
 
 idlx was primarily built to generate boilerplate code for [FFI](https://en.wikipedia.org/wiki/Foreign_function_interface) between two languages. The built-in templates provide an example of this between Rust and C#.
 
@@ -23,39 +51,77 @@ At runtime this gives the server language ownership over objects of the generate
 
 See `Server/Client Templates Background` below for more context.
 
-## Usage
+## Templates
 
-Take a look at `examples/run-examples.sh` which runs idlx on the input inside `examples/input` and will produce sets of output in `examples/output`.
+Templates are rendered using [Handlebars](https://handlebarsjs.com/). Specifically idlx uses [handlebars-rust](https://github.com/sunng87/handlebars-rust) which supports the majority of handlebars functionality.
 
-You can also run `idlx --help` to get more information on the command line usage.
+### Setup
 
+idlx requires only a couple files. `file.hbs` is the root of all templates. `config.json` is how you configure the data available in the context when rendering templates.
 
-## Built-in Support
+**Note:** You can quickly initialize a directory with default files using `idlx --init`.
 
-IDLs:
-- Protobuf
+Required:
+- config.json
+- file.hbs
 
-Templates:
-- Rust "Server" types and FFI
-- C# "Client" types and FFI
+Optional:
+- metadata.hbs
+- As many other .hbs templates as you need
 
-Protobuf generated code:
-- All [supported protobuf languages](https://developers.google.com/protocol-buffers) via the protobuf compiler itself (protoc)
-- Rust via [prost](https://github.com/tokio-rs/prost)
+### Configuration
 
-See the `examples/run-examples.sh` script for various ways of using idlx.
+`config.json` defines how the idlx renderer contexts are filled with data. The best source for information on what each field does is the [renderer_config.rs](https://github.com/nswarm/idlx/blob/main/runner/src/template_renderer/renderer_config.rs).
+
+### Data Context
+
+The data available when rendering a template (e.g. what `name` is when you say `{{name}}`) is defined in context objects passed to the handlebars renderer.
+
+All context data structures can be seen [here](https://github.com/nswarm/idlx/tree/main/runner/src/template_renderer/context). `file.rs` and `metadata.rs` map to `file.hbs` and `metadata.hbs`, the rest are contained within those.
+
+### Directory Metadata - `metadata.hbs`
+
+idlx supports generating an additional metadata file for each directory that has information about the generated files. By including a `metadata.hbs` in your template source directory, a `metadata` file will be generated using the [MetadataContext](https://github.com/nswarm/idlx/blob/main/runner/src/template_renderer/context/metadata.rs) within each generated directory.
+
+### Using Other Template Files
+
+All `.hbs` files within the target template directory will be loaded with file name as their template name. These can be used by using template partials like `{{> template_name}}`.
+
+`file.hbs`
+```handlebars
+Hello I am from {{source_file}}!
+
+My messages are:
+{{#each messages}}
+    {{> message}}
+{{/each}}
+```
+
+`message.hbs`
+```handlebars
+I am a message! My name is {{name}}.
+```
+
+### Custom Indent Helper for Partials
+
+There's a small bug in the template library that does not respect callsite indentation in [partials](https://handlebarsjs.com/guide/partials.html), e.g. `{{> other_template_name}}`. idlx contains a workaround helper for this feature that can be used like so:
+```handlebars
+{{#indent 4}}
+{{> package_tree_node}}
+{{/indent}}
+```
+
+This will indent all content rendered by the partial by 4 spaces. If you're only using the partial once you may as well indent inside the partial itself, but this solves for recursive partials where the callsite indentation is important.
 
 ## Roadmap
+
+While idlx is largely functional, there's a few things it does not yet support, and a few quality of life features I intend on adding. 
 
 - Protobuf `oneof` types.
 - Protobuf nested types.
 - Support for always using the fully qualified type name.
 - Filtering input descriptor set based on e.g. message options.
 - Template validation tests, so users can specify the expected output of their set of templates to verify nothing breaks e.g. when upgrading idlx's version.
-
-### Creating a new template set
-
-*** todo ***
 
 ## Architecture
 
