@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::PathBuf;
