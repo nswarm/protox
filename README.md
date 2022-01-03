@@ -22,7 +22,7 @@ Run `idlx --help` to get information on the command line usage.
 
 Take a look at `examples/run-examples.sh` which runs idlx on the input inside `examples/input` and will produce sets of output in `examples/output`.
 
-See Templates below for defining your own template set.
+See [Templates](#templates) below for defining your own template set.
 
 ### Built-in Support
 
@@ -49,7 +49,7 @@ The user designates a **server** language and a **client** language. Code is gen
 
 At runtime this gives the server language ownership over objects of the generated types, and the client language a familiar interface into the objects owned by the server language, without needing to serialize or copy the entire object.
 
-See `Server/Client Templates Background` below for more context.
+See [Server/Client Templates Background](#serverclient-templates-background) below for more context.
 
 ## Templates
 

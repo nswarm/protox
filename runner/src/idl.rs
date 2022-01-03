@@ -5,7 +5,7 @@ use clap::ArgMatches;
 
 use crate::config;
 
-#[derive(clap::ArgEnum, Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Idl {
     Proto,
 }

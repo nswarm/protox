@@ -1,6 +1,5 @@
 use crate::template_renderer::case::Case;
-use crate::template_renderer::renderer::Renderer;
-use crate::template_renderer::{primitive, proto};
+use crate::template_renderer::{primitive, proto, METADATA_TEMPLATE_NAME};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -83,7 +82,7 @@ fn default_case_config() -> CaseConfig {
 }
 
 fn default_metadata_file_name() -> String {
-    Renderer::METADATA_TEMPLATE_NAME.to_string()
+    METADATA_TEMPLATE_NAME.to_string()
 }
 
 fn default_package_separator() -> String {

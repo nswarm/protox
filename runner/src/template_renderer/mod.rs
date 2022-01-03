@@ -6,6 +6,8 @@ mod proto;
 mod renderer;
 mod renderer_config;
 
+pub use renderer_config::RendererConfig;
+
 use crate::template_config::TemplateConfig;
 use crate::template_renderer::renderer::Renderer;
 use crate::{util, Config, DisplayNormalized};
@@ -14,6 +16,11 @@ use log::info;
 use prost::Message;
 use prost_types::FileDescriptorSet;
 use std::fs;
+
+pub const CONFIG_FILE_NAME: &'static str = "config.json";
+pub const TEMPLATE_EXT: &'static str = "hbs";
+pub const METADATA_TEMPLATE_NAME: &'static str = "metadata";
+pub const FILE_TEMPLATE_NAME: &'static str = "file";
 
 pub fn generate(config: &Config) -> Result<()> {
     if config.templates.is_empty() {
@@ -61,10 +68,11 @@ fn load_descriptor_set(config: &Config) -> Result<FileDescriptorSet> {
 #[cfg(test)]
 mod tests {
     use crate::template_config::TemplateConfig;
-    use crate::template_renderer::renderer::Renderer;
     use crate::template_renderer::renderer_config::RendererConfig;
-    use crate::template_renderer::{generate, generate_from_descriptor_set};
-    use crate::Config;
+    use crate::template_renderer::{
+        generate, generate_from_descriptor_set, FILE_TEMPLATE_NAME, TEMPLATE_EXT,
+    };
+    use crate::{Config, CONFIG_FILE_NAME};
     use anyhow::Result;
     use prost_types::{FileDescriptorProto, FileDescriptorSet};
     use std::fs;
@@ -125,12 +133,9 @@ mod tests {
 
     fn create_required_template_files(path: &Path) -> Result<()> {
         fs::create_dir_all(path)?;
-        let mut config_json = fs::File::create(path.join(Renderer::CONFIG_FILE_NAME))?;
+        let mut config_json = fs::File::create(path.join(CONFIG_FILE_NAME))?;
         config_json.write_all(serde_json::to_string(&RendererConfig::default())?.as_bytes())?;
-        fs::File::create(
-            path.join(Renderer::FILE_TEMPLATE_NAME)
-                .with_extension(Renderer::TEMPLATE_EXT),
-        )?;
+        fs::File::create(path.join(FILE_TEMPLATE_NAME).with_extension(TEMPLATE_EXT))?;
         Ok(())
     }
 }

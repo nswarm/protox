@@ -1,7 +1,9 @@
 use crate::template_renderer::context::{FileContext, MetadataContext};
 use crate::template_renderer::indent_helper::IndentHelper;
-use crate::template_renderer::proto;
 use crate::template_renderer::renderer_config::RendererConfig;
+use crate::template_renderer::{
+    proto, CONFIG_FILE_NAME, FILE_TEMPLATE_NAME, METADATA_TEMPLATE_NAME, TEMPLATE_EXT,
+};
 use crate::{util, DisplayNormalized};
 use anyhow::{anyhow, Context, Result};
 use handlebars::Handlebars;
@@ -24,11 +26,6 @@ pub struct Renderer<'a> {
 }
 
 impl Renderer<'_> {
-    pub const CONFIG_FILE_NAME: &'static str = "config.json";
-    pub const TEMPLATE_EXT: &'static str = "hbs";
-    pub const METADATA_TEMPLATE_NAME: &'static str = "metadata";
-    pub const FILE_TEMPLATE_NAME: &'static str = "file";
-
     pub fn new() -> Self {
         let mut hbs = Handlebars::new();
         hbs.register_helper("indent", Box::new(IndentHelper));
@@ -61,7 +58,7 @@ impl Renderer<'_> {
     /// be used in other templates as partials with the syntax {{> file_name}}.
     /// (See also: https://handlebarsjs.com/guide/partials.html)
     pub fn load_all(&mut self, root: &Path) -> Result<()> {
-        self.load_config(&root.join(Self::CONFIG_FILE_NAME))?;
+        self.load_config(&root.join(CONFIG_FILE_NAME))?;
         self.load_templates(root)?;
         Ok(())
     }
@@ -81,12 +78,12 @@ impl Renderer<'_> {
 
     #[allow(dead_code)]
     fn load_metadata_template_string(&mut self, template: impl AsRef<str>) -> Result<()> {
-        self.load_template_string(Self::METADATA_TEMPLATE_NAME, template)
+        self.load_template_string(METADATA_TEMPLATE_NAME, template)
     }
 
     #[allow(dead_code)]
     fn load_file_template_string(&mut self, template: impl AsRef<str>) -> Result<()> {
-        self.load_template_string(Self::FILE_TEMPLATE_NAME, template)
+        self.load_template_string(FILE_TEMPLATE_NAME, template)
     }
 
     #[allow(dead_code)]
@@ -107,7 +104,7 @@ impl Renderer<'_> {
         {
             let file = entry.path();
             match file.extension() {
-                Some(ext) if ext == Self::TEMPLATE_EXT => {}
+                Some(ext) if ext == TEMPLATE_EXT => {}
                 _ => continue,
             };
 
@@ -209,7 +206,7 @@ impl Renderer<'_> {
         descriptor_set: &FileDescriptorSet,
         output_path: &Path,
     ) -> Result<()> {
-        if !self.hbs.has_template(Self::METADATA_TEMPLATE_NAME) {
+        if !self.hbs.has_template(METADATA_TEMPLATE_NAME) {
             return Ok(());
         }
         let (dirs, files) = collect_dirs_and_files(descriptor_set)?;
@@ -239,7 +236,7 @@ impl Renderer<'_> {
         output_path: &Path,
         package_files: HashMap<String, PathBuf>,
     ) -> Result<()> {
-        if !self.hbs.has_template(Self::METADATA_TEMPLATE_NAME) {
+        if !self.hbs.has_template(METADATA_TEMPLATE_NAME) {
             return Ok(());
         }
         let mut context = MetadataContext::new();
@@ -264,13 +261,13 @@ impl Renderer<'_> {
         context: MetadataContext,
         writer: &mut W,
     ) -> Result<()> {
-        self.render_to_write(Self::METADATA_TEMPLATE_NAME, &context, writer)
+        self.render_to_write(METADATA_TEMPLATE_NAME, &context, writer)
     }
 
     fn render_file<W: io::Write>(&self, file: &FileDescriptorProto, writer: &mut W) -> Result<()> {
         log_render_file(&file.name, &self.config.file_extension);
         let context = FileContext::new(file, &self.config)?;
-        self.render_to_write(Self::FILE_TEMPLATE_NAME, &context, writer)
+        self.render_to_write(FILE_TEMPLATE_NAME, &context, writer)
     }
 
     #[allow(dead_code)]
@@ -372,9 +369,9 @@ mod tests {
     use crate::template_renderer::context::{
         EnumContext, FieldContext, FileContext, MessageContext,
     };
-    use crate::template_renderer::primitive;
     use crate::template_renderer::renderer::Renderer;
     use crate::template_renderer::renderer_config::RendererConfig;
+    use crate::template_renderer::{primitive, FILE_TEMPLATE_NAME};
     use anyhow::Result;
     use prost_types::{
         DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
@@ -622,7 +619,7 @@ mod tests {
         file.package = Some(".test.package".to_string());
         let file_context = FileContext::new(&file, &renderer.config)?;
 
-        let result = renderer.render_to_string(Renderer::FILE_TEMPLATE_NAME, &file_context)?;
+        let result = renderer.render_to_string(FILE_TEMPLATE_NAME, &file_context)?;
         assert_eq!(result, "inner.TypeName");
         Ok(())
     }
@@ -796,14 +793,12 @@ mod tests {
     mod metadata_file_name {
         use crate::template_renderer::renderer::Renderer;
         use crate::template_renderer::renderer_config::RendererConfig;
+        use crate::template_renderer::METADATA_TEMPLATE_NAME;
 
         #[test]
         fn default() {
             let renderer = Renderer::with_config(RendererConfig::default());
-            assert_eq!(
-                renderer.metadata_file_name(),
-                Renderer::METADATA_TEMPLATE_NAME
-            );
+            assert_eq!(renderer.metadata_file_name(), METADATA_TEMPLATE_NAME);
         }
 
         #[test]

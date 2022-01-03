@@ -3,7 +3,7 @@ use crate::lang::Lang;
 use crate::lang_config::LangConfig;
 use crate::protoc;
 use crate::template_config::TemplateConfig;
-use anyhow::{anyhow, Context, Error, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::{crate_version, App, Arg, ArgMatches, Values};
 use std::env;
 use std::ffi::OsString;
@@ -17,9 +17,10 @@ pub const PROTO: &str = "proto";
 pub const TEMPLATE: &str = "template";
 pub const TEMPLATE_ROOT: &str = "template-root";
 pub const OUTPUT_ROOT: &str = "output-root";
+pub const INIT: &str = "init";
 pub const DESCRIPTOR_SET_OUT: &str = "descriptor-set-out";
 pub const PROTOC_ARGS: &str = "protoc-args";
-pub const LONG_ABOUT_NEWLINE: &str = "\n\n";
+pub const LONG_HELP_NEWLINE: &str = "\n\n";
 
 const DISPLAY_ORDER_DEFAULT: usize = 990;
 const DEFAULT_DESCRIPTOR_SET_FILENAME: &str = "descriptor_set.proto";
@@ -35,71 +36,81 @@ where
         .args([
             Arg::new(IDL)
                 .display_order(0)
-                .about("IDL type of files expected at the INPUT path.")
+                .help("IDL type of files expected at the INPUT path.")
                 .long(IDL)
                 .default_value(&Idl::Proto.as_config()),
 
             Arg::new(INPUT)
                 .display_order(1)
-                .about("File path to search for IDL files.")
+                .help("File path to search for IDL files.")
                 .default_short()
                 .long(INPUT)
                 .takes_value(true)
-                .required(true),
+                .required(true)
+                .conflicts_with(INIT),
 
             Arg::new(PROTO)
                 .display_order(2)
-                .long_about(&join_about(&[
+                .long_help(join_help(&[
                     "Protobuf code will be generated for language LANG to directory located at OUTPUT.",
                     &format!("If OUTPUT is a relative path, it is evaluated relative to --{}.", OUTPUT_ROOT),
                     &format!("Supported languages for LANG: {}.", lang_list(&protoc::supported_languages())),
-                ]))
+                ]).as_str())
                 .default_short()
                 .long(PROTO)
                 .value_names(&["LANG", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present(TEMPLATE),
+                .required_unless_present_any([TEMPLATE, INIT])
+                .conflicts_with(INIT),
 
             Arg::new(TEMPLATE)
                 .display_order(3)
-                .long_about(&join_about(&[
+                .long_help(join_help(&[
                     "Code will be generated for the templates and configuration found inside the INPUT folder, and written to directory located at OUTPUT.",
                     &format!("If INPUT is a relative path, it is evaluated relative to --{}.", TEMPLATE_ROOT),
                     &format!("If OUTPUT is a relative path, it is evaluated relative to --{}.", OUTPUT_ROOT),
                     "See the examples folder for how to set up the INPUT directory correctly.",
-                ]))
+                ]).as_str())
                 .default_short()
                 .long(TEMPLATE)
                 .value_names(&["INPUT", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present(PROTO),
+                .required_unless_present_any([PROTO, INIT])
+                .conflicts_with(INIT),
 
             Arg::new(TEMPLATE_ROOT)
                 .display_order(4)
-                .about(&format!("All non-absolute --{} INPUT paths will be prefixed with this path. Required if any --{} INPUT paths are relative.", TEMPLATE, TEMPLATE))
+                .help(format!("All non-absolute --{} INPUT paths will be prefixed with this path. Required if any --{} INPUT paths are relative.", TEMPLATE, TEMPLATE).as_str())
                 .long(TEMPLATE_ROOT)
                 .takes_value(true),
 
             Arg::new(OUTPUT_ROOT)
-                .display_order(4)
-                .about("All non-absolute output paths will be prefixed with this path. Required if any OUTPUT paths are relative.")
+                .display_order(5)
+                .help("All non-absolute output paths will be prefixed with this path. Required if any OUTPUT paths are relative.")
                 .default_short()
                 .long(OUTPUT_ROOT)
                 .takes_value(true),
 
+            Arg::new(INIT)
+                .display_order(6)
+                .help(format!("Initialize the TARGET directory as a new template option with the basic input files required for running idlx with --{}.", TEMPLATE).as_str())
+                .long(INIT)
+                .takes_value(true)
+                .value_name("TARGET"),
+
             Arg::new(DESCRIPTOR_SET_OUT)
                 .display_order(DISPLAY_ORDER_DEFAULT)
                 .default_value(DEFAULT_DESCRIPTOR_SET_FILENAME)
-                .long_about(&join_about(&[
+                .long_help(join_help(&[
                     "Absolute output path for the descriptor_set proto file generated by protoc. By default it will be created in a temp folder that is deleted after the program is finished running.",
                     "This file is used by the generators other than those built into protoc itself.",
-                ]))
+                ]).as_str())
                 .long(DESCRIPTOR_SET_OUT)
                 .takes_value(true),
 
             Arg::new(PROTOC_ARGS)
                 .display_order(DISPLAY_ORDER_DEFAULT)
-                .long_about(&format!("Add any arguments directly to protoc invocation. Note they must be wrapped with \"\" as to not be picked up as arguments to idlx.\nFor example: --{} \"--error_format=FORMAT\"", PROTOC_ARGS))
+                .long_help(format!("Add any arguments directly to protoc invocation. Note they must be wrapped with \"\" as to not be picked up as arguments to idlx.\nFor example: --{} \"--error_format=FORMAT\"", PROTOC_ARGS).as_str())
                 .long(PROTOC_ARGS)
                 .takes_value(true)
                 .multiple_values(true),
@@ -107,8 +118,8 @@ where
         ]).try_get_matches_from(iter)
 }
 
-fn join_about(lines: &[&str]) -> String {
-    lines.join(LONG_ABOUT_NEWLINE).to_string()
+fn join_help(lines: &[&str]) -> String {
+    lines.join(LONG_HELP_NEWLINE).to_string()
 }
 
 pub struct Config {
@@ -118,6 +129,7 @@ pub struct Config {
     pub templates: Vec<TemplateConfig>,
     pub template_root: Option<PathBuf>,
     pub output_root: Option<PathBuf>,
+    pub init_target: Option<PathBuf>,
     pub descriptor_set_path: PathBuf,
     pub extra_protoc_args: Vec<String>,
 
@@ -136,6 +148,7 @@ impl Default for Config {
             templates: vec![],
             template_root: None,
             output_root: None,
+            init_target: None,
             descriptor_set_path: Default::default(),
             extra_protoc_args: vec![],
             intermediate_dir: tempdir().unwrap(),
@@ -153,7 +166,7 @@ impl Config {
 
     pub fn from_args(args: &ArgMatches) -> Result<Self> {
         let intermediate_dir = tempdir()?;
-        let input = parse_required_path_from_arg(INPUT, &args)?;
+        let input = parse_optional_path_from_arg(INPUT, &args)?.unwrap_or(PathBuf::new());
         let output_root = parse_optional_path_from_arg(OUTPUT_ROOT, &args)?;
         let template_root = parse_optional_path_from_arg(TEMPLATE_ROOT, &args)?;
         let descriptor_set_path = parse_descriptor_path(intermediate_dir.path(), &args);
@@ -164,6 +177,7 @@ impl Config {
             templates: parse_templates(&args, template_root.as_ref(), output_root.as_ref())?,
             template_root,
             output_root,
+            init_target: parse_optional_path_from_arg(INIT, &args)?,
             descriptor_set_path,
             extra_protoc_args: parse_extra_protoc_args(&args),
             intermediate_dir,
@@ -192,13 +206,6 @@ fn check_supported_languages(
         }
     }
     Ok(())
-}
-
-fn parse_required_path_from_arg(arg_name: &str, args: &ArgMatches) -> Result<PathBuf> {
-    match args.value_of(arg_name) {
-        None => Err(error_missing_required_arg(arg_name)),
-        Some(input) => Ok(current_dir(arg_name)?.join(input)),
-    }
 }
 
 fn parse_optional_path_from_arg(arg_name: &str, args: &ArgMatches) -> Result<Option<PathBuf>> {
@@ -273,10 +280,6 @@ fn parse_extra_protoc_args(args: &ArgMatches) -> Vec<String> {
         .unwrap_or(Values::default())
         .map(&str::to_string)
         .collect()
-}
-
-fn error_missing_required_arg(name: &str) -> Error {
-    anyhow!("Missing required argument '--{}'", name)
 }
 
 fn lang_list(list: &[Lang]) -> String {
