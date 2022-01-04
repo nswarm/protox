@@ -1,3 +1,5 @@
+[![Rust](https://github.com/nswarm/idlx/actions/workflows/rust.yml/badge.svg)](https://github.com/nswarm/idlx/actions/workflows/rust.yml)
+
 # idlx
 
 idlx is an executable that generates code, type definitions, or related output based on an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). It uses types defined by the IDL and renders [handlebars](https://handlebarsjs.com/) templates.
