@@ -15,6 +15,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v1.1.2
+
       - uses: actions/checkout@v2
       - name: Build
         run: cargo build --workspace --verbose
