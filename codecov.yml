@@ -1,0 +1,15 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+        paths:
+          - "runner"
+    patch:
+      default:
+        target: 80%
+        threshold: 1%
+        paths:
+          - "runner"
+
