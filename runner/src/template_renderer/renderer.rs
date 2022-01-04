@@ -439,7 +439,6 @@ mod tests {
             renderer.render(&set, test_dir.path())?;
 
             assert!(test_dir.path().join("FILE_NAME").exists());
-            assert!(test_dir.path().join("METADATA").exists());
             Ok(())
         }
 
@@ -458,7 +457,6 @@ mod tests {
             renderer.render(&set, test_dir.path())?;
 
             assert!(test_dir.path().join("PKG_ROOT").exists());
-            assert!(test_dir.path().join("METADATA").exists());
             Ok(())
         }
 
