@@ -13,6 +13,9 @@ jobs:
       options: --security-opt seccomp=unconfined
 
     steps:
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v1.1.2
+    
       - name: Checkout repository
         uses: actions/checkout@v2
 
