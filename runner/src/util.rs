@@ -1,5 +1,4 @@
 use crate::lang_config::LangConfig;
-use crate::util;
 use anyhow::{anyhow, Context, Result};
 use std::borrow::Borrow;
 use std::fs;
@@ -7,6 +6,17 @@ use std::path::{Path, PathBuf};
 
 pub fn unquote_arg(arg: &str) -> String {
     arg[1..arg.len() - 1].to_string()
+}
+
+pub(crate) fn check_dir_is_empty(dir: &Path) -> Result<()> {
+    if dir.exists() && fs::read_dir(dir)?.count() > 0 {
+        Err(anyhow!(
+            "Target directory '{}' is not empty.",
+            dir.display_normalized()
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 pub fn create_proto_out_dirs<C: Borrow<LangConfig>>(configs: &[C]) -> Result<()> {
@@ -36,7 +46,7 @@ pub fn create_dir_or_error(path: &Path) -> Result<()> {
 pub fn create_file_or_error(path: &Path) -> Result<fs::File> {
     match path.parent() {
         None => {}
-        Some(parent) => util::create_dir_or_error(parent)?,
+        Some(parent) => fs::create_dir_all(parent)?,
     }
     fs::File::create(&path).with_context(|| {
         format!(

@@ -75,6 +75,12 @@ pub struct RendererConfig {
     ///     other.Other         => other.Other
     /// ```
     pub field_relative_parent_prefix: Option<String>,
+
+    /// If set, this will be used in place of the default generated warning header in generated files.
+    /// Newlines will be placed after each string in the list.
+    ///
+    /// Explicitly setting this to an empty array will disable the header entirely.
+    pub generated_header: Option<Vec<String>>,
 }
 
 fn default_case_config() -> CaseConfig {
@@ -128,6 +134,7 @@ impl Default for RendererConfig {
             default_package_file_name: default_package_file_name(),
             field_name_override: Default::default(),
             field_relative_parent_prefix: None,
+            generated_header: None,
         }
     }
 }

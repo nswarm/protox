@@ -14,6 +14,7 @@ pub fn generate(config: &Config) -> Result<()> {
         Some(config) => config,
     };
 
+    util::check_dir_is_empty(&rust_config.output)?;
     util::create_proto_out_dirs(&[rust_config])?;
 
     let mut prost_config = prost_build::Config::new();

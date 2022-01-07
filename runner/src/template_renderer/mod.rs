@@ -11,7 +11,7 @@ pub use renderer_config::RendererConfig;
 use crate::template_config::TemplateConfig;
 use crate::template_renderer::renderer::Renderer;
 use crate::{util, Config, DisplayNormalized};
-use anyhow::{anyhow, Context, Error, Result};
+use anyhow::{Context, Result};
 use log::info;
 use prost::Message;
 use prost_types::FileDescriptorSet;
@@ -39,20 +39,11 @@ fn generate_from_descriptor_set(config: &Config, descriptor_set: &FileDescriptor
     for config in &config.templates {
         log_template_start(config);
         renderer.load_all(&config.input)?;
-        util::create_dir_or_error(&config.output)?;
-        if fs::read_dir(&config.output)?.count() > 0 {
-            return Err(error_output_dir_not_empty(config));
-        }
+        util::create_dir_or_error(&config.output).context("Template out dir.")?;
+        util::check_dir_is_empty(&config.output).context("Template out dir.")?;
         renderer.render(&descriptor_set, &config.output)?;
     }
     Ok(())
-}
-
-fn error_output_dir_not_empty(config: &TemplateConfig) -> Error {
-    anyhow!(
-        "Output directory {} is not empty.",
-        config.output.display_normalized()
-    )
 }
 
 fn log_template_start(config: &TemplateConfig) {

@@ -1,18 +1,12 @@
 use crate::template_renderer::{RendererConfig, FILE_TEMPLATE_NAME, TEMPLATE_EXT};
-use crate::{util, DisplayNormalized, CONFIG_FILE_NAME};
-use anyhow::{anyhow, Result};
-use std::fs;
+use crate::{util, CONFIG_FILE_NAME};
+use anyhow::Result;
 use std::io::Write;
 use std::path::Path;
 
 pub fn initialize_template_dir(dir: &Path) -> Result<()> {
     util::create_dir_or_error(dir)?;
-    if fs::read_dir(dir)?.count() > 0 {
-        return Err(anyhow!(
-            "Target directory '{}' is not empty.",
-            dir.display_normalized()
-        ));
-    }
+    util::check_dir_is_empty(dir)?;
     write_config(dir)?;
     write_file_template(dir)?;
     Ok(())
