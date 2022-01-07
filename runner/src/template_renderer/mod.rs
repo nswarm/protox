@@ -11,7 +11,7 @@ pub use renderer_config::RendererConfig;
 use crate::template_config::TemplateConfig;
 use crate::template_renderer::renderer::Renderer;
 use crate::{util, Config, DisplayNormalized};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use log::info;
 use prost::Message;
 use prost_types::FileDescriptorSet;
@@ -40,9 +40,19 @@ fn generate_from_descriptor_set(config: &Config, descriptor_set: &FileDescriptor
         log_template_start(config);
         renderer.load_all(&config.input)?;
         util::create_dir_or_error(&config.output)?;
+        if fs::read_dir(&config.output)?.count() > 0 {
+            return Err(error_output_dir_not_empty(config));
+        }
         renderer.render(&descriptor_set, &config.output)?;
     }
     Ok(())
+}
+
+fn error_output_dir_not_empty(config: &TemplateConfig) -> Error {
+    anyhow!(
+        "Output directory {} is not empty.",
+        config.output.display_normalized()
+    )
 }
 
 fn log_template_start(config: &TemplateConfig) {
@@ -72,12 +82,12 @@ mod tests {
     use crate::template_renderer::{
         generate, generate_from_descriptor_set, FILE_TEMPLATE_NAME, TEMPLATE_EXT,
     };
-    use crate::{Config, CONFIG_FILE_NAME};
+    use crate::{util, Config, CONFIG_FILE_NAME};
     use anyhow::Result;
     use prost_types::{FileDescriptorProto, FileDescriptorSet};
     use std::fs;
     use std::io::Write;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use tempfile::tempdir;
 
     #[test]
@@ -90,23 +100,7 @@ mod tests {
     fn renders_output_for_each_template_set() -> Result<()> {
         let test_dir = tempdir()?;
         let templates = ["test0", "test1", "test2"];
-        let template_root = test_dir.path().join("templates");
-        for template in templates {
-            create_required_template_files(&template_root.join(&template))?;
-        }
-        let output_dir = test_dir.path().join("output");
-        fs::create_dir_all(&output_dir)?;
-
-        let mut config = Config::default();
-        config.template_root = Some(template_root.clone());
-        config.output_root = Some(output_dir.clone());
-        for template in templates {
-            config.templates.push(TemplateConfig {
-                input: template_root.join(template),
-                output: output_dir.join(template),
-            });
-        }
-
+        let (output_dir, config) = config_with_templates(test_dir.path(), &templates)?;
         let descriptor_set = FileDescriptorSet {
             file: vec![FileDescriptorProto {
                 name: Some("test.proto".to_string()),
@@ -129,6 +123,36 @@ mod tests {
             assert_ne!(fs::read_dir(output_dir.join(template))?.count(), 0);
         }
         Ok(())
+    }
+
+    #[test]
+    fn errors_if_output_dir_is_not_empty() -> Result<()> {
+        let test_dir = tempdir()?;
+        let descriptor_set = FileDescriptorSet { file: vec![] };
+        let template = "test";
+        let (output_dir, config) = config_with_templates(test_dir.path(), &[template])?;
+        util::create_dir_or_error(&output_dir.join(template))?;
+        let _ = fs::File::create(output_dir.join(template).join("some_file"))?;
+        assert!(generate_from_descriptor_set(&config, &descriptor_set).is_err());
+        Ok(())
+    }
+
+    fn config_with_templates(test_dir: &Path, templates: &[&str]) -> Result<(PathBuf, Config)> {
+        let template_root = test_dir.join("templates");
+        for template in templates {
+            create_required_template_files(&template_root.join(&template))?;
+        }
+        let output_dir = test_dir.join("output");
+        let mut config = Config::default();
+        config.template_root = Some(template_root.clone());
+        config.output_root = Some(output_dir.clone());
+        for template in templates {
+            config.templates.push(TemplateConfig {
+                input: template_root.join(template),
+                output: output_dir.join(template),
+            });
+        }
+        Ok((output_dir, config))
     }
 
     fn create_required_template_files(path: &Path) -> Result<()> {
