@@ -13,7 +13,7 @@ macro_rules! protoc_test {
 mod test_lang {
     use crate::util;
     use anyhow::{Context, Result};
-    use runner::Lang;
+    use generator::Lang;
     use std::fs;
 
     protoc_test!(test_lang, cpp, Lang::Cpp);
@@ -42,7 +42,7 @@ mod test_lang {
 mod test_protoc_extra_args {
     use crate::util;
     use anyhow::Result;
-    use runner::Lang;
+    use generator::Lang;
     use std::fs;
     use tempfile::tempdir_in;
 

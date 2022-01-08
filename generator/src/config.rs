@@ -127,8 +127,6 @@ pub struct Config {
     pub input: PathBuf,
     pub protos: Vec<LangConfig>,
     pub templates: Vec<TemplateConfig>,
-    pub template_root: Option<PathBuf>,
-    pub output_root: Option<PathBuf>,
     pub init_target: Option<PathBuf>,
     pub descriptor_set_path: PathBuf,
     pub extra_protoc_args: Vec<String>,
@@ -138,7 +136,6 @@ pub struct Config {
     intermediate_dir: TempDir,
 }
 
-#[cfg(test)]
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -146,8 +143,6 @@ impl Default for Config {
             input: Default::default(),
             protos: vec![],
             templates: vec![],
-            template_root: None,
-            output_root: None,
             init_target: None,
             descriptor_set_path: Default::default(),
             extra_protoc_args: vec![],
@@ -175,8 +170,6 @@ impl Config {
             input,
             protos: parse_protos(&args, output_root.as_ref())?,
             templates: parse_templates(&args, template_root.as_ref(), output_root.as_ref())?,
-            template_root,
-            output_root,
             init_target: parse_optional_path_from_arg(INIT, &args)?,
             descriptor_set_path,
             extra_protoc_args: parse_extra_protoc_args(&args),
@@ -323,38 +316,6 @@ mod tests {
         ])?)?;
         assert_eq!(config.input, input);
         Ok(())
-    }
-
-    mod root_paths {
-        use crate::config::tests::{arg, config_with_required_args};
-        use crate::config::{OUTPUT_ROOT, TEMPLATE_ROOT};
-        use crate::DisplayNormalized;
-        use anyhow::Result;
-        use std::env::current_dir;
-
-        #[test]
-        fn relative() -> Result<()> {
-            let path = "path/to/output";
-            let config =
-                config_with_required_args([&arg(OUTPUT_ROOT), path, &arg(TEMPLATE_ROOT), path])?;
-            assert_eq!(config.output_root, Some(current_dir()?.join(path)));
-            assert_eq!(config.template_root, Some(current_dir()?.join(path)));
-            Ok(())
-        }
-
-        #[test]
-        fn absolute() -> Result<()> {
-            let path = current_dir()?.join("abs/path");
-            let config = config_with_required_args([
-                &arg(OUTPUT_ROOT),
-                &path.display_normalized(),
-                &arg(TEMPLATE_ROOT),
-                &path.display_normalized(),
-            ])?;
-            assert_eq!(config.output_root.as_ref(), Some(&path));
-            assert_eq!(config.template_root.as_ref(), Some(&path));
-            Ok(())
-        }
     }
 
     mod parse_descriptor_path {

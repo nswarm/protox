@@ -5,11 +5,11 @@ coverage:
         target: 80%
         threshold: 1%
         paths:
-          - "runner"
+          - "generator"
     patch:
       default:
         target: 80%
         threshold: 1%
         paths:
-          - "runner"
+          - "generator"
 

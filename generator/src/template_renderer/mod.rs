@@ -135,8 +135,6 @@ mod tests {
         }
         let output_dir = test_dir.join("output");
         let mut config = Config::default();
-        config.template_root = Some(template_root.clone());
-        config.output_root = Some(output_dir.clone());
         for template in templates {
             config.templates.push(TemplateConfig {
                 input: template_root.join(template),
