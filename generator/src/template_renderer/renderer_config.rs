@@ -65,14 +65,14 @@ pub struct RendererConfig {
     pub field_name_override: HashMap<String, String>,
 
     /// If set, relative types in parent scopes will be specified with this prefix _instead_ of using the
-    /// fully qualified type. Types from the root will still be fully qualified.
+    /// fully qualified type.
     ///
     /// ```txt
     /// example using field_relative_parent_prefix = "super"
     ///     qualified type => as referenced by grand.parent.me.Me
     ///     grand.parent.Name   => super.Name
     ///     grand.Root          => super.super.Root
-    ///     other.Other         => other.Other
+    ///     other.Other         => super.super.super.other.Other
     /// ```
     pub field_relative_parent_prefix: Option<String>,
 

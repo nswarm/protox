@@ -99,7 +99,7 @@ impl<'a> TypePath<'a> {
             Some(package) => TypePath::from_package(package.as_ref()),
         };
         let matching_depth = TypePath::matching_depth(&self, &package) as usize;
-        let full_prefix = if matching_depth > 0 {
+        let full_prefix = if self.components().len() > 0 {
             TypePath::create_relative_prefix(
                 package.depth(),
                 matching_depth,
@@ -107,7 +107,7 @@ impl<'a> TypePath<'a> {
                 self.separator(),
             )
         } else {
-            // Matching depth 0 is from root, so fully qualify for clarity.
+            // No package components means we're a top-level type.
             "".to_string()
         };
         if parent_prefix.is_none() && package.depth() > self.depth() {
@@ -452,12 +452,13 @@ mod tests {
                 );
             }
 
-            // grand.parent.cousin.Name
-            // grand.parent.me.inner
-
             #[test]
             fn separate_family() {
-                run_test("other.sub.Name", "grand.parent.me", "other.sub.Name");
+                run_test(
+                    "other.sub.Name",
+                    "grand.parent.me",
+                    "super.super.super.other.sub.Name",
+                );
             }
 
             #[test]
