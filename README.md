@@ -134,7 +134,7 @@ idlx operates in three main stages:
 
 ### 1. IDL -> Protobuf
 
-Google's protobuf compiler `protoc` already can compile `.proto` files to a "descriptor_set" which describes every file, message, field, etc. within the set of input files. The other main supported IDL flatbuffers has support to transform flatbuffers files into protobuf files. Any other IDL support would be easiest to do something similar.
+Google's protobuf compiler `protoc` already can compile `.proto` files to a "descriptor_set" which describes every file, message, field, etc. within the set of input files.
 
 ### 2. Protobuf -> Template Contexts
 
