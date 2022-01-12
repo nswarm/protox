@@ -53,7 +53,7 @@ pub struct RendererConfig {
     pub one_file_per_package: bool,
 
     /// When `one_file_per_package` is true, use this file name when a package is not specified in the proto file.
-    /// default: `_`
+    /// default: `unknown`
     #[serde(default = "default_package_file_name")]
     pub default_package_file_name: String,
 
@@ -96,7 +96,7 @@ fn default_package_separator() -> String {
 }
 
 fn default_package_file_name() -> String {
-    "_".to_string()
+    "unknown".to_string()
 }
 
 #[derive(Serialize, Deserialize, Clone)]
