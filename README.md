@@ -119,6 +119,7 @@ This will indent all content rendered by the partial by 4 spaces. If you're only
 
 While idlx is largely functional, there's a few things it does not yet support, and a few quality of life features I intend on adding. 
 
+- Retain comments from source protos.
 - Protobuf `oneof` types.
 - Protobuf nested types.
 - Support for always using the fully qualified type name.

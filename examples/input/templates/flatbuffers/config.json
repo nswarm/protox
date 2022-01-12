@@ -1,0 +1,35 @@
+{
+  "file_extension": "fbs",
+  "type_config": {
+    "float": "float32",
+    "double": "float64",
+    "int32": "int32",
+    "int64": "int64",
+    "uint32": "uint32",
+    "uint64": "uint64",
+    "sint32": "int32",
+    "sint64": "int64",
+    "fixed32": "uint32",
+    "fixed64": "uint64",
+    "sfixed32": "int32",
+    "sfixed64": "int64",
+    "bool": "bool",
+    "string": "string",
+    "bytes": "Vec<u8>"
+  },
+  "case_config": {
+    "file_name": "lower-kebab-case",
+    "import": "lower_snake_case",
+    "enum_name": "UpperCamelCase",
+    "enum_value_name": "UpperCamelCase",
+    "message_name": "UpperCamelCase",
+    "field_name": "lower_snake_case"
+  },
+  "metadata_file_name": "metadata",
+  "package_separator": ".",
+  "one_file_per_package": false,
+  "default_package_file_name": "_",
+  "field_name_override": {},
+  "field_relative_parent_prefix": null,
+  "generated_header": null
+}
