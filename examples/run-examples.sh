@@ -19,6 +19,7 @@ rm -rf examples/output
 # - See idlx --help for all supported languages.
 cargo run -- \
   --input examples/input/proto \
+  --includes "$(pwd)/proto_options/protos" \
   --output-root examples/output/proto \
   --proto cpp proto-cpp \
   --proto csharp proto-csharp \

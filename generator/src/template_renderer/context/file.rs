@@ -7,6 +7,7 @@ use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::template_renderer::context::{EnumContext, ImportContext, MessageContext};
+use crate::template_renderer::option_key_value::insert_custom_options;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 
@@ -43,8 +44,8 @@ pub struct FileContext<'a> {
     /// Built-in proto option names and types can be seen here:
     /// https://docs.rs/prost-types/latest/prost_types/struct.FileOptions.html
     ///
-    /// Additionally, a few idlx-specific options are supported:
-    ///
+    /// Additionally, a few idlx-specific options are supported. See the proto files at
+    /// `idlx/proto_options/protos` for more info.
     #[serde(serialize_with = "serialize_file_options", skip_deserializing)]
     options: Option<FileOptions>,
 }
@@ -116,20 +117,22 @@ fn serialize_file_options<S: Serializer>(
         Some(options) => options,
     };
     let mut map = HashMap::new();
-    if let Err(err) = insert_file_options(&mut map, options) {
-        return Err(S::Error::custom(format!(
-            "Error in serialize_file_options: {}",
-            err
-        )));
-    }
+    insert_builtin_file_options(&mut map, options)
+        .map_err(|err| S::Error::custom(file_options_error(err)))?;
+    insert_custom_options(&mut map, options, &proto_options::FILE_KEY_VALUE)
+        .map_err(|err| S::Error::custom(err.to_string()))?;
+    debug!("Serializing file options: {:?}", map);
     serializer.collect_map(map)
 }
 
-fn insert_file_options(
+fn file_options_error(err: impl Error) -> String {
+    format!("error in serialize_file_options: {}", err)
+}
+
+fn insert_builtin_file_options(
     map: &mut HashMap<String, serde_json::Value>,
     options: &FileOptions,
 ) -> Result<(), serde_json::Error> {
-    // Built-in.
     insert_file_option!(deprecated, map, options);
     insert_file_option!(go_package, map, options);
     insert_file_option!(java_package, map, options);
@@ -166,6 +169,7 @@ fn try_insert_option<T: Serialize>(
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
+    use prost::{Extendable, ExtensionSet};
     use prost_types::{FileDescriptorProto, FileOptions};
 
     use crate::template_renderer::context::FileContext;
@@ -191,36 +195,35 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn file_options() -> Result<()> {
         let config = RendererConfig::default();
         let mut file = default_file();
         file.name = Some("file_name".to_string());
-        file.options = Some(
-            #[allow(deprecated)]
-            FileOptions {
-                java_package: Some("java_package".to_string()),
-                java_outer_classname: Some("java_outer_classname".to_string()),
-                java_multiple_files: Some(true),
-                java_generate_equals_and_hash: None,
-                java_string_check_utf8: Some(true),
-                optimize_for: Some(1234),
-                go_package: Some("go_package".to_string()),
-                cc_generic_services: Some(true),
-                java_generic_services: Some(true),
-                py_generic_services: Some(true),
-                php_generic_services: Some(true),
-                deprecated: Some(true),
-                cc_enable_arenas: Some(true),
-                objc_class_prefix: Some("objc_class_prefix".to_string()),
-                csharp_namespace: Some("csharp_namespace".to_string()),
-                swift_prefix: Some("swift_prefix".to_string()),
-                php_class_prefix: Some("php_class_prefix".to_string()),
-                php_namespace: Some("php_namespace".to_string()),
-                php_metadata_namespace: Some("php_metadata_namespace".to_string()),
-                ruby_package: Some("ruby_package".to_string()),
-                uninterpreted_option: vec![],
-            },
-        );
+        file.options = Some(FileOptions {
+            java_package: Some("java_package".to_string()),
+            java_outer_classname: Some("java_outer_classname".to_string()),
+            java_multiple_files: Some(true),
+            java_generate_equals_and_hash: None,
+            java_string_check_utf8: Some(true),
+            optimize_for: Some(1234),
+            go_package: Some("go_package".to_string()),
+            cc_generic_services: Some(true),
+            java_generic_services: Some(true),
+            py_generic_services: Some(true),
+            php_generic_services: Some(true),
+            deprecated: Some(true),
+            cc_enable_arenas: Some(true),
+            objc_class_prefix: Some("objc_class_prefix".to_string()),
+            csharp_namespace: Some("csharp_namespace".to_string()),
+            swift_prefix: Some("swift_prefix".to_string()),
+            php_class_prefix: Some("php_class_prefix".to_string()),
+            php_namespace: Some("php_namespace".to_string()),
+            php_metadata_namespace: Some("php_metadata_namespace".to_string()),
+            ruby_package: Some("ruby_package".to_string()),
+            uninterpreted_option: vec![],
+            extension_set: ExtensionSet::default(),
+        });
         let context = FileContext::new(&file, &config)?;
         let json = serde_json::to_string(&context)?;
         println!("{}", json);
@@ -243,6 +246,26 @@ mod tests {
         assert!(json.contains(r#""php_namespace":"php_namespace""#));
         assert!(json.contains(r#""php_metadata_namespace":"php_metadata_namespace""#));
         assert!(json.contains(r#""ruby_package":"ruby_package""#));
+        Ok(())
+    }
+
+    #[test]
+    fn key_value_options() -> Result<()> {
+        let config = RendererConfig::default();
+        let mut file = default_file();
+        file.name = Some("file_name".to_string());
+        let mut options = FileOptions::default();
+        options.set_extension_data(
+            &proto_options::FILE_KEY_VALUE,
+            vec!["key0=value0".to_string(), "key1=value1".to_string()],
+        )?;
+        file.options = Some(options);
+
+        let context = FileContext::new(&file, &config)?;
+        let json = serde_json::to_string(&context)?;
+        println!("{}", json);
+        assert!(json.contains(r#""key0":"value0""#));
+        assert!(json.contains(r#""key1":"value1""#));
         Ok(())
     }
 

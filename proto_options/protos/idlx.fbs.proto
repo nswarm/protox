@@ -1,0 +1,20 @@
+//
+// This file contains custom protobuf options that add support for additional information needed to properly
+// convert protobuf -> flatbuffers definitions.
+//
+
+syntax = "proto3";
+
+import "google/protobuf/descriptor.proto";
+
+package idlx.fbs;
+
+extend google.protobuf.FileOptions {
+  string file_test_str = 50000;
+  int32 file_test_i32 = 50001;
+}
+
+extend google.protobuf.MessageOptions {
+  string msg_test_str = 50000;
+  int32 msg_test_i32 = 50001;
+}

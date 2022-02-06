@@ -1,6 +1,8 @@
 mod case;
 mod context;
+mod extension_registry;
 mod indent_helper;
+mod option_key_value;
 mod primitive;
 mod proto;
 mod renderer;
@@ -62,7 +64,8 @@ fn load_descriptor_set(config: &Config) -> Result<FileDescriptorSet> {
             path.display_normalized()
         )
     })?;
-    let descriptor_set = Message::decode(bytes.as_slice())?;
+    let descriptor_set =
+        Message::decode_with_extensions(bytes.as_slice(), extension_registry::create())?;
     Ok(descriptor_set)
 }
 

@@ -18,7 +18,7 @@ pub struct Protoc {
 
 impl Protoc {
     pub fn new(config: &Config) -> Result<Protoc> {
-        let mut args = vec![collect_proto_paths(config)?];
+        let mut args = collect_proto_paths(config)?;
         let descriptor_set_path = config
             .descriptor_set_path
             .to_str()
@@ -73,7 +73,7 @@ impl Protoc {
     }
 }
 
-fn collect_proto_paths(config: &Config) -> Result<String> {
+fn collect_proto_paths(config: &Config) -> Result<Vec<String>> {
     if let Err(_) = fs::read_dir(&config.input) {
         bail!(
             "Invalid input: could not find the directory located at path '{:?}'.",
@@ -84,10 +84,9 @@ fn collect_proto_paths(config: &Config) -> Result<String> {
         None => bail!("Invalid input: Could not parse path to string."),
         Some(input) => input,
     };
-    let mut args = arg_with_value(PROTOC_ARG_PROTO_PATH, input);
+    let mut args = vec![arg_with_value(PROTOC_ARG_PROTO_PATH, input)];
     for include in &config.includes {
-        args.push(' ');
-        args.push_str(&arg_with_value(PROTOC_ARG_PROTO_PATH, include));
+        args.push(arg_with_value(PROTOC_ARG_PROTO_PATH, include));
     }
     Ok(args)
 }
@@ -126,8 +125,11 @@ mod tests {
         let input = env::current_dir().unwrap().to_str().unwrap().to_string();
         let mut config = Config::default();
         config.input = PathBuf::from(&input);
-        let arg = collect_proto_paths(&config)?;
-        assert_eq!(arg, arg_with_value(PROTOC_ARG_PROTO_PATH, &input));
+        let proto_paths = collect_proto_paths(&config)?;
+        assert_eq!(
+            proto_paths,
+            vec![arg_with_value(PROTOC_ARG_PROTO_PATH, &input)]
+        );
         Ok(())
     }
 

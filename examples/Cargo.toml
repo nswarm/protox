@@ -9,6 +9,5 @@ build = "build.rs"
 name = "idlx-examples"
 path = "src/main.rs"
 
-
 [build-dependencies]
 generator = { path = "../generator" }

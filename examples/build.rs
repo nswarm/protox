@@ -12,7 +12,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=proto");
     println!("cargo:rerun-if-changed=build.rs");
 
-    let input_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("input");
+    let module_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let input_dir = module_root.join("input");
+    let idlx_includes_dir = module_root.join("../proto_options/protos");
     let output_dir = PathBuf::from(env::var("OUT_DIR")?);
     let proto_out = output_dir.join("rust-proto");
     let template_out = output_dir.join("rust-server");
@@ -24,6 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Configure idlx directly.
     let mut config = generator::Config::default();
     config.input = input_dir.join("proto");
+    config.includes = vec![idlx_includes_dir.to_str().unwrap().to_string()];
     config.descriptor_set_path = output_dir.join("descriptor_set");
 
     // Note that these paths need to be absolute.
@@ -35,6 +38,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         input: input_dir.join("templates").join("rust-server"),
         output: template_out,
     });
+
+    std::env::set_var("RUST_LOG", "info,handlebars=off");
     generator::generate_with_config(config)?;
 
     Ok(())

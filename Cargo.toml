@@ -6,4 +6,5 @@ members = [
     "cli",
     "generator",
     "examples",
+    "proto_options",
 ]

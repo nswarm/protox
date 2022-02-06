@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-import "google/protobuf/descriptor.proto";
-
-extend google.protobuf.FileOptions {
-  string test_str = 50000;
-  int32 test_i32 = 50001;
-}

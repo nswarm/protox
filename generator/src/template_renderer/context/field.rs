@@ -1,11 +1,14 @@
 use anyhow::Result;
 use log::debug;
 use prost_types::field_descriptor_proto::Label;
-use prost_types::FieldDescriptorProto;
-use serde::{Deserialize, Serialize};
+use prost_types::{FieldDescriptorProto, FieldOptions};
+use serde::ser::Error;
+use serde::{Deserialize, Serialize, Serializer};
+use std::collections::HashMap;
 
 use crate::template_renderer::context::message;
 use crate::template_renderer::context::proto_type::ProtoType;
+use crate::template_renderer::option_key_value::insert_custom_options;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 
@@ -54,6 +57,32 @@ pub struct FieldContext {
 
     /// When `is_map` is true, equivalent to `relative_type` for the value type of the map.
     relative_value_type: Option<String>,
+
+    /// Proto field options are serialized as an object like so:
+    /// ```json
+    /// {
+    ///   "options": {
+    ///       "option_name": <option_value>,
+    ///   }
+    ///   ...etc.
+    /// }
+    /// ```
+    /// Which can be accessed in the template like `{{options.option_name}}`. Options which have no
+    /// value will not exist in the context, so you probably want to if guard:
+    /// ```handlebars
+    /// {{#if options.option_name}}
+    ///   {{options.option_name}}
+    /// {{/if}}
+    /// ```
+    /// Note that for boolean values one #if is enough to check both that it exists and is true.
+    ///
+    /// Built-in proto option names and types can be seen here:
+    /// https://docs.rs/prost-types/latest/prost_types/struct.FieldOptions.html
+    ///
+    /// Additionally, a few idlx-specific options are supported. See the proto files at
+    /// `idlx/proto_options/protos` for more info.
+    #[serde(serialize_with = "serialize_field_options", skip_deserializing)]
+    options: Option<FieldOptions>,
 }
 
 impl FieldContext {
@@ -91,6 +120,7 @@ impl FieldContext {
             fully_qualified_value_type: None,
             relative_key_type: None,
             relative_value_type: None,
+            options: field.options.clone(),
         };
         Ok(context)
     }
@@ -115,6 +145,7 @@ impl FieldContext {
             fully_qualified_value_type: Some(value_type_path.to_string()),
             relative_key_type: Some(key_type_path.relative_to(package, parent_prefix)),
             relative_value_type: Some(value_type_path.relative_to(package, parent_prefix)),
+            options: field.options.clone(),
         };
         Ok(context)
     }
@@ -153,12 +184,28 @@ fn is_oneof(field: &FieldDescriptorProto) -> bool {
     field.oneof_index.is_some()
 }
 
+fn serialize_field_options<S: Serializer>(
+    options: &Option<FieldOptions>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let options = match options {
+        None => return serializer.serialize_none(),
+        Some(options) => options,
+    };
+    let mut map = HashMap::new();
+    insert_custom_options(&mut map, options, &proto_options::FIELD_KEY_VALUE)
+        .map_err(|err| S::Error::custom(err.to_string()))?;
+    debug!("Serializing field options: {:?}", map);
+    serializer.collect_map(map)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::template_renderer::case::Case;
     use anyhow::Result;
+    use prost::Extendable;
     use prost_types::field_descriptor_proto::Label;
-    use prost_types::FieldDescriptorProto;
+    use prost_types::{FieldDescriptorProto, FieldOptions};
 
     use crate::template_renderer::context::field::FieldContext;
     use crate::template_renderer::context::message;
@@ -204,6 +251,27 @@ mod tests {
         field.type_name = Some(primitive::FLOAT.to_string());
         let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
         assert_eq!(context.field_name.to_string(), "TEST_NAME");
+        Ok(())
+    }
+
+    #[test]
+    fn key_value_options() -> Result<()> {
+        let config = RendererConfig::default();
+        let mut field = default_field();
+        field.name = Some("field_name".to_string());
+        field.type_name = Some(primitive::FLOAT.to_string());
+        let mut options = FieldOptions::default();
+        options.set_extension_data(
+            &proto_options::FIELD_KEY_VALUE,
+            vec!["key0=value0".to_string(), "key1=value1".to_string()],
+        )?;
+        field.options = Some(options);
+
+        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        let json = serde_json::to_string(&context)?;
+        println!("{}", json);
+        assert!(json.contains(r#""key0":"value0""#));
+        assert!(json.contains(r#""key1":"value1""#));
         Ok(())
     }
 

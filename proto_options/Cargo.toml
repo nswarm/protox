@@ -1,0 +1,16 @@
+[package]
+name = "proto_options"
+version = "0.1.0"
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+# Using my branch of prost which has support for custom options.
+# https://github.com/tokio-rs/prost/pull/591
+prost = { git = "https://github.com/nswarm/prost.git", branch = "extensions" }
+
+[build-dependencies]
+# Using my branch of prost which has support for custom options.
+# https://github.com/tokio-rs/prost/pull/591
+prost-build = { git = "https://github.com/nswarm/prost.git", branch = "extensions"}
+walkdir = "2.3"
