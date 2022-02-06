@@ -17,6 +17,7 @@ pub const PROTO: &str = "proto";
 pub const TEMPLATE: &str = "template";
 pub const TEMPLATE_ROOT: &str = "template-root";
 pub const OUTPUT_ROOT: &str = "output-root";
+pub const INCLUDES: &str = "includes";
 pub const INIT: &str = "init";
 pub const DESCRIPTOR_SET_OUT: &str = "descriptor-set-out";
 pub const PROTOC_ARGS: &str = "protoc-args";
@@ -91,6 +92,13 @@ where
                 .long(OUTPUT_ROOT)
                 .takes_value(true),
 
+            Arg::new(INCLUDES)
+                .display_order(5)
+                .help("Additional include folders passed directly to protoc as --proto_path options.")
+                .long(INCLUDES)
+                .takes_value(true)
+                .multiple_values(true),
+
             Arg::new(INIT)
                 .display_order(6)
                 .help(format!("Initialize the TARGET directory as a new template option with the basic input files required for running idlx with --{}.", TEMPLATE).as_str())
@@ -127,6 +135,7 @@ pub struct Config {
     pub input: PathBuf,
     pub protos: Vec<LangConfig>,
     pub templates: Vec<TemplateConfig>,
+    pub includes: Vec<String>,
     pub init_target: Option<PathBuf>,
     pub descriptor_set_path: PathBuf,
     pub extra_protoc_args: Vec<String>,
@@ -143,6 +152,7 @@ impl Default for Config {
             input: Default::default(),
             protos: vec![],
             templates: vec![],
+            includes: vec![],
             init_target: None,
             descriptor_set_path: Default::default(),
             extra_protoc_args: vec![],
@@ -170,6 +180,7 @@ impl Config {
             input,
             protos: parse_protos(&args, output_root.as_ref())?,
             templates: parse_templates(&args, template_root.as_ref(), output_root.as_ref())?,
+            includes: parse_includes(&args),
             init_target: parse_optional_path_from_arg(INIT, &args)?,
             descriptor_set_path,
             extra_protoc_args: parse_extra_protoc_args(&args),
@@ -268,8 +279,16 @@ fn parse_templates(
     Ok(configs)
 }
 
+fn parse_includes(args: &ArgMatches) -> Vec<String> {
+    parse_arg_to_vec(INCLUDES, args)
+}
+
 fn parse_extra_protoc_args(args: &ArgMatches) -> Vec<String> {
-    args.values_of(PROTOC_ARGS)
+    parse_arg_to_vec(PROTOC_ARGS, args)
+}
+
+fn parse_arg_to_vec(arg_name: &str, args: &ArgMatches) -> Vec<String> {
+    args.values_of(arg_name)
         .unwrap_or(Values::default())
         .map(&str::to_string)
         .collect()
@@ -295,7 +314,9 @@ impl ArgExt for Arg<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::{parse_cli_args, APP_NAME, INPUT, OUTPUT_ROOT, PROTO, PROTOC_ARGS};
+    use crate::config::{
+        parse_cli_args, APP_NAME, INCLUDES, INPUT, OUTPUT_ROOT, PROTO, PROTOC_ARGS,
+    };
     use crate::{Config, DisplayNormalized};
     use anyhow::Result;
     use std::env::current_dir;
@@ -357,6 +378,16 @@ mod tests {
         let config = config_with_required_args([&protoc_args, &extra_args[0], &extra_args[1]])?;
         assert_eq!(config.extra_protoc_args.get(0), Some(&extra_args[0]));
         assert_eq!(config.extra_protoc_args.get(1), Some(&extra_args[1]));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_includes() -> Result<()> {
+        let includes = [quote("include0"), quote("include1")];
+        let arg = arg(INCLUDES);
+        let config = config_with_required_args([&arg, &includes[0], &includes[1]])?;
+        assert_eq!(config.includes.get(0), Some(&includes[0]));
+        assert_eq!(config.includes.get(1), Some(&includes[1]));
         Ok(())
     }
 

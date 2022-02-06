@@ -18,7 +18,7 @@ pub struct Protoc {
 
 impl Protoc {
     pub fn new(config: &Config) -> Result<Protoc> {
-        let mut args = vec![collect_proto_path(config)?];
+        let mut args = vec![collect_proto_paths(config)?];
         let descriptor_set_path = config
             .descriptor_set_path
             .to_str()
@@ -73,7 +73,7 @@ impl Protoc {
     }
 }
 
-fn collect_proto_path(config: &Config) -> Result<String> {
+fn collect_proto_paths(config: &Config) -> Result<String> {
     if let Err(_) = fs::read_dir(&config.input) {
         bail!(
             "Invalid input: could not find the directory located at path '{:?}'.",
@@ -84,7 +84,12 @@ fn collect_proto_path(config: &Config) -> Result<String> {
         None => bail!("Invalid input: Could not parse path to string."),
         Some(input) => input,
     };
-    Ok(arg_with_value(PROTOC_ARG_PROTO_PATH, input))
+    let mut args = arg_with_value(PROTOC_ARG_PROTO_PATH, input);
+    for include in &config.includes {
+        args.push(' ');
+        args.push_str(&arg_with_value(PROTOC_ARG_PROTO_PATH, include));
+    }
+    Ok(args)
 }
 
 fn collect_extra_protoc_args(config: &Config) -> Vec<String> {
@@ -109,7 +114,7 @@ pub fn arg_with_value(arg: &str, value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use crate::protoc::protoc::{
-        arg_with_value, collect_extra_protoc_args, collect_proto_path, PROTOC_ARG_PROTO_PATH,
+        arg_with_value, collect_extra_protoc_args, collect_proto_paths, PROTOC_ARG_PROTO_PATH,
     };
     use crate::Config;
     use anyhow::Result;
@@ -121,7 +126,7 @@ mod tests {
         let input = env::current_dir().unwrap().to_str().unwrap().to_string();
         let mut config = Config::default();
         config.input = PathBuf::from(&input);
-        let arg = collect_proto_path(&config)?;
+        let arg = collect_proto_paths(&config)?;
         assert_eq!(arg, arg_with_value(PROTOC_ARG_PROTO_PATH, &input));
         Ok(())
     }
@@ -131,7 +136,7 @@ mod tests {
         let input = "definitely/missing/path";
         let mut config = Config::default();
         config.input = PathBuf::from(input);
-        assert!(collect_proto_path(&config).is_err());
+        assert!(collect_proto_paths(&config).is_err());
     }
 
     #[test]
@@ -146,7 +151,18 @@ mod tests {
         Ok(())
     }
 
-    pub fn quote_arg(arg: &str) -> String {
+    #[test]
+    fn collects_extra_includes() -> Result<()> {
+        let mut config = Config::default();
+        config.includes = vec!["include0".to_string(), "include1".to_string()];
+        let args = collect_proto_paths(&config)?;
+        for include in config.includes {
+            assert!(args.contains(&arg_with_value(PROTOC_ARG_PROTO_PATH, &include)));
+        }
+        Ok(())
+    }
+
+    fn quote_arg(arg: &str) -> String {
         ["\"", arg, "\""].concat()
     }
 }
