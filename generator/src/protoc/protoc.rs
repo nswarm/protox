@@ -155,7 +155,9 @@ mod tests {
 
     #[test]
     fn collects_extra_includes() -> Result<()> {
+        let input = env::current_dir().unwrap().to_str().unwrap().to_string();
         let mut config = Config::default();
+        config.input = PathBuf::from(&input);
         config.includes = vec!["include0".to_string(), "include1".to_string()];
         let args = collect_proto_paths(&config)?;
         for include in config.includes {
