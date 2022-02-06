@@ -76,20 +76,39 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn paths_are_absolute() -> Result<()> {
-        let dir = tempdir()?;
-        let root = dir.path();
+    mod paths_are_relative {
+        use crate::protoc::input;
+        use crate::protoc::input::tests::{
+            assert_arg_equal_to_path, config_with_input, create_files_at,
+        };
+        use anyhow::Result;
+        use tempfile::tempdir;
 
-        create_files_at(root, &["aaa.proto"])?;
-        let files = input::collect(&config_with_input(root))?;
-        assert_arg_equal_to_path(files.get(0).unwrap(), "aaa.proto");
+        #[test]
+        fn top_level() -> Result<()> {
+            run_test("aaa.proto")
+        }
 
-        create_files_at(root, &["a/b/c/aaa.proto"])?;
-        let files = input::collect(&config_with_input(root))?;
-        assert_arg_equal_to_path(files.get(0).unwrap(), "a/b/c/aaa.proto");
+        #[test]
+        fn one_level_deep() -> Result<()> {
+            run_test("abc/aaa.proto")
+        }
 
-        Ok(())
+        #[test]
+        fn many_levels_deep() -> Result<()> {
+            run_test("a/b/c/aaa.proto")
+        }
+
+        fn run_test(file_path: &str) -> Result<()> {
+            let dir = tempdir()?;
+            let root = dir.path();
+
+            create_files_at(root, &[file_path])?;
+            let files = input::collect(&config_with_input(root))?;
+            assert_arg_equal_to_path(files.get(0).unwrap(), file_path);
+
+            Ok(())
+        }
     }
 
     #[test]
