@@ -1,0 +1,76 @@
+// This file uses all features necessary to generate flatbuffers schema from protobuf.
+
+syntax = "proto3";
+
+import "idlx.fbs.proto";
+
+package fbs;
+
+
+// todo    attribute "priority";
+
+enum Enum {
+  Red = 0;
+  Green = 1;
+  Blue = 2;
+}
+
+// todo union Any { Monster, Weapon, Pickup }
+
+message OtherTableA {
+  string val = 1;
+}
+
+message OtherTableB {
+  string val = 1;
+}
+
+message Union { // todo union
+  OtherTableA a = 1;
+  OtherTableA b = 2;
+}
+
+message Struct { // todo struct
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message Table {
+  bool bool_value = 1;
+  // todo byte/int8
+  // todo ubyte/uint8
+  // todo short/int16
+  // todo ushort/uint16
+  int32 i32_value = 6;
+  uint32 u32_value = 7;
+  float f32_value = 8;
+  int64 i64_value = 9;
+  uint64 u64_value = 10;
+  double f64_value = 11;
+  string str_value = 12;
+  Enum enum_value = 13;
+  Struct struct_value = 14;
+  OtherTableA table_value = 15;
+  Union union_value = 16;
+}
+// todo default
+// todo optional
+// todo required
+
+// todo root_type
+// todo file_identifier "HZGD";
+// todo file_extension "gamedata";
+
+//table Monster {
+//pos:Vec3;
+//    mana:short = 150;
+//hp:short = 100;
+//    name:string;
+//friendly:bool = false (deprecated, priority: 1);
+//    inventory:[ubyte];
+//    color:Color = Blue;
+//    test:Any;
+//    }
+//
+//    root_type Monster;

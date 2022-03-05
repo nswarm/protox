@@ -2,6 +2,11 @@
 // This file contains custom protobuf options that add support for additional information needed to properly
 // convert protobuf -> flatbuffers definitions.
 //
+// Most of these options exist to supports features in specified in https://google.github.io/flatbuffers/flatbuffers_guide_writing_schema.html
+// that do not exist in the protobuf IDL.
+//
+
+// Proto tag ids: 51000-51999
 
 syntax = "proto3";
 
@@ -10,11 +15,5 @@ import "google/protobuf/descriptor.proto";
 package idlx.fbs;
 
 extend google.protobuf.FileOptions {
-  string file_test_str = 50000;
-  int32 file_test_i32 = 50001;
-}
-
-extend google.protobuf.MessageOptions {
-  string msg_test_str = 50000;
-  int32 msg_test_i32 = 50001;
+  string attribute = 51000;
 }

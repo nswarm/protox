@@ -15,15 +15,15 @@
     "sfixed64": "int64",
     "bool": "bool",
     "string": "string",
-    "bytes": "Vec<u8>"
+    "bytes": "[ubyte]"
   },
   "case_config": {
-    "file_name": "lower-kebab-case",
-    "import": "lower_snake_case",
-    "enum_name": "UpperCamelCase",
-    "enum_value_name": "UpperCamelCase",
-    "message_name": "UpperCamelCase",
-    "field_name": "lower_snake_case"
+    "file_name": "lower_snake",
+    "import": "UpperCamel",
+    "enum_name": "UpperCamel",
+    "enum_value_name": "UpperCamel",
+    "message_name": "UpperCamel",
+    "field_name": "lower_snake"
   },
   "metadata_file_name": "metadata",
   "package_separator": ".",

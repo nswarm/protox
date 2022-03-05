@@ -206,7 +206,7 @@ impl Renderer<'_> {
     }
 
     fn package_to_file_path(&self, root: &Path, package: &str) -> PathBuf {
-        root.join(package.replace(proto::PACKAGE_SEPARATOR, "-"))
+        root.join(package.replace(proto::PACKAGE_SEPARATOR, "_"))
             .with_extension(&self.config.file_extension)
     }
 

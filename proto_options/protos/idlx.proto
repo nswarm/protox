@@ -2,6 +2,8 @@
 // This file contains general idlx protobuf options.
 //
 
+// Proto tag ids: 50000-50999
+
 syntax = "proto3";
 
 import "google/protobuf/descriptor.proto";

@@ -27,4 +27,5 @@ cargo run -- \
   --proto rust proto-rust \
   --proto js proto-js \
   --template-root examples/input/templates \
-  --template rust-server rust-server
+  --template rust-server rust-server \
+  --template flatbuffers flatbuffers
