@@ -16,7 +16,7 @@ extend google.protobuf.FileOptions {
   // In templates, the value can be retrieved using {{options.<key>}}.
   //
   // For example:
-  //    option (file_key_value) = "my_key=my_value";
+  //    option (idlx.file_key_value) = "my_key=my_value";
   // in a template file:
   //    My value is {{options.my_key}}!
   // would produce:
@@ -26,12 +26,29 @@ extend google.protobuf.FileOptions {
   repeated string file_key_value = 50000;
 }
 
-extend google.protobuf.MessageOptions {  // A user defined key-value pair in the format:
+extend google.protobuf.EnumOptions {
+  // A user defined key-value pair in the format:
   //    key=value
   // In templates, the value can be retrieved using {{options.<key>}}.
   //
   // For example:
-  //    option (msg_key_value) = "my_key=my_value";
+  //    option (idlx.enum_key_value) = "my_key=my_value";
+  // in a template file:
+  //    My value is {{options.my_key}}!
+  // would produce:
+  //    My value is my_value!
+  //
+  // The option can be repeated for additional kv pairs.
+  repeated string enum_key_value = 50000;
+}
+
+extend google.protobuf.MessageOptions {
+  // A user defined key-value pair in the format:
+  //    key=value
+  // In templates, the value can be retrieved using {{options.<key>}}.
+  //
+  // For example:
+  //    option (idlx.msg_key_value) = "my_key=my_value";
   // in a template file:
   //    My value is {{options.my_key}}!
   // would produce:
@@ -47,7 +64,7 @@ extend google.protobuf.FieldOptions {
   // In templates, the value can be retrieved using {{options.<key>}}.
   //
   // For example:
-  //    option (field_key_value) = "my_key=my_value";
+  //    option (idlx.field_key_value) = "my_key=my_value";
   // in a template file:
   //    My value is {{options.my_key}}!
   // would produce:

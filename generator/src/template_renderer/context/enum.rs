@@ -1,9 +1,12 @@
+use crate::template_renderer::option_key_value::insert_custom_options;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::util;
 use anyhow::{anyhow, Result};
 use log::debug;
-use prost_types::EnumDescriptorProto;
-use serde::{Deserialize, Serialize};
+use prost_types::{EnumDescriptorProto, EnumOptions};
+use serde::ser::Error;
+use serde::{Deserialize, Serialize, Serializer};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 pub struct EnumContext {
@@ -12,6 +15,32 @@ pub struct EnumContext {
 
     // Values defined by this enum.
     values: Vec<EnumValueContext>,
+
+    /// Proto enum options are serialized as an object like so:
+    /// ```json
+    /// {
+    ///   "options": {
+    ///       "option_name": <option_value>,
+    ///   }
+    ///   ...etc.
+    /// }
+    /// ```
+    /// Which can be accessed in the template like `{{options.option_name}}`. Options which have no
+    /// value will not exist in the context, so you probably want to if guard:
+    /// ```handlebars
+    /// {{#if options.option_name}}
+    ///   {{options.option_name}}
+    /// {{/if}}
+    /// ```
+    /// Note that for boolean values one #if is enough to check both that it exists and is true.
+    ///
+    /// (NOT YET SUPPORTED) Built-in proto option names and types can be seen here:
+    /// https://docs.rs/prost-types/latest/prost_types/struct.EnumOptions.html
+    ///
+    /// Additionally, a few idlx-specific options are supported. See the proto files at
+    /// `idlx/proto_options/protos` for more info.
+    #[serde(serialize_with = "serialize_enum_options", skip_deserializing)]
+    options: Option<EnumOptions>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -26,6 +55,7 @@ impl EnumContext {
         let context = Self {
             name: name(&proto, config)?,
             values: values(&proto, config)?,
+            options: proto.options.clone(),
         };
         Ok(context)
     }
@@ -63,13 +93,29 @@ fn error_invalid_value(name: &Option<String>) -> anyhow::Error {
     )
 }
 
+fn serialize_enum_options<S: Serializer>(
+    options: &Option<EnumOptions>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let options = match options {
+        None => return serializer.serialize_none(),
+        Some(options) => options,
+    };
+    let mut map = HashMap::new();
+    insert_custom_options(&mut map, options, &proto_options::ENUM_KEY_VALUE)
+        .map_err(|err| S::Error::custom(err.to_string()))?;
+    debug!("Serializing enum options: {:?}", map);
+    serializer.collect_map(map)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::template_renderer::case::Case;
     use crate::template_renderer::context::EnumContext;
     use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
-    use prost_types::{EnumDescriptorProto, EnumValueDescriptorProto};
+    use prost::Extendable;
+    use prost_types::{EnumDescriptorProto, EnumOptions, EnumValueDescriptorProto};
 
     #[test]
     fn name() -> Result<()> {
@@ -130,6 +176,26 @@ mod tests {
         assert_eq!(context.values[0].number, 1);
         assert_eq!(context.values[1].name, "VALUE_NAME2");
         assert_eq!(context.values[1].number, 2);
+        Ok(())
+    }
+
+    #[test]
+    fn key_value_options() -> Result<()> {
+        let config = RendererConfig::default();
+        let mut proto = default_enum();
+        proto.name = Some("EnumName".to_string());
+        let mut options = EnumOptions::default();
+        options.set_extension_data(
+            &proto_options::ENUM_KEY_VALUE,
+            vec!["key0=value0".to_string(), "key1=value1".to_string()],
+        )?;
+        proto.options = Some(options);
+
+        let context = EnumContext::new(&proto, &config)?;
+        let json = serde_json::to_string(&context)?;
+        println!("{}", json);
+        assert!(json.contains(r#""key0":"value0""#));
+        assert!(json.contains(r#""key1":"value1""#));
         Ok(())
     }
 

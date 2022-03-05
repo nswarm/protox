@@ -2,12 +2,22 @@
 
 syntax = "proto3";
 
-import "idlx.fbs.proto";
+import "idlx.proto";
 
 package fbs;
 
 
 // todo    attribute "priority";
+
+enum ByteEnum {
+  option (idlx.enum_key_value) = "fbs_enum_type=byte";
+  Default = 0;
+}
+
+enum Int64Enum {
+  option (idlx.enum_key_value) = "fbs_enum_type=int64";
+  Unused = 0;
+}
 
 enum Enum {
   Red = 0;

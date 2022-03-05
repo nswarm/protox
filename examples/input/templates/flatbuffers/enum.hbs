@@ -1,4 +1,6 @@
-enum {{name}} : ubyte {
+enum {{name}} :
+{{~#if options.fbs_enum_type}} {{options.fbs_enum_type}}
+{{~else}} ubyte{{/if}} {
 {{#each values}}
     {{name}} = {{number}},
 {{/each}}

@@ -76,7 +76,7 @@ pub struct FieldContext {
     /// ```
     /// Note that for boolean values one #if is enough to check both that it exists and is true.
     ///
-    /// Built-in proto option names and types can be seen here:
+    /// (NOT YET SUPPORTED) Built-in proto option names and types can be seen here:
     /// https://docs.rs/prost-types/latest/prost_types/struct.FieldOptions.html
     ///
     /// Additionally, a few idlx-specific options are supported. See the proto files at
