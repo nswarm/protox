@@ -4,9 +4,9 @@ use handlebars::{
 };
 
 #[derive(Clone, Copy)]
-pub struct IndentHelper;
+pub struct Indent;
 
-impl HelperDef for IndentHelper {
+impl HelperDef for Indent {
     fn call<'reg: 'rc, 'rc>(
         &self,
         h: &Helper<'reg, 'rc>,
@@ -52,7 +52,7 @@ fn indent(content: &str, num_spaces: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::indent_helper::indent;
+    use crate::template_renderer::helper::indent::indent;
 
     #[test]
     fn test_indent() {

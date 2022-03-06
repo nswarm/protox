@@ -1,7 +1,7 @@
 mod case;
 mod context;
 mod extension_registry;
-mod indent_helper;
+mod helper;
 mod option_key_value;
 mod primitive;
 mod proto;

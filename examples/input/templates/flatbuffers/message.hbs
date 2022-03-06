@@ -1,5 +1,13 @@
-table {{name}} {
+{{#if options.fbs_msg_type}}{{options.fbs_msg_type}}{{else}}table{{/if}} {{name}} {
 {{#each fields}}
-{{> field}}
+{{#if is_map}}
+    *** ERROR: {{field_name}} - maps are unsupported in fbs. ***
+{{else}}
+    {{#if is_array}}
+        {{field_name}}: [{{relative_type}}]
+    {{else}}
+        {{field_name}}: {{relative_type}}
+    {{~/if~}}{{#if_equals ../options.fbs_msg_type "union"}},{{else}};{{/if_equals}}
+{{/if}}
 {{/each}}
 }

@@ -1,5 +1,5 @@
 use crate::template_renderer::context::{FileContext, MetadataContext};
-use crate::template_renderer::indent_helper::IndentHelper;
+use crate::template_renderer::helper;
 use crate::template_renderer::renderer_config::RendererConfig;
 use crate::template_renderer::{
     proto, CONFIG_FILE_NAME, FILE_TEMPLATE_NAME, METADATA_TEMPLATE_NAME, TEMPLATE_EXT,
@@ -35,7 +35,8 @@ pub struct Renderer<'a> {
 impl Renderer<'_> {
     pub fn new() -> Self {
         let mut hbs = Handlebars::new();
-        hbs.register_helper("indent", Box::new(IndentHelper));
+        hbs.register_helper("indent", Box::new(helper::Indent));
+        hbs.register_helper("if_equals", Box::new(helper::IfEquals));
         Self {
             hbs,
             config: Default::default(),

@@ -35,7 +35,8 @@ message OtherTableB {
   string val = 1;
 }
 
-message Union { // todo union
+message Union {
+  option (idlx.msg_key_value) = "fbs_msg_type=union";
   OtherTableA a = 1;
   OtherTableA b = 2;
 }
