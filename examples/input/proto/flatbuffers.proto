@@ -41,7 +41,8 @@ message Union {
   OtherTableA b = 2;
 }
 
-message Struct { // todo struct
+message Struct {
+  option (idlx.msg_key_value) = "fbs_msg_type=struct";
   float x = 1;
   float y = 2;
   float z = 3;
