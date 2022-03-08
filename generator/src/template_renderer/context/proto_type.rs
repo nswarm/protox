@@ -3,16 +3,27 @@ use crate::template_renderer::renderer_config::RendererConfig;
 use crate::template_renderer::{primitive, proto};
 use crate::util;
 use anyhow::{anyhow, Result};
+use prost::Extendable;
 use prost_types::FieldDescriptorProto;
 
 #[derive(Clone, Debug)]
 pub enum ProtoType {
     Type(i32),
     TypeName(String),
+    NativeTypeOverride(String),
+}
+
+#[derive(Eq, PartialEq)]
+enum ChangeCase {
+    Yes,
+    No,
 }
 
 impl ProtoType {
     pub fn from_field(field: &FieldDescriptorProto) -> Result<Self> {
+        if let Some(native_type) = native_type_override(field) {
+            return Ok(ProtoType::NativeTypeOverride(native_type.to_string()));
+        }
         match &field.type_name {
             None => match field.r#type {
                 None => Err(error_missing_type(field)),
@@ -25,9 +36,24 @@ impl ProtoType {
     pub fn to_type_path<'a>(&self, config: &'a RendererConfig) -> Result<TypePath<'a>> {
         let result = match self {
             ProtoType::Type(proto_type) => primitive_type_path(*proto_type, config)?,
-            ProtoType::TypeName(type_name) => complex_type_path(&type_name, config),
+            ProtoType::TypeName(type_name) => {
+                complex_type_path(&type_name, config, ChangeCase::Yes)
+            }
+            ProtoType::NativeTypeOverride(type_name) => {
+                complex_type_path(&type_name, config, ChangeCase::No)
+            }
         };
         Ok(result)
+    }
+}
+
+fn native_type_override(field: &FieldDescriptorProto) -> Option<&str> {
+    match field.options.as_ref() {
+        None => None,
+        Some(options) => options
+            .extension_data(proto_options::NATIVE_TYPE)
+            .map(&String::as_str)
+            .ok(),
     }
 }
 
@@ -36,10 +62,16 @@ fn primitive_type_path(proto_type_id: i32, config: &RendererConfig) -> Result<Ty
     Ok(proto::TypePath::from_type(primitive_type_name))
 }
 
-fn complex_type_path<'a>(type_name: &str, config: &'a RendererConfig) -> TypePath<'a> {
+fn complex_type_path<'a>(
+    type_name: &str,
+    config: &'a RendererConfig,
+    change_case: ChangeCase,
+) -> TypePath<'a> {
     let type_name = complex_type_name(&type_name, config);
     let mut type_path = proto::TypePath::from_type(type_name);
-    type_path.set_name_case(Some(config.case_config.message_name));
+    if change_case == ChangeCase::Yes {
+        type_path.set_name_case(Some(config.case_config.message_name));
+    }
     type_path.set_package_case(Some(config.case_config.import));
     type_path.set_separator(&config.package_separator);
     type_path

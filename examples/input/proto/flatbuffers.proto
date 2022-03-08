@@ -25,8 +25,6 @@ enum Enum {
   Blue = 2;
 }
 
-// todo union Any { Monster, Weapon, Pickup }
-
 message OtherTableA {
   string val = 1;
 }
@@ -50,10 +48,10 @@ message Struct {
 
 message Table {
   bool bool_value = 1;
-  // todo byte/int8
-  // todo ubyte/uint8
-  // todo short/int16
-  // todo ushort/uint16
+  int32 byte_value = 2 [(idlx.field_key_value) = "fbs_field_type=byte"];
+  int32 ubyte_value = 3 [(idlx.field_key_value) = "fbs_field_type=ubyte"];
+  int32 short_value = 4 [(idlx.field_key_value) = "fbs_field_type=short"];
+  int32 ushort_value = 5 [(idlx.field_key_value) = "fbs_field_type=ushort"];
   int32 i32_value = 6;
   uint32 u32_value = 7;
   float f32_value = 8;

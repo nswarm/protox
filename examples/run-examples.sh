@@ -26,6 +26,22 @@ cargo run -- \
   --proto java proto-java \
   --proto rust proto-rust \
   --proto js proto-js \
+
+# Proto input, templated "server" and "client" output, as per readme.
+cargo run -- \
+  --input examples/input/proto \
+  --includes "$(pwd)/proto_options/protos" \
+  --output-root examples/output/templates \
   --template-root examples/input/templates \
-  --template rust-server rust-server \
+  --template rust-server rust-server
+
+# Proto input, flatbuffers output.
+#
+# The "flatbuffers.proto" contains examples of every supported fbs option.
+cargo run -- \
+  --input examples/input/proto \
+  --includes "$(pwd)/proto_options/protos" \
+  --output-root examples/output \
+  --template-root examples/input/templates \
   --template flatbuffers flatbuffers
+

@@ -72,4 +72,16 @@ extend google.protobuf.FieldOptions {
   //
   // The option can be repeated for additional kv pairs.
   repeated string field_key_value = 50000;
+
+  // When parsing this type in templates, use this value instead of the
+  // protobuf type. This allows you to differentiate between types that are the same
+  // in protobuf, but you want to interpret differently in your generated code.
+  //
+  // For example:
+  //    int32 my_id = 1 [(idlx.native_type) = "IdType"];
+  // in a template file:
+  //    {{relative_type}} {{field_name}};
+  // would produce:
+  //    IdType my_id;
+  string native_type = 50001;
 }

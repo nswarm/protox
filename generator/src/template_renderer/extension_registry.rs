@@ -8,5 +8,6 @@ pub fn create() -> ExtensionRegistry {
     registry.register(proto_options::ENUM_KEY_VALUE);
     registry.register(proto_options::MSG_KEY_VALUE);
     registry.register(proto_options::FIELD_KEY_VALUE);
+    registry.register(proto_options::NATIVE_TYPE);
     registry
 }

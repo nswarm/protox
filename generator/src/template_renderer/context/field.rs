@@ -275,6 +275,22 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn native_type_option() -> Result<()> {
+        let expected_type = "custom_type";
+        let config = RendererConfig::default();
+        let mut field = default_field();
+        field.name = Some("field_name".to_string());
+        field.type_name = Some(primitive::FLOAT.to_string());
+        let mut options = FieldOptions::default();
+        options.set_extension_data(&proto_options::NATIVE_TYPE, expected_type.to_string())?;
+        field.options = Some(options);
+
+        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        assert_eq!(context.relative_type, Some("custom_type".to_string()));
+        Ok(())
+    }
+
     mod type_name_from_config {
         use anyhow::Result;
 
