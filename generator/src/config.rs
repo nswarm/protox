@@ -15,7 +15,9 @@ pub const IDL: &str = "idl";
 pub const INPUT: &str = "input";
 pub const PROTO: &str = "proto";
 pub const TEMPLATE: &str = "template";
+pub const SCRIPT: &str = "script";
 pub const TEMPLATE_ROOT: &str = "template-root";
+pub const SCRIPT_ROOT: &str = "script-root";
 pub const OUTPUT_ROOT: &str = "output-root";
 pub const INCLUDES: &str = "includes";
 pub const INIT: &str = "init";
@@ -31,12 +33,17 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
+    let mut i = 0;
+    let mut display_order = || {
+        i = i + 1;
+        i
+    };
     App::new(APP_NAME)
         .long_about("idlx is an executable that generates C-ABI-compatible code in one or more languages for seamless and performant direct usage of those types across the library boundary.")
         .version(crate_version!())
         .args([
             Arg::new(IDL)
-                .display_order(0)
+                .display_order(display_order())
                 .help("IDL type of files expected at the INPUT path.")
                 .long(IDL)
                 .default_value(&Idl::Proto.as_config()),
@@ -51,7 +58,7 @@ where
                 .conflicts_with(INIT),
 
             Arg::new(PROTO)
-                .display_order(2)
+                .display_order(display_order())
                 .long_help(join_help(&[
                     "Protobuf code will be generated for language LANG to directory located at OUTPUT.",
                     &format!("If OUTPUT is a relative path, it is evaluated relative to --{}.", OUTPUT_ROOT),
@@ -61,13 +68,14 @@ where
                 .long(PROTO)
                 .value_names(&["LANG", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present_any([TEMPLATE, INIT])
+                .required_unless_present_any([TEMPLATE, SCRIPT, INIT])
                 .conflicts_with(INIT),
 
             Arg::new(TEMPLATE)
-                .display_order(3)
+                .display_order(display_order())
                 .long_help(join_help(&[
                     "Code will be generated for the templates and configuration found inside the INPUT folder, and written to directory located at OUTPUT.",
+                    "Templates use the mustache template language (https://mustache.github.io/).",
                     &format!("If INPUT is a relative path, it is evaluated relative to --{}.", TEMPLATE_ROOT),
                     &format!("If OUTPUT is a relative path, it is evaluated relative to --{}.", OUTPUT_ROOT),
                     "See the examples folder for how to set up the INPUT directory correctly.",
@@ -76,31 +84,53 @@ where
                 .long(TEMPLATE)
                 .value_names(&["INPUT", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present_any([PROTO, INIT])
+                .required_unless_present_any([PROTO, SCRIPT, INIT])
+                .conflicts_with(INIT),
+
+            Arg::new(SCRIPT)
+                .display_order(display_order())
+                .long_help(join_help(&[
+                    "Code will be generated for the scripts found inside the INPUT folder, and written to directory located at OUTPUT.",
+                    "Scripts use the language rhai (https://rhai.rs/).",
+                    &format!("If INPUT is a relative path, it is evaluated relative to --{}.", TEMPLATE_ROOT),
+                    &format!("If OUTPUT is a relative path, it is evaluated relative to --{}.", OUTPUT_ROOT),
+                    "See the examples folder for how to set up the INPUT directory correctly.",
+                ]).as_str())
+                .default_short()
+                .long(SCRIPT)
+                .value_names(&["INPUT", "OUTPUT"])
+                .multiple_occurrences(true)
+                .required_unless_present_any([PROTO, TEMPLATE, INIT])
                 .conflicts_with(INIT),
 
             Arg::new(TEMPLATE_ROOT)
-                .display_order(4)
+                .display_order(display_order())
                 .help(format!("All non-absolute --{} INPUT paths will be prefixed with this path. Required if any --{} INPUT paths are relative.", TEMPLATE, TEMPLATE).as_str())
                 .long(TEMPLATE_ROOT)
                 .takes_value(true),
 
+            Arg::new(SCRIPT_ROOT)
+                .display_order(display_order())
+                .help(format!("All non-absolute --{} INPUT paths will be prefixed with this path. Required if any --{} INPUT paths are relative.", SCRIPT, SCRIPT).as_str())
+                .long(SCRIPT_ROOT)
+                .takes_value(true),
+
             Arg::new(OUTPUT_ROOT)
-                .display_order(5)
+                .display_order(display_order())
                 .help("All non-absolute output paths will be prefixed with this path. Required if any OUTPUT paths are relative.")
                 .default_short()
                 .long(OUTPUT_ROOT)
                 .takes_value(true),
 
             Arg::new(INCLUDES)
-                .display_order(5)
+                .display_order(display_order())
                 .help("Additional include folders passed directly to protoc as --proto_path options.")
                 .long(INCLUDES)
                 .takes_value(true)
                 .multiple_values(true),
 
             Arg::new(INIT)
-                .display_order(6)
+                .display_order(display_order())
                 .help(format!("Initialize the TARGET directory as a new template option with the basic input files required for running idlx with --{}.", TEMPLATE).as_str())
                 .long(INIT)
                 .takes_value(true)
@@ -135,6 +165,7 @@ pub struct Config {
     pub input: PathBuf,
     pub protos: Vec<LangConfig>,
     pub templates: Vec<InOutConfig>,
+    pub scripts: Vec<InOutConfig>,
     pub includes: Vec<String>,
     pub init_target: Option<PathBuf>,
     pub descriptor_set_path: PathBuf,
@@ -152,6 +183,7 @@ impl Default for Config {
             input: Default::default(),
             protos: vec![],
             templates: vec![],
+            scripts: vec![],
             includes: vec![],
             init_target: None,
             descriptor_set_path: Default::default(),
@@ -174,12 +206,14 @@ impl Config {
         let input = parse_optional_path_from_arg(INPUT, &args)?.unwrap_or(PathBuf::new());
         let output_root = parse_optional_path_from_arg(OUTPUT_ROOT, &args)?;
         let template_root = parse_optional_path_from_arg(TEMPLATE_ROOT, &args)?;
+        let script_root = parse_optional_path_from_arg(SCRIPT_ROOT, &args)?;
         let descriptor_set_path = parse_descriptor_path(intermediate_dir.path(), &args);
         let config = Self {
             idl: Idl::from_args(&args)?,
             input,
             protos: parse_protos(&args, output_root.as_ref())?,
-            templates: parse_templates(&args, template_root.as_ref(), output_root.as_ref())?,
+            templates: parse_in_out_configs(&args, template_root.as_ref(), output_root.as_ref())?,
+            scripts: parse_in_out_configs(&args, script_root.as_ref(), output_root.as_ref())?,
             includes: parse_includes(&args),
             init_target: parse_optional_path_from_arg(INIT, &args)?,
             descriptor_set_path,
@@ -252,9 +286,9 @@ fn parse_protos(args: &ArgMatches, output_root: Option<&PathBuf>) -> Result<Vec<
     Ok(configs)
 }
 
-fn parse_templates(
+fn parse_in_out_configs(
     args: &ArgMatches,
-    template_root: Option<&PathBuf>,
+    input_root: Option<&PathBuf>,
     output_root: Option<&PathBuf>,
 ) -> Result<Vec<InOutConfig>> {
     let mut configs = Vec::new();
@@ -272,7 +306,7 @@ fn parse_templates(
         configs.push(InOutConfig::from_config(
             input,
             output,
-            template_root,
+            input_root,
             output_root,
         )?);
     }

@@ -1,11 +1,15 @@
 #![forbid(unsafe_code)]
 
 mod config;
+mod extension_registry;
 mod idl;
 mod in_out_config;
+mod in_out_generator;
 mod lang;
 mod lang_config;
 mod protoc;
+mod render;
+mod scripted_renderer;
 mod template_init;
 mod template_renderer;
 mod util;
@@ -39,6 +43,7 @@ fn generate_internal(config: &Config) -> Result<()> {
         Idl::Proto => {
             protoc::generate(&config)?;
             template_renderer::generate(&config)?;
+            scripted_renderer::generate(&config)?;
         }
     };
 

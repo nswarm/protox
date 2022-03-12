@@ -1,3 +1,4 @@
+use crate::render::Render;
 use crate::template_renderer::context::{FileContext, MetadataContext};
 use crate::template_renderer::helper;
 use crate::template_renderer::renderer_config::RendererConfig;
@@ -53,22 +54,6 @@ impl Renderer<'_> {
 
     pub fn output_ext(&self) -> &str {
         &self.config.file_extension
-    }
-
-    /// Loads config and templates from the same root path with the following names:
-    /// ```txt
-    ///     root/config.json
-    ///     root/file.hbs
-    ///     root/metadata.hbs (optional)
-    /// ```
-    ///
-    /// Any other `*.hbs` files will also be loaded as templates based on the file name, and can
-    /// be used in other templates as partials with the syntax {{> file_name}}.
-    /// (See also: https://handlebarsjs.com/guide/partials.html)
-    pub fn load_all(&mut self, root: &Path) -> Result<()> {
-        self.load_config(&root.join(CONFIG_FILE_NAME))?;
-        self.load_templates(root)?;
-        Ok(())
     }
 
     pub fn load_config(&mut self, path: &Path) -> Result<()> {
@@ -139,17 +124,6 @@ impl Renderer<'_> {
                     path.display_normalized()
                 )
             })?;
-        Ok(())
-    }
-
-    pub fn render(&self, descriptor_set: &FileDescriptorSet, output_path: &Path) -> Result<()> {
-        if self.config.one_file_per_package {
-            let package_files = self.render_files_collapsed(descriptor_set, output_path)?;
-            self.render_metadata_with_package_files(output_path, package_files)?;
-        } else {
-            self.render_files(descriptor_set, output_path)?;
-            self.render_metadata_for_directories(descriptor_set, output_path)?;
-        }
         Ok(())
     }
 
@@ -315,6 +289,39 @@ impl Renderer<'_> {
     }
 }
 
+impl Render for Renderer<'_> {
+    /// Loads config and templates from the same root path with the following names:
+    /// ```txt
+    ///     root/config.json
+    ///     root/file.hbs
+    ///     root/metadata.hbs (optional)
+    /// ```
+    ///
+    /// Any other `*.hbs` files will also be loaded as templates based on the file name, and can
+    /// be used in other templates as partials with the syntax {{> file_name}}.
+    /// (See also: https://handlebarsjs.com/guide/partials.html)
+    fn load(&mut self, root: &Path) -> Result<()> {
+        self.load_config(&root.join(CONFIG_FILE_NAME))?;
+        self.load_templates(root)?;
+        Ok(())
+    }
+
+    fn reset(&mut self) {
+        self.hbs.clear_templates();
+    }
+
+    fn render(&self, descriptor_set: &FileDescriptorSet, output_path: &Path) -> Result<()> {
+        if self.config.one_file_per_package {
+            let package_files = self.render_files_collapsed(descriptor_set, output_path)?;
+            self.render_metadata_with_package_files(output_path, package_files)?;
+        } else {
+            self.render_files(descriptor_set, output_path)?;
+            self.render_metadata_for_directories(descriptor_set, output_path)?;
+        }
+        Ok(())
+    }
+}
+
 fn collect_dirs_and_files(
     descriptor_set: &FileDescriptorSet,
 ) -> Result<(HashSet<PathBuf>, Vec<PathBuf>)> {
@@ -404,6 +411,7 @@ mod tests {
     use std::path::PathBuf;
 
     mod render {
+        use crate::render::Render;
         use crate::template_renderer::case::Case;
         use crate::template_renderer::renderer::tests::{fake_file_empty, fake_file_with_package};
         use crate::template_renderer::renderer::Renderer;
@@ -892,6 +900,7 @@ mod tests {
     }
 
     mod generated_header {
+        use crate::render::Render;
         use crate::template_renderer::renderer::tests::fake_file_with_package;
         use crate::template_renderer::renderer::{Renderer, DEFAULT_GENERATED_HEADER};
         use crate::template_renderer::RendererConfig;

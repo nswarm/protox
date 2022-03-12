@@ -21,3 +21,4 @@ handlebars = "4.1"
 tempfile = "3.2"
 heck = "0.4"
 proto_options = { path = "../proto_options" }
+rhai = "1.5"

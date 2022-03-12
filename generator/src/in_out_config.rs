@@ -2,6 +2,7 @@ use crate::util;
 use anyhow::Result;
 use std::path::PathBuf;
 
+#[derive(Clone)]
 pub struct InOutConfig {
     pub input: PathBuf,
     pub output: PathBuf,

@@ -1,5 +1,8 @@
 use crate::lang_config::LangConfig;
+use crate::{extension_registry, Config};
 use anyhow::{anyhow, Context, Result};
+use prost::Message;
+use prost_types::FileDescriptorSet;
 use std::borrow::Borrow;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -123,6 +126,19 @@ pub fn path_as_absolute<P: AsRef<Path>>(
         )),
         Some(root) => Ok(root.as_ref().join(path)),
     }
+}
+
+pub(crate) fn load_descriptor_set(config: &Config) -> Result<FileDescriptorSet> {
+    let path = &config.descriptor_set_path;
+    let bytes = fs::read(&path).with_context(|| {
+        format!(
+            "Failed to read file descriptor set at path: {}",
+            path.display_normalized()
+        )
+    })?;
+    let descriptor_set =
+        Message::decode_with_extensions(bytes.as_slice(), extension_registry::create())?;
+    Ok(descriptor_set)
 }
 
 pub trait DisplayNormalized {
