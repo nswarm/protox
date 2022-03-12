@@ -2,10 +2,10 @@
 
 mod config;
 mod idl;
+mod in_out_config;
 mod lang;
 mod lang_config;
 mod protoc;
-mod template_config;
 mod template_init;
 mod template_renderer;
 mod util;
@@ -16,9 +16,9 @@ use crate::util::DisplayNormalized;
 use anyhow::Result;
 pub use config::Config;
 pub use idl::Idl;
+pub use in_out_config::InOutConfig;
 pub use lang::Lang;
 pub use lang_config::LangConfig;
-pub use template_config::TemplateConfig;
 
 pub fn generate() -> Result<()> {
     env_logger::init();

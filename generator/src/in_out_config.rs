@@ -2,21 +2,21 @@ use crate::util;
 use anyhow::Result;
 use std::path::PathBuf;
 
-pub struct TemplateConfig {
+pub struct InOutConfig {
     pub input: PathBuf,
     pub output: PathBuf,
 }
 
-impl TemplateConfig {
+impl InOutConfig {
     pub fn from_config(
         input: &str,
         output: &str,
         template_root: Option<&PathBuf>,
         output_root: Option<&PathBuf>,
     ) -> Result<Self> {
-        Ok(TemplateConfig {
-            input: util::parse_rooted_path(template_root, input, "template")?,
-            output: util::parse_rooted_path(output_root, output, "output")?,
+        Ok(InOutConfig {
+            input: util::path_as_absolute(input, template_root)?,
+            output: util::path_as_absolute(output, output_root)?,
         })
     }
 }
@@ -24,7 +24,7 @@ impl TemplateConfig {
 #[cfg(test)]
 mod tests {
     mod lang_config {
-        use crate::template_config::TemplateConfig;
+        use crate::in_out_config::InOutConfig;
         use crate::DisplayNormalized;
         use anyhow::Result;
         use std::env::current_dir;
@@ -33,7 +33,7 @@ mod tests {
         fn from_config_with_explicit_output() -> Result<()> {
             let input_path = current_dir()?;
             let output_path = current_dir()?;
-            let config = TemplateConfig::from_config(
+            let config = InOutConfig::from_config(
                 &input_path.display_normalized(),
                 &output_path.display_normalized(),
                 None,

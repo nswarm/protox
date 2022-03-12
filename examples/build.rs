@@ -2,7 +2,7 @@
 // Example usage of idlx in a build.rs script.
 //
 
-use generator::{Lang, LangConfig, TemplateConfig};
+use generator::{InOutConfig, Lang, LangConfig};
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         lang: Lang::Rust,
         output: proto_out,
     });
-    config.templates.push(TemplateConfig {
+    config.templates.push(InOutConfig {
         input: input_dir.join("templates").join("rust-server"),
         output: template_out,
     });

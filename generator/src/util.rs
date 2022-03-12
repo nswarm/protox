@@ -107,20 +107,19 @@ pub fn replace_proto_ext(file_name: &str, new_ext: &str) -> String {
     }
 }
 
-pub(crate) fn parse_rooted_path<P: AsRef<Path>>(
-    root: Option<&P>,
+/// Returns the path itself if it is absolute, or joined to `root` if not.
+pub fn path_as_absolute<P: AsRef<Path>>(
     path_str: &str,
-    root_arg_name: &str,
+    default_root: Option<&P>,
 ) -> Result<PathBuf> {
     let path = PathBuf::from(path_str);
     if path.is_absolute() {
         return Ok(path);
     }
-    match root {
+    match default_root {
         None => Err(anyhow!(
-            "Path {} is relative but no {} root was specified.",
+            "Path {} is relative but no root was specified.",
             path_str,
-            root_arg_name,
         )),
         Some(root) => Ok(root.as_ref().join(path)),
     }
@@ -176,8 +175,8 @@ mod tests {
         }
     }
 
-    mod parse_rooted_path {
-        use crate::util::parse_rooted_path;
+    mod path_as_absolute {
+        use crate::util::path_as_absolute;
         use crate::DisplayNormalized;
         use anyhow::Result;
         use std::env;
@@ -187,7 +186,7 @@ mod tests {
         fn absolute_with_root() -> Result<()> {
             let root = env::current_dir()?;
             let path = env::temp_dir();
-            let result = parse_rooted_path(Some(&root), &path.display_normalized(), "test")?;
+            let result = path_as_absolute(&path.display_normalized(), Some(&root))?;
             assert_eq!(result, path);
             Ok(())
         }
@@ -196,7 +195,7 @@ mod tests {
         fn relative_with_root() -> Result<()> {
             let root = env::current_dir()?;
             let path = "relative/path";
-            let result = parse_rooted_path(Some(&root), path, "test")?;
+            let result = path_as_absolute(path, Some(&root))?;
             assert_eq!(result, root.join(path));
             Ok(())
         }
@@ -204,7 +203,7 @@ mod tests {
         #[test]
         fn absolute_without_root() -> Result<()> {
             let path = env::temp_dir();
-            let result = parse_rooted_path::<PathBuf>(None, &path.display_normalized(), "test")?;
+            let result = path_as_absolute::<PathBuf>(&path.display_normalized(), None)?;
             assert_eq!(result, path);
             Ok(())
         }
@@ -212,7 +211,7 @@ mod tests {
         #[test]
         fn relative_without_root() -> Result<()> {
             let path = "relative/path";
-            assert!(parse_rooted_path::<PathBuf>(None, path, "test").is_err());
+            assert!(path_as_absolute::<PathBuf>(path, None).is_err());
             Ok(())
         }
     }

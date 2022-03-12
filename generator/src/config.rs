@@ -1,8 +1,8 @@
 use crate::idl::Idl;
+use crate::in_out_config::InOutConfig;
 use crate::lang::Lang;
 use crate::lang_config::LangConfig;
 use crate::protoc;
-use crate::template_config::TemplateConfig;
 use anyhow::{anyhow, Context, Result};
 use clap::{crate_version, App, Arg, ArgMatches, Values};
 use std::env;
@@ -134,7 +134,7 @@ pub struct Config {
     pub idl: Idl,
     pub input: PathBuf,
     pub protos: Vec<LangConfig>,
-    pub templates: Vec<TemplateConfig>,
+    pub templates: Vec<InOutConfig>,
     pub includes: Vec<String>,
     pub init_target: Option<PathBuf>,
     pub descriptor_set_path: PathBuf,
@@ -256,7 +256,7 @@ fn parse_templates(
     args: &ArgMatches,
     template_root: Option<&PathBuf>,
     output_root: Option<&PathBuf>,
-) -> Result<Vec<TemplateConfig>> {
+) -> Result<Vec<InOutConfig>> {
     let mut configs = Vec::new();
     let values = match args.grouped_values_of(TEMPLATE) {
         None => return Ok(configs),
@@ -269,7 +269,7 @@ fn parse_templates(
         let output = value
             .get(1)
             .ok_or(anyhow!("--{} is missing OUTPUT", TEMPLATE))?;
-        configs.push(TemplateConfig::from_config(
+        configs.push(InOutConfig::from_config(
             input,
             output,
             template_root,

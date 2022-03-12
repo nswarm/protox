@@ -10,7 +10,7 @@ mod renderer_config;
 
 pub use renderer_config::RendererConfig;
 
-use crate::template_config::TemplateConfig;
+use crate::in_out_config::InOutConfig;
 use crate::template_renderer::renderer::Renderer;
 use crate::{util, Config, DisplayNormalized};
 use anyhow::{Context, Result};
@@ -48,7 +48,7 @@ fn generate_from_descriptor_set(config: &Config, descriptor_set: &FileDescriptor
     Ok(())
 }
 
-fn log_template_start(config: &TemplateConfig) {
+fn log_template_start(config: &InOutConfig) {
     info!(
         "Rendering using templates in '{}' to output directory '{}'",
         config.input.display_normalized(),
@@ -71,7 +71,7 @@ fn load_descriptor_set(config: &Config) -> Result<FileDescriptorSet> {
 
 #[cfg(test)]
 mod tests {
-    use crate::template_config::TemplateConfig;
+    use crate::in_out_config::InOutConfig;
     use crate::template_renderer::renderer_config::RendererConfig;
     use crate::template_renderer::{
         generate, generate_from_descriptor_set, FILE_TEMPLATE_NAME, TEMPLATE_EXT,
@@ -139,7 +139,7 @@ mod tests {
         let output_dir = test_dir.join("output");
         let mut config = Config::default();
         for template in templates {
-            config.templates.push(TemplateConfig {
+            config.templates.push(InOutConfig {
                 input: template_root.join(template),
                 output: output_dir.join(template),
             });

@@ -11,7 +11,7 @@ pub struct LangConfig {
 
 impl LangConfig {
     pub fn from_config(lang: &str, output: &str, output_root: Option<&PathBuf>) -> Result<Self> {
-        let output_path = util::parse_rooted_path(output_root, output, "output")?;
+        let output_path = util::path_as_absolute(output, output_root)?;
         Ok(LangConfig {
             lang: Lang::from_str(lang)?,
             output: output_path,
