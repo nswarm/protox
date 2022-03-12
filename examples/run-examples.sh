@@ -10,8 +10,18 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 rm -rf examples/output
 
+# Example run using each type of output (proto, template, scripted).
+#
+# --proto
 # Proto input, proto output.
 # This is more or less a passthrough to `protoc`, the protobuf compiler.
+#
+# --template
+# Proto input, templated "server" and "client" output, as per readme.
+#
+# --scripted
+# This uses the scripted renderer to generate flatbuffers IDL from protobuf inputs.
+# The "flatbuffers.proto" contains examples of every supported fbs option.
 #
 # Notes:
 # - The argument is: --proto INPUT OUTPUT.
@@ -26,22 +36,7 @@ cargo run -- \
   --proto java proto-java \
   --proto rust proto-rust \
   --proto js proto-js \
-
-# Proto input, templated "server" and "client" output, as per readme.
-cargo run -- \
-  --input examples/input/proto \
-  --includes "$(pwd)/proto_options/protos" \
-  --output-root examples/output/templates \
   --template-root examples/input/templates \
-  --template rust-server rust-server
-
-# Proto input, flatbuffers output.
-#
-# The "flatbuffers.proto" contains examples of every supported fbs option.
-cargo run -- \
-  --input examples/input/proto \
-  --includes "$(pwd)/proto_options/protos" \
-  --output-root examples/output \
-  --template-root examples/input/templates \
+  --template rust-server rust-server \
   --template flatbuffers flatbuffers
 
