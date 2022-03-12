@@ -212,8 +212,18 @@ impl Config {
             idl: Idl::from_args(&args)?,
             input,
             protos: parse_protos(&args, output_root.as_ref())?,
-            templates: parse_in_out_configs(&args, template_root.as_ref(), output_root.as_ref())?,
-            scripts: parse_in_out_configs(&args, script_root.as_ref(), output_root.as_ref())?,
+            templates: parse_in_out_configs(
+                TEMPLATE,
+                &args,
+                template_root.as_ref(),
+                output_root.as_ref(),
+            )?,
+            scripts: parse_in_out_configs(
+                SCRIPT,
+                &args,
+                script_root.as_ref(),
+                output_root.as_ref(),
+            )?,
             includes: parse_includes(&args),
             init_target: parse_optional_path_from_arg(INIT, &args)?,
             descriptor_set_path,
@@ -287,22 +297,23 @@ fn parse_protos(args: &ArgMatches, output_root: Option<&PathBuf>) -> Result<Vec<
 }
 
 fn parse_in_out_configs(
+    arg_name: &str,
     args: &ArgMatches,
     input_root: Option<&PathBuf>,
     output_root: Option<&PathBuf>,
 ) -> Result<Vec<InOutConfig>> {
     let mut configs = Vec::new();
-    let values = match args.grouped_values_of(TEMPLATE) {
+    let values = match args.grouped_values_of(arg_name) {
         None => return Ok(configs),
         Some(values) => values,
     };
     for value in values {
         let input = value
             .get(0)
-            .ok_or(anyhow!("--{} is missing INPUT", TEMPLATE))?;
+            .ok_or(anyhow!("--{} is missing INPUT", arg_name))?;
         let output = value
             .get(1)
-            .ok_or(anyhow!("--{} is missing OUTPUT", TEMPLATE))?;
+            .ok_or(anyhow!("--{} is missing OUTPUT", arg_name))?;
         configs.push(InOutConfig::from_config(
             input,
             output,

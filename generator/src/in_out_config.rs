@@ -12,11 +12,11 @@ impl InOutConfig {
     pub fn from_config(
         input: &str,
         output: &str,
-        template_root: Option<&PathBuf>,
+        input_root: Option<&PathBuf>,
         output_root: Option<&PathBuf>,
     ) -> Result<Self> {
         Ok(InOutConfig {
-            input: util::path_as_absolute(input, template_root)?,
+            input: util::path_as_absolute(input, input_root)?,
             output: util::path_as_absolute(output, output_root)?,
         })
     }
