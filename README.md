@@ -104,7 +104,21 @@ My messages are:
 I am a message! My name is {{name}}.
 ```
 
-### Custom Indent Helper for Partials
+### Custom Helpers
+
+#### `if_equals`
+
+Fairly self-explanatory:
+
+```handlebars
+{{#if_equals lhs rhs}}
+    lhs == rhs
+{{else}}
+    lhs != rhs
+{{/if_equals}}
+```
+
+#### `indent` Helper for Partials
 
 There's a small bug in the template library that does not respect callsite indentation in [partials](https://handlebarsjs.com/guide/partials.html), e.g. `{{> other_template_name}}`. idlx contains a workaround helper for this feature that can be used like so:
 ```handlebars

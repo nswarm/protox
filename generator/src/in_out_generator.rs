@@ -26,7 +26,7 @@ pub trait InOutGenerator<R: Render> {
             return Ok(());
         }
         for config in &self.in_out_configs() {
-            log_render_start(config);
+            log_render_start(self.name(), config);
             self.renderer().load(&config.input)?;
             util::create_dir_or_error(&config.output)
                 .with_context(|| error_context(self.name()))?;
@@ -41,9 +41,10 @@ fn error_context(name: &str) -> String {
     format!("InOutGenerator '{}' out dir", name)
 }
 
-fn log_render_start(config: &InOutConfig) {
+fn log_render_start(name: &str, config: &InOutConfig) {
     info!(
-        "Rendering using templates in '{}' to output directory '{}'",
+        "Rendering using '{}' in '{}' to output directory '{}'",
+        name,
         config.input.display_normalized(),
         config.output.display_normalized(),
     );
