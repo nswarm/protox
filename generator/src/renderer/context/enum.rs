@@ -1,12 +1,14 @@
-use crate::template_renderer::option_key_value::insert_custom_options;
-use crate::template_renderer::renderer_config::RendererConfig;
-use crate::util;
+use std::collections::HashMap;
+
+use crate::renderer::context::option_key_value::insert_custom_options;
 use anyhow::{anyhow, Result};
 use log::debug;
 use prost_types::{EnumDescriptorProto, EnumOptions};
 use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
-use std::collections::HashMap;
+
+use crate::renderer::RendererConfig;
+use crate::util;
 
 #[derive(Serialize, Deserialize)]
 pub struct EnumContext {
@@ -110,12 +112,13 @@ fn serialize_enum_options<S: Serializer>(
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::case::Case;
-    use crate::template_renderer::context::EnumContext;
-    use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
     use prost::Extendable;
     use prost_types::{EnumDescriptorProto, EnumOptions, EnumValueDescriptorProto};
+
+    use crate::renderer::case::Case;
+    use crate::renderer::context::EnumContext;
+    use crate::renderer::RendererConfig;
 
     #[test]
     fn name() -> Result<()> {

@@ -52,7 +52,7 @@ fn indent(content: &str, num_spaces: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::helper::indent::indent;
+    use crate::renderer::template::helper::indent::indent;
 
     #[test]
     fn test_indent() {

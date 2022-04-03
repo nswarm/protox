@@ -1,15 +1,16 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use log::debug;
 use prost_types::field_descriptor_proto::Label;
 use prost_types::{FieldDescriptorProto, FieldOptions};
 use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
-use std::collections::HashMap;
 
-use crate::template_renderer::context::message;
-use crate::template_renderer::context::proto_type::ProtoType;
-use crate::template_renderer::option_key_value::insert_custom_options;
-use crate::template_renderer::renderer_config::RendererConfig;
+use crate::renderer::context::message;
+use crate::renderer::context::option_key_value::insert_custom_options;
+use crate::renderer::context::proto_type::ProtoType;
+use crate::renderer::RendererConfig;
 use crate::util;
 
 #[derive(Serialize, Deserialize)]
@@ -201,17 +202,17 @@ fn serialize_field_options<S: Serializer>(
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::case::Case;
     use anyhow::Result;
     use prost::Extendable;
     use prost_types::field_descriptor_proto::Label;
     use prost_types::{FieldDescriptorProto, FieldOptions};
 
-    use crate::template_renderer::context::field::FieldContext;
-    use crate::template_renderer::context::message;
-    use crate::template_renderer::context::message::MapData;
-    use crate::template_renderer::primitive;
-    use crate::template_renderer::renderer_config::RendererConfig;
+    use crate::renderer::case::Case;
+    use crate::renderer::context::field::FieldContext;
+    use crate::renderer::context::message;
+    use crate::renderer::context::message::MapData;
+    use crate::renderer::primitive;
+    use crate::renderer::RendererConfig;
 
     #[test]
     fn field_name() -> Result<()> {
@@ -294,10 +295,10 @@ mod tests {
     mod type_name_from_config {
         use anyhow::Result;
 
-        use crate::template_renderer::context::field::tests::default_field;
-        use crate::template_renderer::context::field::FieldContext;
-        use crate::template_renderer::context::message;
-        use crate::template_renderer::renderer_config::RendererConfig;
+        use crate::renderer::context::field::tests::default_field;
+        use crate::renderer::context::field::FieldContext;
+        use crate::renderer::context::message;
+        use crate::renderer::RendererConfig;
 
         macro_rules! test_type_config {
             ($proto_type:ident) => {
@@ -423,13 +424,14 @@ mod tests {
     }
 
     mod map {
-        use crate::template_renderer::context::field::tests::field_with_required;
-        use crate::template_renderer::context::message::MapEntryData;
-        use crate::template_renderer::context::proto_type::{primitive_type_name, ProtoType};
-        use crate::template_renderer::context::{message, FieldContext};
-        use crate::template_renderer::renderer_config::RendererConfig;
         use anyhow::Result;
         use prost_types::FieldDescriptorProto;
+
+        use crate::renderer::context::field::tests::field_with_required;
+        use crate::renderer::context::message::MapEntryData;
+        use crate::renderer::context::proto_type::{primitive_type_name, ProtoType};
+        use crate::renderer::context::{message, FieldContext};
+        use crate::renderer::RendererConfig;
 
         #[test]
         fn complex_value() -> Result<()> {

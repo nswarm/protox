@@ -1,4 +1,4 @@
-use crate::template_renderer::case::Case;
+use crate::renderer::case::Case;
 
 pub const PACKAGE_SEPARATOR: char = '.';
 pub const PACKAGE_SEPARATOR_STR: &str = ".";
@@ -226,7 +226,7 @@ fn break_into_components(package: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     mod depth {
-        use crate::template_renderer::proto::TypePath;
+        use crate::renderer::proto::TypePath;
 
         #[test]
         fn depth_from_type() {
@@ -246,7 +246,7 @@ mod tests {
     }
 
     mod matching_depth {
-        use crate::template_renderer::proto::TypePath;
+        use crate::renderer::proto::TypePath;
 
         #[test]
         fn one_top_level() {
@@ -312,8 +312,8 @@ mod tests {
     }
 
     mod to_string {
-        use crate::template_renderer::case::Case;
-        use crate::template_renderer::proto::TypePath;
+        use crate::renderer::case::Case;
+        use crate::renderer::proto::TypePath;
 
         #[test]
         fn combines_package_and_type() {
@@ -362,8 +362,8 @@ mod tests {
     }
 
     mod relative_type {
-        use crate::template_renderer::case::Case;
-        use crate::template_renderer::proto::TypePath;
+        use crate::renderer::case::Case;
+        use crate::renderer::proto::TypePath;
 
         #[test]
         fn no_package_uses_fully_qualified_type() {
@@ -417,7 +417,7 @@ mod tests {
         }
 
         mod with_parent_prefix {
-            use crate::template_renderer::proto::TypePath;
+            use crate::renderer::proto::TypePath;
 
             #[test]
             fn sibling() {
@@ -475,7 +475,7 @@ mod tests {
     }
 
     mod extract_package_from_type {
-        use crate::template_renderer::proto::extract_package_from_type;
+        use crate::renderer::proto::extract_package_from_type;
 
         #[test]
         fn single_component_is_type_name() {

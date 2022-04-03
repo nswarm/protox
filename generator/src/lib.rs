@@ -9,13 +9,12 @@ mod lang;
 mod lang_config;
 mod protoc;
 mod render;
-mod scripted_renderer;
+mod renderer;
 mod template_init;
-mod template_renderer;
 mod util;
 
+use crate::renderer::CONFIG_FILE_NAME;
 use crate::template_init::initialize_template_dir;
-use crate::template_renderer::CONFIG_FILE_NAME;
 use crate::util::DisplayNormalized;
 use anyhow::Result;
 pub use config::Config;
@@ -42,8 +41,8 @@ fn generate_internal(config: &Config) -> Result<()> {
     match config.idl {
         Idl::Proto => {
             protoc::generate(&config)?;
-            template_renderer::generate(&config)?;
-            scripted_renderer::generate(&config)?;
+            renderer::template::generate(&config)?;
+            renderer::scripted::generate(&config)?;
         }
     };
 

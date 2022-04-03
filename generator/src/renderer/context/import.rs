@@ -1,8 +1,10 @@
-use crate::{util, DisplayNormalized};
+use std::path::PathBuf;
+
 use anyhow::Result;
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+
+use crate::{util, DisplayNormalized};
 
 #[derive(Serialize, Deserialize)]
 pub struct ImportContext {
@@ -34,8 +36,9 @@ impl ImportContext {
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::context::import::ImportContext;
     use anyhow::Result;
+
+    use crate::renderer::context::import::ImportContext;
 
     #[test]
     fn file_path() -> Result<()> {

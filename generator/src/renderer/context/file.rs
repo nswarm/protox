@@ -6,9 +6,9 @@ use prost_types::{FileDescriptorProto, FileOptions};
 use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
-use crate::template_renderer::context::{EnumContext, ImportContext, MessageContext};
-use crate::template_renderer::option_key_value::insert_custom_options;
-use crate::template_renderer::renderer_config::RendererConfig;
+use crate::renderer::context::option_key_value::insert_custom_options;
+use crate::renderer::context::{EnumContext, ImportContext, MessageContext};
+use crate::renderer::RendererConfig;
 use crate::util;
 
 #[derive(Serialize, Deserialize)]
@@ -172,8 +172,8 @@ mod tests {
     use prost::{Extendable, ExtensionSet};
     use prost_types::{FileDescriptorProto, FileOptions};
 
-    use crate::template_renderer::context::FileContext;
-    use crate::template_renderer::renderer_config::RendererConfig;
+    use crate::renderer::context::FileContext;
+    use crate::renderer::RendererConfig;
 
     #[test]
     fn source_file() -> Result<()> {

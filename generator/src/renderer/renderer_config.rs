@@ -1,5 +1,6 @@
-use crate::template_renderer::case::Case;
-use crate::template_renderer::{primitive, proto, METADATA_TEMPLATE_NAME};
+use crate::renderer::case::Case;
+use crate::renderer::template::METADATA_TEMPLATE_NAME;
+use crate::renderer::{primitive, proto};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

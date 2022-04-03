@@ -1,10 +1,11 @@
-use crate::template_renderer::proto::TypePath;
-use crate::template_renderer::renderer_config::RendererConfig;
-use crate::template_renderer::{primitive, proto};
-use crate::util;
 use anyhow::{anyhow, Result};
 use prost::Extendable;
 use prost_types::FieldDescriptorProto;
+
+use crate::renderer::proto::TypePath;
+use crate::renderer::RendererConfig;
+use crate::renderer::{primitive, proto};
+use crate::util;
 
 #[derive(Clone, Debug)]
 pub enum ProtoType {

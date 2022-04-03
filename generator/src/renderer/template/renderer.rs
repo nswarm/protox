@@ -1,11 +1,8 @@
 use crate::render::Render;
-use crate::template_renderer::context::{FileContext, MetadataContext};
-use crate::template_renderer::helper;
-use crate::template_renderer::renderer_config::RendererConfig;
-use crate::template_renderer::{
-    proto, CONFIG_FILE_NAME, FILE_TEMPLATE_NAME, METADATA_TEMPLATE_NAME, TEMPLATE_EXT,
-};
-use crate::{util, DisplayNormalized};
+use crate::renderer::context::{FileContext, MetadataContext};
+use crate::renderer::template::{helper, FILE_TEMPLATE_NAME, METADATA_TEMPLATE_NAME, TEMPLATE_EXT};
+use crate::renderer::{proto, RendererConfig};
+use crate::{util, DisplayNormalized, CONFIG_FILE_NAME};
 use anyhow::{anyhow, Context, Result};
 use handlebars::Handlebars;
 use log::{debug, info};
@@ -396,12 +393,10 @@ fn log_render_metadata(file_path: &Path) {
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::context::{
-        EnumContext, FieldContext, FileContext, MessageContext,
-    };
-    use crate::template_renderer::renderer::Renderer;
-    use crate::template_renderer::renderer_config::RendererConfig;
-    use crate::template_renderer::{primitive, FILE_TEMPLATE_NAME};
+    use crate::renderer::context::{EnumContext, FieldContext, FileContext, MessageContext};
+    use crate::renderer::template::renderer::Renderer;
+    use crate::renderer::template::FILE_TEMPLATE_NAME;
+    use crate::renderer::{primitive, RendererConfig};
     use anyhow::Result;
     use prost_types::{
         DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
@@ -412,10 +407,10 @@ mod tests {
 
     mod render {
         use crate::render::Render;
-        use crate::template_renderer::case::Case;
-        use crate::template_renderer::renderer::tests::{fake_file_empty, fake_file_with_package};
-        use crate::template_renderer::renderer::Renderer;
-        use crate::template_renderer::renderer_config::RendererConfig;
+        use crate::renderer::case::Case;
+        use crate::renderer::template::renderer::tests::{fake_file_empty, fake_file_with_package};
+        use crate::renderer::template::renderer::Renderer;
+        use crate::renderer::RendererConfig;
         use anyhow::Result;
         use prost_types::FileDescriptorSet;
         use tempfile::tempdir;
@@ -661,9 +656,9 @@ mod tests {
 
         use anyhow::{Context, Result};
 
-        use crate::template_renderer::context::MetadataContext;
-        use crate::template_renderer::renderer::Renderer;
-        use crate::template_renderer::renderer_config::RendererConfig;
+        use crate::renderer::context::MetadataContext;
+        use crate::renderer::template::renderer::Renderer;
+        use crate::renderer::RendererConfig;
 
         #[test]
         fn directory() -> Result<()> {
@@ -749,8 +744,8 @@ mod tests {
     }
 
     mod collect_dirs_and_files {
-        use crate::template_renderer::renderer::collect_dirs_and_files;
-        use crate::template_renderer::renderer::tests::fake_file_empty;
+        use crate::renderer::template::renderer::collect_dirs_and_files;
+        use crate::renderer::template::renderer::tests::fake_file_empty;
         use anyhow::Result;
         use prost_types::FileDescriptorSet;
         use std::path::PathBuf;
@@ -820,9 +815,9 @@ mod tests {
     }
 
     mod metadata_file_name {
-        use crate::template_renderer::renderer::Renderer;
-        use crate::template_renderer::renderer_config::RendererConfig;
-        use crate::template_renderer::METADATA_TEMPLATE_NAME;
+        use crate::renderer::template::renderer::Renderer;
+        use crate::renderer::template::METADATA_TEMPLATE_NAME;
+        use crate::renderer::RendererConfig;
 
         #[test]
         fn default() {
@@ -840,9 +835,9 @@ mod tests {
     }
 
     mod collect_package_to_file_map {
-        use crate::template_renderer::renderer::tests::fake_file_with_package;
-        use crate::template_renderer::renderer::Renderer;
-        use crate::template_renderer::renderer_config::RendererConfig;
+        use crate::renderer::template::renderer::tests::fake_file_with_package;
+        use crate::renderer::template::renderer::Renderer;
+        use crate::renderer::RendererConfig;
         use anyhow::{anyhow, Result};
         use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
@@ -901,9 +896,9 @@ mod tests {
 
     mod generated_header {
         use crate::render::Render;
-        use crate::template_renderer::renderer::tests::fake_file_with_package;
-        use crate::template_renderer::renderer::{Renderer, DEFAULT_GENERATED_HEADER};
-        use crate::template_renderer::RendererConfig;
+        use crate::renderer::template::renderer::tests::fake_file_with_package;
+        use crate::renderer::template::renderer::{Renderer, DEFAULT_GENERATED_HEADER};
+        use crate::renderer::RendererConfig;
         use anyhow::{Context, Error, Result};
         use prost_types::FileDescriptorSet;
         use std::fs;

@@ -96,7 +96,7 @@ impl Case {
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::case::Case;
+    use crate::renderer::case::Case;
 
     #[test]
     fn upper() {
@@ -265,7 +265,7 @@ mod tests {
     }
 
     mod rename_file_name {
-        use crate::template_renderer::case::Case;
+        use crate::renderer::case::Case;
         use std::path::PathBuf;
 
         #[test]

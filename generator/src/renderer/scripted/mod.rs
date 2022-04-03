@@ -1,14 +1,11 @@
-mod renderer;
-
-use crate::in_out_generator::InOutGenerator;
-use crate::scripted_renderer::renderer::Renderer;
-use crate::{Config, InOutConfig};
 use anyhow::Result;
 
-pub const CONFIG_FILE_NAME: &'static str = "config.json";
-pub const TEMPLATE_EXT: &'static str = "hbs";
-pub const METADATA_TEMPLATE_NAME: &'static str = "metadata";
-pub const FILE_TEMPLATE_NAME: &'static str = "file";
+use renderer::Renderer;
+
+use crate::in_out_generator::InOutGenerator;
+use crate::{Config, InOutConfig};
+
+mod renderer;
 
 pub fn generate(config: &Config) -> Result<()> {
     Generator {

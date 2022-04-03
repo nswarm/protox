@@ -1,8 +1,10 @@
-use crate::{util, DisplayNormalized};
-use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
+
+use crate::{util, DisplayNormalized};
 
 pub type PackageTree = HashMap<String, PackageTreeNode>;
 
@@ -207,9 +209,11 @@ fn create_package_file_tree(package_files: &HashMap<String, impl AsRef<Path>>) -
 #[cfg(test)]
 mod tests {
     mod push_file {
-        use crate::template_renderer::context::MetadataContext;
-        use anyhow::Result;
         use std::path::PathBuf;
+
+        use anyhow::Result;
+
+        use crate::renderer::context::MetadataContext;
 
         #[test]
         fn direct_child() -> Result<()> {
@@ -244,9 +248,11 @@ mod tests {
     }
 
     mod push_subdirectory {
-        use crate::template_renderer::context::MetadataContext;
-        use anyhow::Result;
         use std::path::PathBuf;
+
+        use anyhow::Result;
+
+        use crate::renderer::context::MetadataContext;
 
         #[test]
         fn direct_child() -> Result<()> {
@@ -268,9 +274,11 @@ mod tests {
     }
 
     mod direct_child {
-        use crate::template_renderer::context::MetadataContext;
-        use anyhow::Result;
         use std::path::PathBuf;
+
+        use anyhow::Result;
+
+        use crate::renderer::context::MetadataContext;
 
         #[test]
         fn valid() -> Result<()> {
@@ -306,12 +314,14 @@ mod tests {
     }
 
     mod create_package_file_tree {
-        use crate::template_renderer::context::metadata::{
-            create_package_file_tree, PackageTree, PackageTreeNode,
-        };
-        use anyhow::{anyhow, Result};
         use std::collections::HashMap;
         use std::path::PathBuf;
+
+        use anyhow::{anyhow, Result};
+
+        use crate::renderer::context::metadata::{
+            create_package_file_tree, PackageTree, PackageTreeNode,
+        };
 
         #[test]
         fn separate_top_level() -> Result<()> {

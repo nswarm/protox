@@ -1,4 +1,5 @@
-use crate::template_renderer::{RendererConfig, FILE_TEMPLATE_NAME, TEMPLATE_EXT};
+use crate::renderer::template::{FILE_TEMPLATE_NAME, TEMPLATE_EXT};
+use crate::renderer::RendererConfig;
 use crate::{util, CONFIG_FILE_NAME};
 use anyhow::Result;
 use std::io::Write;
@@ -38,7 +39,8 @@ For more information on Handlebars: https://handlebarsjs.com/guide/
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::{RendererConfig, FILE_TEMPLATE_NAME, TEMPLATE_EXT};
+    use crate::renderer::template::{FILE_TEMPLATE_NAME, TEMPLATE_EXT};
+    use crate::renderer::RendererConfig;
     use crate::{initialize_template_dir, CONFIG_FILE_NAME};
     use anyhow::Result;
     use std::fs;

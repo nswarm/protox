@@ -62,7 +62,7 @@ fn split_kv_or_error(kv: &str) -> Result<(&str, &str)> {
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::option_key_value::insert_custom_options;
+    use crate::renderer::context::option_key_value::insert_custom_options;
     use anyhow::Result;
     use prost::Extendable;
     use prost_types::FileOptions;
@@ -90,7 +90,7 @@ mod tests {
     }
 
     mod split_kv_or_error {
-        use crate::template_renderer::option_key_value::split_kv_or_error;
+        use crate::renderer::context::option_key_value::split_kv_or_error;
         use anyhow::Result;
 
         #[test]

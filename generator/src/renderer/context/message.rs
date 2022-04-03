@@ -1,16 +1,18 @@
-use crate::template_renderer::case::Case;
-use crate::template_renderer::context::proto_type::ProtoType;
-use crate::template_renderer::context::FieldContext;
-use crate::template_renderer::option_key_value::insert_custom_options;
-use crate::template_renderer::proto::PACKAGE_SEPARATOR;
-use crate::template_renderer::renderer_config::RendererConfig;
-use crate::util;
+use std::collections::HashMap;
+
 use anyhow::{anyhow, Context, Result};
 use log::debug;
 use prost_types::{DescriptorProto, FieldDescriptorProto, MessageOptions};
 use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
-use std::collections::HashMap;
+
+use crate::renderer::case::Case;
+use crate::renderer::context::option_key_value::insert_custom_options;
+use crate::renderer::context::proto_type::ProtoType;
+use crate::renderer::context::FieldContext;
+use crate::renderer::proto::PACKAGE_SEPARATOR;
+use crate::renderer::RendererConfig;
+use crate::util;
 
 #[derive(Serialize, Deserialize)]
 pub struct MessageContext {
@@ -191,12 +193,13 @@ fn serialize_message_options<S: Serializer>(
 
 #[cfg(test)]
 mod tests {
-    use crate::template_renderer::case::Case;
-    use crate::template_renderer::context::message::MessageContext;
-    use crate::template_renderer::renderer_config::RendererConfig;
     use anyhow::Result;
     use prost::Extendable;
     use prost_types::{DescriptorProto, FieldDescriptorProto, MessageOptions};
+
+    use crate::renderer::case::Case;
+    use crate::renderer::context::message::MessageContext;
+    use crate::renderer::RendererConfig;
 
     #[test]
     fn name() -> Result<()> {
