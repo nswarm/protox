@@ -280,9 +280,7 @@ mod tests {
     use prost_types::{
         DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorProto,
     };
-    use serde::Serialize;
     use std::io;
-    use std::io::Write;
     use std::path::{Path, PathBuf};
 
     mod render {
@@ -663,9 +661,6 @@ mod tests {
     }
 
     impl FakeRenderer {
-        const DIR_SEPARATOR: &'static str = ";;;";
-        const SUBDIR_SEPARATOR: &'static str = ":::";
-
         pub fn with_config(config: RendererConfig) -> Self {
             Self {
                 config,
@@ -691,13 +686,13 @@ mod tests {
 
         fn render_metadata<W: io::Write>(
             &self,
-            context: MetadataContext,
-            writer: &mut W,
+            _context: MetadataContext,
+            _writer: &mut W,
         ) -> Result<()> {
             Ok(())
         }
 
-        fn render_file<W: io::Write>(&self, _context: &FileContext, writer: &mut W) -> Result<()> {
+        fn render_file<W: io::Write>(&self, _context: &FileContext, _writer: &mut W) -> Result<()> {
             Ok(())
         }
     }
