@@ -1,8 +1,7 @@
 use anyhow::Result;
 
-use renderer::Renderer;
-
 use crate::in_out_generator::InOutGenerator;
+use crate::renderer::template::renderer::TemplateRenderer;
 use crate::{Config, InOutConfig};
 
 mod helper;
@@ -15,21 +14,21 @@ pub const FILE_TEMPLATE_NAME: &'static str = "file";
 pub fn generate(config: &Config) -> Result<()> {
     Generator {
         config,
-        renderer: Renderer::new(),
+        renderer: TemplateRenderer::new(),
     }
     .generate()
 }
 
 struct Generator<'a> {
     config: &'a Config,
-    renderer: Renderer<'a>,
+    renderer: TemplateRenderer<'a>,
 }
-impl<'a> InOutGenerator<Renderer<'a>> for Generator<'a> {
+impl<'a> InOutGenerator<TemplateRenderer<'a>> for Generator<'a> {
     fn name(&self) -> &str {
         "Templates"
     }
 
-    fn renderer(&mut self) -> &mut Renderer<'a> {
+    fn renderer(&mut self) -> &mut TemplateRenderer<'a> {
         &mut self.renderer
     }
 

@@ -1,8 +1,7 @@
 use anyhow::Result;
 
-use renderer::Renderer;
-
 use crate::in_out_generator::InOutGenerator;
+use crate::renderer::scripted::renderer::ScriptedRenderer;
 use crate::{Config, InOutConfig};
 
 mod renderer;
@@ -10,21 +9,21 @@ mod renderer;
 pub fn generate(config: &Config) -> Result<()> {
     Generator {
         config,
-        renderer: Renderer::new(),
+        renderer: ScriptedRenderer::new(),
     }
     .generate()
 }
 
 struct Generator<'a> {
     config: &'a Config,
-    renderer: Renderer,
+    renderer: ScriptedRenderer,
 }
-impl<'a> InOutGenerator<Renderer> for Generator<'a> {
+impl<'a> InOutGenerator<ScriptedRenderer> for Generator<'a> {
     fn name(&self) -> &str {
         "Scripts"
     }
 
-    fn renderer(&mut self) -> &mut Renderer {
+    fn renderer(&mut self) -> &mut ScriptedRenderer {
         &mut self.renderer
     }
 
