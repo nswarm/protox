@@ -13,7 +13,7 @@ use crate::renderer::context::proto_type::ProtoType;
 use crate::renderer::RendererConfig;
 use crate::util;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FieldContext {
     // Name of the field.
     field_name: String,

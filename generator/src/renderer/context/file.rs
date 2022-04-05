@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use log::debug;
 use prost_types::{FileDescriptorProto, FileOptions};
 use serde::ser::Error;
@@ -11,10 +11,10 @@ use crate::renderer::context::{EnumContext, ImportContext, MessageContext};
 use crate::renderer::RendererConfig;
 use crate::util;
 
-#[derive(Serialize, Deserialize)]
-pub struct FileContext<'a> {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct FileContext {
     /// Relative path to the proto file this context is based on.
-    source_file: &'a str,
+    source_file: String,
 
     /// Other proto file imports of this proto file.
     imports: Vec<ImportContext>,
@@ -50,8 +50,8 @@ pub struct FileContext<'a> {
     options: Option<FileOptions>,
 }
 
-impl<'a> FileContext<'a> {
-    pub fn new(file: &'a FileDescriptorProto, config: &'a RendererConfig) -> Result<Self> {
+impl FileContext {
+    pub fn new(file: &FileDescriptorProto, config: &RendererConfig) -> Result<Self> {
         debug!(
             "Creating file context: {}",
             util::str_or_unknown(&file.name)
@@ -65,10 +65,28 @@ impl<'a> FileContext<'a> {
         };
         Ok(context)
     }
+
+    pub fn source_file(&self) -> &str {
+        &self.source_file
+    }
+    pub fn imports(&self) -> &Vec<ImportContext> {
+        &self.imports
+    }
+    pub fn enums(&self) -> &Vec<EnumContext> {
+        &self.enums
+    }
+    pub fn messages(&self) -> &Vec<MessageContext> {
+        &self.messages
+    }
+    pub fn options(&self) -> &Option<FileOptions> {
+        &self.options
+    }
 }
 
-fn source_file(file: &FileDescriptorProto) -> Result<&str> {
-    util::str_or_error(&file.name, || "File has no 'name'".to_string())
+fn source_file(file: &FileDescriptorProto) -> Result<String> {
+    file.name
+        .clone()
+        .ok_or(anyhow!("File has no 'name'".to_string()))
 }
 
 fn imports(file: &FileDescriptorProto) -> Result<Vec<ImportContext>> {
@@ -79,10 +97,7 @@ fn imports(file: &FileDescriptorProto) -> Result<Vec<ImportContext>> {
     Ok(imports)
 }
 
-fn enums<'a>(
-    file: &'a FileDescriptorProto,
-    config: &'a RendererConfig,
-) -> Result<Vec<EnumContext>> {
+fn enums(file: &FileDescriptorProto, config: &RendererConfig) -> Result<Vec<EnumContext>> {
     let mut enums = Vec::new();
     for proto in &file.enum_type {
         enums.push(EnumContext::new(proto, config)?);
@@ -90,10 +105,10 @@ fn enums<'a>(
     Ok(enums)
 }
 
-fn messages<'a>(
-    file: &'a FileDescriptorProto,
+fn messages(
+    file: &FileDescriptorProto,
     package: Option<&String>,
-    config: &'a RendererConfig,
+    config: &RendererConfig,
 ) -> Result<Vec<MessageContext>> {
     let mut messages = Vec::new();
     for message in &file.message_type {

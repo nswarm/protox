@@ -4,6 +4,7 @@ use crate::in_out_generator::InOutGenerator;
 use crate::renderer::scripted::renderer::ScriptedRenderer;
 use crate::{Config, InOutConfig};
 
+mod api;
 mod renderer;
 
 pub fn generate(config: &Config) -> Result<()> {

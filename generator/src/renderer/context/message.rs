@@ -14,7 +14,7 @@ use crate::renderer::proto::PACKAGE_SEPARATOR;
 use crate::renderer::RendererConfig;
 use crate::util;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MessageContext {
     /// Name of this message.
     name: String,
@@ -62,6 +62,16 @@ impl MessageContext {
             options: message.options.clone(),
         };
         Ok(context)
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn fields(&self) -> &Vec<FieldContext> {
+        &self.fields
+    }
+    pub fn options(&self) -> &Option<MessageOptions> {
+        &self.options
     }
 }
 

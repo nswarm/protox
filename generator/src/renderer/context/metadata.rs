@@ -8,7 +8,7 @@ use crate::{util, DisplayNormalized};
 
 pub type PackageTree = HashMap<String, PackageTreeNode>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MetadataContext {
     /// Relative path to this directory.
     directory: String,
@@ -79,7 +79,7 @@ pub struct MetadataContext {
     directory_path: PathBuf,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct PackageFile {
     package: String,
     file_name: String,

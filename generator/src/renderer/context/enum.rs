@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use crate::renderer::RendererConfig;
 use crate::util;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EnumContext {
     // Name of this enum.
     name: String,
@@ -45,7 +45,7 @@ pub struct EnumContext {
     options: Option<EnumOptions>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EnumValueContext {
     name: String,
     number: i32,

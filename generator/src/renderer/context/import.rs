@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{util, DisplayNormalized};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ImportContext {
     /// Relative (from root) path to the file to import.
     /// e.g. path/to/file_name.ext

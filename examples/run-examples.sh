@@ -30,7 +30,7 @@ rm -rf examples/output
 cargo run -- \
   --input examples/input/proto \
   --includes "$(pwd)/proto_options/protos" \
-  --output-root examples/output/proto \
+  --output-root examples/output \
   --proto cpp proto-cpp \
   --proto csharp proto-csharp \
   --proto java proto-java \
@@ -38,7 +38,7 @@ cargo run -- \
   --proto js proto-js \
   --template-root examples/input/templates \
   --template rust-server rust-server \
-  --template flatbuffers flatbuffers \
+  --template flatbuffers template-flatbuffers \
   --script-root examples/input/scripts \
-  --script test test
+  --script flatbuffers scripted-flatbuffers
 
