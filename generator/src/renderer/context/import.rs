@@ -32,6 +32,16 @@ impl ImportContext {
         };
         Ok(context)
     }
+
+    pub fn file_path(&self) -> &str {
+        &self.file_path
+    }
+    pub fn file_name(&self) -> &str {
+        &self.file_name
+    }
+    pub fn file_name_with_ext(&self) -> &str {
+        &self.file_name_with_ext
+    }
 }
 
 #[cfg(test)]

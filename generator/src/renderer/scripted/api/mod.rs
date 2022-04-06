@@ -26,11 +26,11 @@ mod context {
     use crate::renderer::context;
 
     pub type FileContext = context::FileContext;
+    pub type ImportContext = context::ImportContext;
     pub type EnumContext = context::EnumContext;
     pub type MessageContext = context::MessageContext;
     pub type FieldContext = context::FieldContext;
     pub type MetadataContext = context::MetadataContext;
-    pub type ImportContext = context::ImportContext;
 
     ////////////////////////////////////////////////////
     // FileContext
@@ -55,6 +55,14 @@ mod context {
     // pub fn options(context: &mut FileContext) -> Option<FileOptions> {
     //     context.options().clone()
     // }
+
+    ////////////////////////////////////////////////////
+    // ImportContext
+
+    #[rhai_fn(get = "file_name")]
+    pub fn file_name(context: &mut ImportContext) -> String {
+        context.file_name().to_string()
+    }
 
     ////////////////////////////////////////////////////
     // MessageContext

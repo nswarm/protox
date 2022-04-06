@@ -19,10 +19,10 @@ fn render_file(file) {
 
 fn render_file(context, output) {
     let val = `hello there file ${context.source_file}!`;
-    output.append(val);
+    output.line(val);
     for msg in context.messages {
         let val = `hello there msg ${msg.name}!`;
-        output.append(val);
+        output.line(val);
     }
 
     // append(`${message_type} ${name}`);

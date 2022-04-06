@@ -2,7 +2,6 @@ use std::io::Write;
 use std::iter::once;
 use std::path::{Path, PathBuf};
 
-use crate::DisplayNormalized;
 use anyhow::{anyhow, Context, Result};
 use prost::Message;
 use prost_types::{DescriptorProto, FileDescriptorProto, FileDescriptorSet};
@@ -16,6 +15,7 @@ use crate::renderer::context::{
 use crate::renderer::scripted::api;
 use crate::renderer::scripted::api::output::Output;
 use crate::renderer::{Renderer, RendererConfig};
+use crate::DisplayNormalized;
 
 pub const SCRIPT_EXT: &'static str = "rhai";
 pub const MAIN_SCRIPT_NAME: &'static str = "main";
@@ -59,7 +59,11 @@ impl ScriptedRenderer {
     }
 
     fn load_script(&mut self, script: &str) -> Result<()> {
-        self.main_ast = Some(self.engine.compile(script)?);
+        self.main_ast = Some(
+            self.engine
+                .compile(script)
+                .with_context(|| format!("Error compiling script:\n{}", script))?,
+        );
         Ok(())
     }
 }
@@ -134,35 +138,76 @@ fn compile_file(engine: &mut rhai::Engine, path: &Path) -> Result<AST> {
 
 #[cfg(test)]
 mod tests {
+    use std::{fs, io};
+
+    use anyhow::Result;
+    use prost_types::FileDescriptorProto;
+    use tempfile::tempdir;
+
     use crate::renderer::context::FileContext;
     use crate::renderer::scripted::renderer::ScriptedRenderer;
     use crate::renderer::{Renderer, RendererConfig};
-    use anyhow::Result;
-    use prost_types::FileDescriptorProto;
-    use std::{fs, io};
-    use tempfile::tempdir;
 
-    #[test]
-    fn render_file_test() -> Result<()> {
-        let mut renderer = ScriptedRenderer::new();
-        renderer.load_script(
-            r#"fn render_file(context, output) { output.append(context.source_file); output }"#,
-        )?;
-        let mut buffer = Vec::new();
-        let context = FileContext::new(&file_proto(), &RendererConfig::default())?;
-        renderer.render_file(&context, &mut buffer)?;
-        assert_eq!(
-            String::from_utf8(buffer).unwrap(),
-            context.source_file().to_string() + "\n"
-        );
-        Ok(())
+    mod file_context {
+        use anyhow::Result;
+        use prost_types::FileDescriptorProto;
+
+        use crate::renderer::context::FileContext;
+        use crate::renderer::scripted::renderer::tests::{default_file_proto, test_render_file};
+        use crate::renderer::RendererConfig;
+
+        #[test]
+        fn source_file() -> Result<()> {
+            let proto = default_file_proto();
+            let context = FileContext::new(&proto, &RendererConfig::default())?;
+            test_render_file(
+                &context,
+                "output.append(context.source_file);",
+                context.source_file(),
+            )
+        }
+
+        #[test]
+        fn imports() -> Result<()> {
+            let mut proto = default_file_proto();
+            proto.dependency = vec!["123".to_string(), "456".to_string()];
+            let context = FileContext::new(&proto, &RendererConfig::default())?;
+            test_render_file(
+                &context,
+                r#"
+                for i in context.imports {
+                    output.append(i.file_name);
+                }
+                "#,
+                "123456",
+            )
+        }
     }
 
-    fn file_proto() -> FileDescriptorProto {
+    fn default_file_proto() -> FileDescriptorProto {
         FileDescriptorProto {
-            name: Some("some name".to_string()),
-            package: Some("some.package".to_string()),
+            name: Some("name".to_string()),
             ..Default::default()
         }
+    }
+
+    fn test_render_file(
+        context: &FileContext,
+        script_content: &str,
+        expected_output: &str,
+    ) -> Result<()> {
+        let mut renderer = ScriptedRenderer::new();
+        renderer.load_script(&format!(
+            r#"
+            fn render_file(context, output) {{
+                {}
+                output
+            }}"#,
+            script_content
+        ))?;
+        let mut buffer = Vec::new();
+        renderer.render_file(&context, &mut buffer)?;
+        assert_eq!(String::from_utf8(buffer).unwrap(), expected_output);
+        Ok(())
     }
 }
