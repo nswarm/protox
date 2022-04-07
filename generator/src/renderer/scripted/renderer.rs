@@ -153,7 +153,9 @@ mod tests {
         use prost_types::FileDescriptorProto;
 
         use crate::renderer::context::FileContext;
-        use crate::renderer::scripted::renderer::tests::{default_file_proto, test_render_file};
+        use crate::renderer::scripted::renderer::tests::{
+            default_file_proto, file_with_imports, test_render_file,
+        };
         use crate::renderer::RendererConfig;
 
         #[test]
@@ -169,9 +171,7 @@ mod tests {
 
         #[test]
         fn imports() -> Result<()> {
-            let mut proto = default_file_proto();
-            proto.dependency = vec!["123".to_string(), "456".to_string()];
-            let context = FileContext::new(&proto, &RendererConfig::default())?;
+            let context = file_with_imports(&["123", "456"])?;
             test_render_file(
                 &context,
                 r#"
@@ -184,11 +184,63 @@ mod tests {
         }
     }
 
+    mod import_context {
+        use crate::renderer::context::{FileContext, ImportContext};
+        use anyhow::Result;
+        use prost_types::FileDescriptorProto;
+
+        use crate::renderer::scripted::renderer::tests::{
+            default_file_proto, file_with_imports, test_render_file,
+        };
+        use crate::renderer::RendererConfig;
+
+        #[test]
+        fn file_path() -> Result<()> {
+            import_test("file_path", "relative/path/file.txt")
+        }
+
+        #[test]
+        fn file_name() -> Result<()> {
+            import_test("file_name", "file")
+        }
+
+        #[test]
+        fn file_name_with_ext() -> Result<()> {
+            import_test("file_name_with_ext", "file.txt")
+        }
+
+        fn import_test(method: &str, expected_output: &str) -> Result<()> {
+            let proto = default_file_proto();
+            let context = file_with_imports(&["relative/path/file.txt"])?;
+            test_render_file(
+                &context,
+                &format!("output.append(context.imports[0].{});", method),
+                expected_output,
+            )
+        }
+    }
+
+    mod enum_context {}
+
+    mod message_context {}
+
+    mod field_context {}
+
+    mod metadata_context {}
+
     fn default_file_proto() -> FileDescriptorProto {
         FileDescriptorProto {
             name: Some("name".to_string()),
             ..Default::default()
         }
+    }
+
+    fn file_with_imports(imports: &[&str]) -> Result<FileContext> {
+        let mut proto = default_file_proto();
+        for import in imports {
+            proto.dependency.push(import.to_string());
+        }
+        FileContext::new(&proto, &RendererConfig::default())
     }
 
     fn test_render_file(

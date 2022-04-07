@@ -59,9 +59,19 @@ mod context {
     ////////////////////////////////////////////////////
     // ImportContext
 
+    #[rhai_fn(get = "file_path")]
+    pub fn file_path(context: &mut ImportContext) -> String {
+        context.file_path().to_string()
+    }
+
     #[rhai_fn(get = "file_name")]
     pub fn file_name(context: &mut ImportContext) -> String {
         context.file_name().to_string()
+    }
+
+    #[rhai_fn(get = "file_name_with_ext")]
+    pub fn file_name_with_ext(context: &mut ImportContext) -> String {
+        context.file_name_with_ext().to_string()
     }
 
     ////////////////////////////////////////////////////
