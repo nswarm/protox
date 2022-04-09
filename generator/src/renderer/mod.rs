@@ -14,6 +14,7 @@ use crate::{util, DisplayNormalized};
 
 mod case;
 mod context;
+mod option_key_value;
 mod primitive;
 mod proto;
 mod renderer_config;
@@ -274,14 +275,16 @@ fn log_render_metadata(file_path: &Path) {
 
 #[cfg(test)]
 mod tests {
-    use crate::renderer::context::{FileContext, MetadataContext};
-    use crate::renderer::{Renderer, RendererConfig};
+    use std::io;
+    use std::path::{Path, PathBuf};
+
     use anyhow::Result;
     use prost_types::{
         DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorProto,
     };
-    use std::io;
-    use std::path::{Path, PathBuf};
+
+    use crate::renderer::context::{FileContext, MetadataContext};
+    use crate::renderer::{Renderer, RendererConfig};
 
     mod render {
         use anyhow::Result;

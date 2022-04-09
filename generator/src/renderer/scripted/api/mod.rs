@@ -2,8 +2,6 @@ use rhai;
 use rhai::exported_module;
 use rhai::plugin::*;
 
-use crate::renderer::scripted::api::output::Output;
-
 pub mod output;
 
 pub fn register(engine: &mut rhai::Engine) {
@@ -22,6 +20,7 @@ fn get_str_or_new(opt: &Option<String>) -> String {
 #[export_module]
 mod context {
     use crate::renderer::context;
+    use crate::renderer::option_key_value::get_key_values;
 
     use super::get_str_or_new;
 
@@ -114,10 +113,6 @@ mod context {
     }
     #[rhai_fn(get = "java_package")]
     pub fn file_opt_java_package(opt: &mut FileOptions) -> String {
-        println!(
-            "---------- {}",
-            opt.java_package.as_ref().unwrap_or(&"aaaaaaaaa".to_owned())
-        );
         get_str_or_new(&opt.java_package)
     }
     #[rhai_fn(get = "ruby_package")]
@@ -189,10 +184,20 @@ mod context {
 
     // Key-value custom proto options.
 
-    // #[rhai_fn(index_get)]
-    // pub fn file_opt_get_kv(options: &mut FileOptions, index: String) -> String {
-    //     String::new()
-    //     // todo probably make these like... options.kv.abc? if we can
-    //     // let json = context::serialize_file_options(&Some(options));
-    // }
+    #[rhai_fn(index_get)]
+    pub fn file_opt_get_kv(options: &mut FileOptions, index: String) -> String {
+        let kv = match get_key_values(options, &proto_options::FILE_KEY_VALUE) {
+            Err(err) => panic!(
+                "Error getting kv option '{}' in FileOptions: {}",
+                index, err,
+            ),
+            Ok(kv) => kv,
+        };
+        for (key, value) in kv {
+            if key == index {
+                return value.to_owned();
+            }
+        }
+        return String::new();
+    }
 }

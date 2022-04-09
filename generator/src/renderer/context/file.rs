@@ -6,8 +6,8 @@ use prost_types::{FileDescriptorProto, FileOptions};
 use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
-use crate::renderer::context::option_key_value::insert_custom_options;
 use crate::renderer::context::{EnumContext, ImportContext, MessageContext};
+use crate::renderer::option_key_value::insert_custom_options;
 use crate::renderer::RendererConfig;
 use crate::util;
 

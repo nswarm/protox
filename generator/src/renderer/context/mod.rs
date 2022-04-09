@@ -12,5 +12,4 @@ mod file;
 mod import;
 mod message;
 mod metadata;
-mod option_key_value;
 mod proto_type;

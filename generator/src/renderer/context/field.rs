@@ -8,8 +8,8 @@ use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::renderer::context::message;
-use crate::renderer::context::option_key_value::insert_custom_options;
 use crate::renderer::context::proto_type::ProtoType;
+use crate::renderer::option_key_value::insert_custom_options;
 use crate::renderer::RendererConfig;
 use crate::util;
 

@@ -98,7 +98,7 @@ impl Renderer for ScriptedRenderer {
     fn render_file<W: Write>(&self, context: &FileContext, writer: &mut W) -> Result<()> {
         let mut scope = Scope::new();
         let ast = self.main_ast_or_error()?;
-        let mut output = Output::new();
+        let output = Output::new();
         let result: Output = self
             .engine
             .call_fn(
@@ -221,6 +221,7 @@ mod tests {
             default_file_proto, file_with_options, test_render_file,
         };
         use anyhow::Result;
+        use prost::Extendable;
         use prost_types::FileOptions;
 
         macro_rules! opt_test {
@@ -257,12 +258,26 @@ mod tests {
         opt_test!(objc_class_prefix, "some value".to_owned());
 
         fn run_test(options: FileOptions, method: &str, expected_output: &str) -> Result<()> {
-            let proto = default_file_proto();
             let context = file_with_options(options)?;
             test_render_file(
                 &context,
                 &format!("output.append(context.options.{});", method),
                 expected_output,
+            )
+        }
+
+        #[test]
+        fn kv_option() -> Result<()> {
+            let mut options = FileOptions::default();
+            options.set_extension_data(
+                proto_options::FILE_KEY_VALUE,
+                vec!["test_key=some_value".to_owned()],
+            );
+            let context = file_with_options(options)?;
+            test_render_file(
+                &context,
+                "output.append(context.options[\"test_key\"]);",
+                "some_value",
             )
         }
     }

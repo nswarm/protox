@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::renderer::context::option_key_value::insert_custom_options;
+use crate::renderer::option_key_value::insert_custom_options;
 use anyhow::{anyhow, Result};
 use log::debug;
 use prost_types::{EnumDescriptorProto, EnumOptions};

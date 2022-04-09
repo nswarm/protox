@@ -1,5 +1,3 @@
-use rhai::plugin::*;
-
 pub fn register(engine: &mut rhai::Engine) {
     engine
         .register_type::<Output>()

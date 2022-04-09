@@ -11,27 +11,38 @@ pub fn insert_custom_options<E: Extendable>(
     options: &E,
     extension: &ExtensionImpl<Vec<String>>,
 ) -> Result<()> {
+    for (key, value) in get_key_values(options, extension)? {
+        map.insert(key.to_owned(), serde_json::Value::String(value.to_owned()));
+    }
+    Ok(())
+}
+
+pub fn get_key_values<'a, E: Extendable>(
+    options: &'a E,
+    extension: &ExtensionImpl<Vec<String>>,
+) -> Result<Vec<(&'a str, &'a str)>> {
     match options.extension_data(extension) {
         Err(err) => {
             extension_set_error(err, E::extendable_type_id(), extension.extendable_type_id())
         }
-        Ok(value) => {
-            for kv in value {
+        Ok(ext_value) => {
+            let mut kvs = Vec::new();
+            for kv in ext_value {
                 let (key, value) = split_kv_or_error(kv)?;
-                map.insert(key.to_owned(), serde_json::Value::String(value.to_owned()));
+                kvs.push((key, value));
             }
-            Ok(())
+            Ok(kvs)
         }
     }
 }
 
-fn extension_set_error(
+fn extension_set_error<T>(
     err: ExtensionSetError,
     target_type_id: &str,
     extension_type_id: &str,
-) -> Result<()> {
+) -> Result<Vec<T>> {
     match err {
-        ExtensionSetError::ExtensionNotFound => Ok(()),
+        ExtensionSetError::ExtensionNotFound => Ok(Vec::new()),
         ExtensionSetError::WrongExtendableTypeId => Err(anyhow!(
             "Using wrong Extension with Extendable. Target: {}, expected {}",
             target_type_id,
@@ -59,7 +70,7 @@ fn split_kv_or_error(kv: &str) -> Result<(&str, &str)> {
 
 #[cfg(test)]
 mod tests {
-    use crate::renderer::context::option_key_value::insert_custom_options;
+    use crate::renderer::option_key_value::insert_custom_options;
     use anyhow::Result;
     use prost::Extendable;
     use prost_types::FileOptions;
@@ -87,7 +98,7 @@ mod tests {
     }
 
     mod split_kv_or_error {
-        use crate::renderer::context::option_key_value::split_kv_or_error;
+        use crate::renderer::option_key_value::split_kv_or_error;
         use anyhow::Result;
 
         #[test]

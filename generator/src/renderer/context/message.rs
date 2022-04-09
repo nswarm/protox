@@ -7,9 +7,9 @@ use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::renderer::case::Case;
-use crate::renderer::context::option_key_value::insert_custom_options;
 use crate::renderer::context::proto_type::ProtoType;
 use crate::renderer::context::FieldContext;
+use crate::renderer::option_key_value::insert_custom_options;
 use crate::renderer::proto::PACKAGE_SEPARATOR;
 use crate::renderer::RendererConfig;
 use crate::util;
