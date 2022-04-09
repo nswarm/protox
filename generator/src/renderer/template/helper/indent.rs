@@ -43,7 +43,7 @@ fn indent(content: &str, num_spaces: usize) -> String {
             if !s.trim().is_empty() {
                 [&whitespace, s].concat()
             } else {
-                s.to_string()
+                s.to_owned()
             }
         })
         .collect::<Vec<String>>()

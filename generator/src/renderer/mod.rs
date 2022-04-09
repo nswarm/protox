@@ -111,7 +111,7 @@ pub trait Renderer {
                 self.render_file(&context, &mut writer)?;
             }
             package_files.insert(
-                package.to_string(),
+                package.to_owned(),
                 path.strip_prefix(output_path)?.to_path_buf(),
             );
         }
@@ -233,7 +233,7 @@ fn insert_all_parents(dirs: &mut HashSet<PathBuf>, path: &Path) -> Result<()> {
 fn file_name(file: &FileDescriptorProto, new_ext: &str) -> Result<String> {
     Ok(util::replace_proto_ext(
         util::str_or_error(&file.name, || {
-            "Descriptor set file is missing a file name. The descriptor set was probably generated incorrectly.".to_string()
+            "Descriptor set file is missing a file name. The descriptor set was probably generated incorrectly.".to_owned()
         })?,
         new_ext,
     ))
@@ -317,7 +317,7 @@ mod tests {
         fn render_files_collapsed() -> Result<()> {
             let mut config = RendererConfig::default();
             config.one_file_per_package = true;
-            config.default_package_file_name = "pkg-root".to_string();
+            config.default_package_file_name = "pkg-root".to_owned();
             let mut renderer = FakeRenderer::with_config(config);
             renderer.has_metadata = true;
             let test_dir = tempdir()?;
@@ -352,7 +352,7 @@ mod tests {
         fn render_files_collapsed_with_configured_case() -> Result<()> {
             let mut config = RendererConfig::default();
             config.one_file_per_package = true;
-            config.default_package_file_name = "pkgRoot".to_string();
+            config.default_package_file_name = "pkgRoot".to_owned();
             config.case_config.file_name = Case::UpperSnake;
             let renderer = FakeRenderer::with_config(config);
             let test_dir = tempdir()?;
@@ -382,7 +382,7 @@ mod tests {
     #[test]
     fn output_ext_from_config() {
         let mut config = RendererConfig::default();
-        config.file_extension = "test".to_string();
+        config.file_extension = "test".to_owned();
         let renderer = FakeRenderer::with_config(config.clone());
         assert_eq!(renderer.output_ext(), config.file_extension);
     }
@@ -468,7 +468,7 @@ mod tests {
         #[test]
         fn with_config() {
             let mut config = RendererConfig::default();
-            config.metadata_file_name = "test".to_string();
+            config.metadata_file_name = "test".to_owned();
             let renderer = FakeRenderer::with_config(config);
             assert_eq!(renderer.metadata_file_name(), "test");
         }
@@ -485,7 +485,7 @@ mod tests {
         #[test]
         fn collects_unique_package_to_multiple_files() -> Result<()> {
             let mut config = RendererConfig::default();
-            config.default_package_file_name = "default".to_string();
+            config.default_package_file_name = "default".to_owned();
             let renderer = FakeRenderer::default();
 
             let descriptor_set = FileDescriptorSet {
@@ -527,7 +527,7 @@ mod tests {
     #[test]
     fn package_to_file_path() {
         let mut config = RendererConfig::default();
-        config.file_extension = "test".to_string();
+        config.file_extension = "test".to_owned();
         let renderer = FakeRenderer::with_config(config);
         assert_eq!(
             renderer.package_to_file_path(&PathBuf::from("root/path/to"), "package"),
@@ -587,7 +587,7 @@ mod tests {
         fn configured_in_file() -> Result<()> {
             let test_dir = tempdir()?;
             let mut config = RendererConfig::default();
-            config.generated_header = Some(CONFIGURED_HEADER_LINES.map(&str::to_string).to_vec());
+            config.generated_header = Some(CONFIGURED_HEADER_LINES.map(&str::to_owned).to_vec());
             render(test_dir.path(), config, false)?;
             assert_file_has_header(&test_dir.path().join("root"), CONFIGURED_HEADER)?;
             assert_file_has_header(&test_dir.path().join("sub-file-0"), CONFIGURED_HEADER)?;
@@ -599,7 +599,7 @@ mod tests {
         fn configured_in_single_file_package() -> Result<()> {
             let test_dir = tempdir()?;
             let mut config = RendererConfig::default();
-            config.generated_header = Some(CONFIGURED_HEADER_LINES.map(&str::to_string).to_vec());
+            config.generated_header = Some(CONFIGURED_HEADER_LINES.map(&str::to_owned).to_vec());
             config.one_file_per_package = true;
             render(test_dir.path(), config, false)?;
             assert_file_has_header(&test_dir.path().join("root"), CONFIGURED_HEADER)?;
@@ -611,7 +611,7 @@ mod tests {
         fn configured_in_metadata() -> Result<()> {
             let test_dir = tempdir()?;
             let mut config = RendererConfig::default();
-            config.generated_header = Some(CONFIGURED_HEADER_LINES.map(&str::to_string).to_vec());
+            config.generated_header = Some(CONFIGURED_HEADER_LINES.map(&str::to_owned).to_vec());
             render(test_dir.path(), config, true)?;
             assert_file_has_header(&test_dir.path().join("metadata"), CONFIGURED_HEADER)?;
             Ok(())

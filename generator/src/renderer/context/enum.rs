@@ -61,6 +61,25 @@ impl EnumContext {
         };
         Ok(context)
     }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn values(&self) -> &[EnumValueContext] {
+        &self.values
+    }
+    pub fn options(&self) -> &Option<EnumOptions> {
+        &self.options
+    }
+}
+
+impl EnumValueContext {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn number(&self) -> i32 {
+        self.number
+    }
 }
 
 fn log_new_enum(name: &Option<String>) {
@@ -68,7 +87,7 @@ fn log_new_enum(name: &Option<String>) {
 }
 
 fn name(proto: &EnumDescriptorProto, config: &RendererConfig) -> Result<String> {
-    let name = util::str_or_error(&proto.name, || "Enum has no 'name'".to_string())?;
+    let name = util::str_or_error(&proto.name, || "Enum has no 'name'".to_owned())?;
     Ok(config.case_config.enum_name.rename(name))
 }
 
@@ -123,7 +142,7 @@ mod tests {
     #[test]
     fn name() -> Result<()> {
         let config = RendererConfig::default();
-        let enum_name = "MsgName".to_string();
+        let enum_name = "MsgName".to_owned();
         let mut proto = default_enum();
         proto.name = Some(enum_name.clone());
         let context = EnumContext::new(&proto, &config)?;
@@ -135,7 +154,7 @@ mod tests {
     fn name_with_case() -> Result<()> {
         let mut config = RendererConfig::default();
         config.case_config.enum_name = Case::UpperSnake;
-        let enum_name = "MsgName".to_string();
+        let enum_name = "MsgName".to_owned();
         let mut proto = default_enum();
         proto.name = Some(enum_name.clone());
         let context = EnumContext::new(&proto, &config)?;
@@ -155,7 +174,7 @@ mod tests {
     fn values() -> Result<()> {
         let config = RendererConfig::default();
         let mut proto = default_enum();
-        proto.name = Some("EnumName".to_string());
+        proto.name = Some("EnumName".to_owned());
         proto.value.push(enum_value(1));
         proto.value.push(enum_value(2));
         let context = EnumContext::new(&proto, &config)?;
@@ -171,7 +190,7 @@ mod tests {
         let mut config = RendererConfig::default();
         config.case_config.enum_value_name = Case::UpperSnake;
         let mut proto = default_enum();
-        proto.name = Some("EnumName".to_string());
+        proto.name = Some("EnumName".to_owned());
         proto.value.push(named_enum_value("ValueName1", 1));
         proto.value.push(named_enum_value("ValueName2", 2));
         let context = EnumContext::new(&proto, &config)?;
@@ -186,11 +205,11 @@ mod tests {
     fn key_value_options() -> Result<()> {
         let config = RendererConfig::default();
         let mut proto = default_enum();
-        proto.name = Some("EnumName".to_string());
+        proto.name = Some("EnumName".to_owned());
         let mut options = EnumOptions::default();
         options.set_extension_data(
             &proto_options::ENUM_KEY_VALUE,
-            vec!["key0=value0".to_string(), "key1=value1".to_string()],
+            vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
         )?;
         proto.options = Some(options);
 
@@ -212,7 +231,7 @@ mod tests {
 
     fn named_enum_value(name: &str, number: i32) -> EnumValueDescriptorProto {
         EnumValueDescriptorProto {
-            name: Some(name.to_string()),
+            name: Some(name.to_owned()),
             number: Some(number),
             options: None,
         }

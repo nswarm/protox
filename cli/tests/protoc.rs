@@ -65,7 +65,7 @@ mod test_protoc_extra_args {
             .join(expected_filename)
             .to_str()
             .unwrap()
-            .to_string();
+            .to_owned();
         util::test_with_args_in(
             output_dir.path(),
             &[

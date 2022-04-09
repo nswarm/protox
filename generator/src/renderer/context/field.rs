@@ -112,7 +112,7 @@ impl FieldContext {
         let parent_prefix = config.field_relative_parent_prefix.as_ref();
         let context = Self {
             field_name: field_name(field, &config)?,
-            fully_qualified_type: Some(type_path.to_string()),
+            fully_qualified_type: Some(type_path.to_owned()),
             relative_type: Some(type_path.relative_to(package, parent_prefix)),
             is_array: is_array(field),
             is_map: false,
@@ -142,8 +142,8 @@ impl FieldContext {
             is_array: false,
             is_map: true,
             is_oneof: is_oneof(field),
-            fully_qualified_key_type: Some(key_type_path.to_string()),
-            fully_qualified_value_type: Some(value_type_path.to_string()),
+            fully_qualified_key_type: Some(key_type_path.to_owned()),
+            fully_qualified_value_type: Some(value_type_path.to_owned()),
             relative_key_type: Some(key_type_path.relative_to(package, parent_prefix)),
             relative_value_type: Some(value_type_path.relative_to(package, parent_prefix)),
             options: field.options.clone(),
@@ -162,7 +162,7 @@ fn log_new_field(name: &Option<String>) {
 }
 
 fn field_name(field: &FieldDescriptorProto, config: &RendererConfig) -> Result<String> {
-    let field_name = util::str_or_error(&field.name, || "Field has no 'name'".to_string())?;
+    let field_name = util::str_or_error(&field.name, || "Field has no 'name'".to_owned())?;
     let case = config.case_config.field_name;
     let result = case.rename(
         config
@@ -217,28 +217,28 @@ mod tests {
     #[test]
     fn field_name() -> Result<()> {
         let config = RendererConfig::default();
-        let name = "test_name".to_string();
+        let name = "test_name".to_owned();
         let mut field = default_field();
         field.name = Some(name.clone());
-        field.type_name = Some(primitive::FLOAT.to_string());
+        field.type_name = Some(primitive::FLOAT.to_owned());
         let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
-        assert_eq!(context.field_name.to_string(), name);
+        assert_eq!(context.field_name.to_owned(), name);
         Ok(())
     }
 
     #[test]
     fn override_field_name() -> Result<()> {
-        let old_name = "old_name".to_string();
-        let new_name = "new_name".to_string();
+        let old_name = "old_name".to_owned();
+        let new_name = "new_name".to_owned();
         let mut config = RendererConfig::default();
         config
             .field_name_override
             .insert(old_name.clone(), new_name.clone());
         let mut field = default_field();
         field.name = Some(old_name);
-        field.type_name = Some(primitive::FLOAT.to_string());
+        field.type_name = Some(primitive::FLOAT.to_owned());
         let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
-        assert_eq!(context.field_name.to_string(), new_name);
+        assert_eq!(context.field_name.to_owned(), new_name);
         Ok(())
     }
 
@@ -246,12 +246,12 @@ mod tests {
     fn field_name_case_change() -> Result<()> {
         let mut config = RendererConfig::default();
         config.case_config.field_name = Case::UpperSnake;
-        let name = "testName".to_string();
+        let name = "testName".to_owned();
         let mut field = default_field();
         field.name = Some(name.clone());
-        field.type_name = Some(primitive::FLOAT.to_string());
+        field.type_name = Some(primitive::FLOAT.to_owned());
         let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
-        assert_eq!(context.field_name.to_string(), "TEST_NAME");
+        assert_eq!(context.field_name.to_owned(), "TEST_NAME");
         Ok(())
     }
 
@@ -259,12 +259,12 @@ mod tests {
     fn key_value_options() -> Result<()> {
         let config = RendererConfig::default();
         let mut field = default_field();
-        field.name = Some("field_name".to_string());
-        field.type_name = Some(primitive::FLOAT.to_string());
+        field.name = Some("field_name".to_owned());
+        field.type_name = Some(primitive::FLOAT.to_owned());
         let mut options = FieldOptions::default();
         options.set_extension_data(
             &proto_options::FIELD_KEY_VALUE,
-            vec!["key0=value0".to_string(), "key1=value1".to_string()],
+            vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
         )?;
         field.options = Some(options);
 
@@ -281,14 +281,14 @@ mod tests {
         let expected_type = "custom_type";
         let config = RendererConfig::default();
         let mut field = default_field();
-        field.name = Some("field_name".to_string());
-        field.type_name = Some(primitive::FLOAT.to_string());
+        field.name = Some("field_name".to_owned());
+        field.type_name = Some(primitive::FLOAT.to_owned());
         let mut options = FieldOptions::default();
-        options.set_extension_data(&proto_options::NATIVE_TYPE, expected_type.to_string())?;
+        options.set_extension_data(&proto_options::NATIVE_TYPE, expected_type.to_owned())?;
         field.options = Some(options);
 
         let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
-        assert_eq!(context.relative_type, Some("custom_type".to_string()));
+        assert_eq!(context.relative_type, Some("custom_type".to_owned()));
         Ok(())
     }
 
@@ -326,12 +326,12 @@ mod tests {
         fn test_type_config(proto_type_name: &str) -> Result<()> {
             let mut config = RendererConfig::default();
             config.type_config.insert(
-                proto_type_name.to_string(),
+                proto_type_name.to_owned(),
                 ["Test", proto_type_name].concat(),
             );
             let mut field = default_field();
-            field.name = Some("field_name".to_string());
-            field.type_name = Some(proto_type_name.to_string());
+            field.name = Some("field_name".to_owned());
+            field.type_name = Some(proto_type_name.to_owned());
             let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
             assert_eq!(
                 context.fully_qualified_type.as_ref(),
@@ -344,13 +344,13 @@ mod tests {
     #[test]
     fn package_separator_replaced_in_types() -> Result<()> {
         let mut field = default_field();
-        field.name = Some("test".to_string());
-        field.type_name = Some(".root.sub.TypeName".to_string());
+        field.name = Some("test".to_owned());
+        field.type_name = Some(".root.sub.TypeName".to_owned());
         let mut config = RendererConfig::default();
-        config.package_separator = "::".to_string();
+        config.package_separator = "::".to_owned();
         let context = FieldContext::new(
             &field,
-            Some(&"root".to_string()),
+            Some(&"root".to_owned()),
             &message::MapData::new(),
             &config,
         )?;
@@ -369,7 +369,7 @@ mod tests {
     fn missing_name_errors() {
         let config = RendererConfig::default();
         let mut field = default_field();
-        field.type_name = Some(primitive::FLOAT.to_string());
+        field.type_name = Some(primitive::FLOAT.to_owned());
         let result = FieldContext::new(&field, None, &message::MapData::new(), &config);
         assert!(result.is_err());
     }
@@ -378,7 +378,7 @@ mod tests {
     fn missing_type_name_errors() {
         let config = RendererConfig::default();
         let mut field = default_field();
-        field.name = Some("field_name".to_string());
+        field.name = Some("field_name".to_owned());
         let result = FieldContext::new(&field, None, &message::MapData::new(), &config);
         assert!(result.is_err());
     }
@@ -388,8 +388,8 @@ mod tests {
         let mut config = RendererConfig::default();
         config.case_config.message_name = Case::UpperSnake;
         let mut field = default_field();
-        field.name = Some("field_name".to_string());
-        field.type_name = Some("TypeName".to_string());
+        field.name = Some("field_name".to_owned());
+        field.type_name = Some("TypeName".to_owned());
         let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
         assert_eq!(
             context.fully_qualified_type.as_ref().map(String::as_str),
@@ -403,7 +403,7 @@ mod tests {
         let mut config = RendererConfig::default();
         config.case_config.message_name = Case::UpperSnake;
         let mut field = default_field();
-        field.name = Some("field_name".to_string());
+        field.name = Some("field_name".to_owned());
         field.r#type = Some(2);
         let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
         assert_eq!(
@@ -439,12 +439,12 @@ mod tests {
             let config = RendererConfig::default();
             let mut map_data = message::MapData::new();
             let int_proto_type = prost_types::field::Kind::TypeInt32 as i32;
-            let package = ".root.sub".to_string();
+            let package = ".root.sub".to_owned();
             map_data.insert(
-                MAP_TYPE_NAME.to_string(),
+                MAP_TYPE_NAME.to_owned(),
                 MapEntryData {
                     key: ProtoType::Type(int_proto_type),
-                    value: ProtoType::TypeName(".root.sub.inner.TypeName".to_string()),
+                    value: ProtoType::TypeName(".root.sub.inner.TypeName".to_owned()),
                 },
             );
 
@@ -453,16 +453,16 @@ mod tests {
             assert!(context.is_map);
             assert_eq!(
                 context.fully_qualified_key_type,
-                Some(expected_key.to_string())
+                Some(expected_key.to_owned())
             );
             assert_eq!(
                 context.fully_qualified_value_type,
-                Some("root.sub.inner.TypeName".to_string())
+                Some("root.sub.inner.TypeName".to_owned())
             );
-            assert_eq!(context.relative_key_type, Some(expected_key.to_string()));
+            assert_eq!(context.relative_key_type, Some(expected_key.to_owned()));
             assert_eq!(
                 context.relative_value_type,
-                Some("inner.TypeName".to_string())
+                Some("inner.TypeName".to_owned())
             );
             Ok(())
         }
@@ -475,7 +475,7 @@ mod tests {
             let int_proto_type = prost_types::field::Kind::TypeInt32 as i32;
             let float_proto_type = prost_types::field::Kind::TypeFloat as i32;
             map_data.insert(
-                MAP_TYPE_NAME.to_string(),
+                MAP_TYPE_NAME.to_owned(),
                 MapEntryData {
                     key: ProtoType::Type(int_proto_type),
                     value: ProtoType::Type(float_proto_type),
@@ -488,17 +488,14 @@ mod tests {
             assert!(context.is_map);
             assert_eq!(
                 context.fully_qualified_key_type,
-                Some(expected_key.to_string())
+                Some(expected_key.to_owned())
             );
             assert_eq!(
                 context.fully_qualified_value_type,
-                Some(expected_value.to_string())
+                Some(expected_value.to_owned())
             );
-            assert_eq!(context.relative_key_type, Some(expected_key.to_string()));
-            assert_eq!(
-                context.relative_value_type,
-                Some(expected_value.to_string())
-            );
+            assert_eq!(context.relative_key_type, Some(expected_key.to_owned()));
+            assert_eq!(context.relative_value_type, Some(expected_value.to_owned()));
             Ok(())
         }
 
@@ -519,7 +516,7 @@ mod tests {
 
         fn map_field() -> FieldDescriptorProto {
             let mut field = field_with_required();
-            field.type_name = Some(MAP_TYPE_NAME.to_string());
+            field.type_name = Some(MAP_TYPE_NAME.to_owned());
             field
         }
     }
@@ -536,7 +533,7 @@ mod tests {
 
     fn field_with_required() -> FieldDescriptorProto {
         let mut field = default_field();
-        field.name = Some("field_name".to_string());
+        field.name = Some("field_name".to_owned());
         field.r#type = Some(2);
         field
     }

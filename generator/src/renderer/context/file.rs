@@ -86,7 +86,7 @@ impl FileContext {
 fn source_file(file: &FileDescriptorProto) -> Result<String> {
     file.name
         .clone()
-        .ok_or(anyhow!("File has no 'name'".to_string()))
+        .ok_or(anyhow!("File has no 'name'".to_owned()))
 }
 
 fn imports(file: &FileDescriptorProto) -> Result<Vec<ImportContext>> {
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn source_file() -> Result<()> {
         let config = RendererConfig::default();
-        let name = "file_name".to_string();
+        let name = "file_name".to_owned();
         let mut file = default_file();
         file.name = Some(name.clone());
         let context = FileContext::new(&file, &config)?;
@@ -214,28 +214,28 @@ mod tests {
     fn file_options() -> Result<()> {
         let config = RendererConfig::default();
         let mut file = default_file();
-        file.name = Some("file_name".to_string());
+        file.name = Some("file_name".to_owned());
         file.options = Some(FileOptions {
-            java_package: Some("java_package".to_string()),
-            java_outer_classname: Some("java_outer_classname".to_string()),
+            java_package: Some("java_package".to_owned()),
+            java_outer_classname: Some("java_outer_classname".to_owned()),
             java_multiple_files: Some(true),
             java_generate_equals_and_hash: None,
             java_string_check_utf8: Some(true),
             optimize_for: Some(1234),
-            go_package: Some("go_package".to_string()),
+            go_package: Some("go_package".to_owned()),
             cc_generic_services: Some(true),
             java_generic_services: Some(true),
             py_generic_services: Some(true),
             php_generic_services: Some(true),
             deprecated: Some(true),
             cc_enable_arenas: Some(true),
-            objc_class_prefix: Some("objc_class_prefix".to_string()),
-            csharp_namespace: Some("csharp_namespace".to_string()),
-            swift_prefix: Some("swift_prefix".to_string()),
-            php_class_prefix: Some("php_class_prefix".to_string()),
-            php_namespace: Some("php_namespace".to_string()),
-            php_metadata_namespace: Some("php_metadata_namespace".to_string()),
-            ruby_package: Some("ruby_package".to_string()),
+            objc_class_prefix: Some("objc_class_prefix".to_owned()),
+            csharp_namespace: Some("csharp_namespace".to_owned()),
+            swift_prefix: Some("swift_prefix".to_owned()),
+            php_class_prefix: Some("php_class_prefix".to_owned()),
+            php_namespace: Some("php_namespace".to_owned()),
+            php_metadata_namespace: Some("php_metadata_namespace".to_owned()),
+            ruby_package: Some("ruby_package".to_owned()),
             uninterpreted_option: vec![],
             extension_set: ExtensionSet::default(),
         });
@@ -268,11 +268,11 @@ mod tests {
     fn key_value_options() -> Result<()> {
         let config = RendererConfig::default();
         let mut file = default_file();
-        file.name = Some("file_name".to_string());
+        file.name = Some("file_name".to_owned());
         let mut options = FileOptions::default();
         options.set_extension_data(
             &proto_options::FILE_KEY_VALUE,
-            vec!["key0=value0".to_string(), "key1=value1".to_string()],
+            vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
         )?;
         file.options = Some(options);
 

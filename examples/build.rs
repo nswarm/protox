@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Configure idlx directly.
     let mut config = generator::Config::default();
     config.input = input_dir.join("proto");
-    config.includes = vec![idlx_includes_dir.to_str().unwrap().to_string()];
+    config.includes = vec![idlx_includes_dir.to_str().unwrap().to_owned()];
     config.descriptor_set_path = output_dir.join("descriptor_set");
 
     // Note that these paths need to be absolute.

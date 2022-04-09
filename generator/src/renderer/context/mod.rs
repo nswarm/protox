@@ -4,6 +4,7 @@ pub use import::ImportContext;
 pub use message::MessageContext;
 pub use metadata::MetadataContext;
 pub use r#enum::EnumContext;
+pub use r#enum::EnumValueContext;
 
 mod r#enum;
 mod field;

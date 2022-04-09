@@ -86,7 +86,7 @@ fn log_new_message(name: &Option<String>) {
 }
 
 fn name(message: &DescriptorProto, case: Case) -> Result<String> {
-    let name = util::str_or_error(&message.name, || "Message has no 'name'".to_string())?;
+    let name = util::str_or_error(&message.name, || "Message has no 'name'".to_owned())?;
     Ok(case.rename(name))
 }
 
@@ -105,7 +105,7 @@ fn fields(
 
 fn collect_map_data(message: &DescriptorProto, package: Option<&String>) -> Result<MapData> {
     let message_name = util::str_or_error(&message.name, || {
-        "collect_map_data: No message name.".to_string()
+        "collect_map_data: No message name.".to_owned()
     })?;
     let mut map_data = MapData::new();
     for nested in message.nested_type.iter().filter(is_map) {
@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn name() -> Result<()> {
         let config = RendererConfig::default();
-        let msg_name = "MsgName".to_string();
+        let msg_name = "MsgName".to_owned();
         let mut message = default_message();
         message.name = Some(msg_name.clone());
         let context = MessageContext::new(&message, None, &config)?;
@@ -226,7 +226,7 @@ mod tests {
     fn name_with_case() -> Result<()> {
         let mut config = RendererConfig::default();
         config.case_config.message_name = Case::UpperSnake;
-        let msg_name = "msgName".to_string();
+        let msg_name = "msgName".to_owned();
         let mut message = default_message();
         message.name = Some(msg_name.clone());
         let context = MessageContext::new(&message, None, &config)?;
@@ -246,7 +246,7 @@ mod tests {
     fn creates_fields_from_proto() -> Result<()> {
         let config = RendererConfig::default();
         let mut proto = default_message();
-        proto.name = Some("enum_name".to_string());
+        proto.name = Some("enum_name".to_owned());
         proto.field.push(field("field0"));
         proto.field.push(field("field1"));
         let context = MessageContext::new(&proto, None, &config)?;
@@ -259,11 +259,11 @@ mod tests {
     fn key_value_options() -> Result<()> {
         let config = RendererConfig::default();
         let mut message = default_message();
-        message.name = Some("MessageName".to_string());
+        message.name = Some("MessageName".to_owned());
         let mut options = MessageOptions::default();
         options.set_extension_data(
             &proto_options::MSG_KEY_VALUE,
-            vec!["key0=value0".to_string(), "key1=value1".to_string()],
+            vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
         )?;
         message.options = Some(options);
 
@@ -281,7 +281,7 @@ mod tests {
             number: None,
             label: None,
             r#type: None,
-            type_name: Some("type".to_string()),
+            type_name: Some("type".to_owned()),
             extendee: None,
             default_value: None,
             oneof_index: None,

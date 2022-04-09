@@ -55,7 +55,7 @@ impl Lang {
             Lang::Ruby => "ruby",
             Lang::Rust => "rust",
         }
-        .to_string()
+        .to_owned()
     }
 }
 

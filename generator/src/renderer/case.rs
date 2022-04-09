@@ -260,7 +260,7 @@ mod tests {
             "UpperCamelCase",
         ]
         .into_iter()
-        .map(str::to_string)
+        .map(str::to_owned)
         .collect()
     }
 

@@ -1,9 +1,7 @@
 use std::io::Write;
-use std::iter::once;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
-use prost::Message;
 use prost_types::{DescriptorProto, FileDescriptorProto, FileDescriptorSet};
 use rhai::module_resolvers::FileModuleResolver;
 use rhai::{Dynamic, Engine, EvalAltResult, FuncArgs, Module, Scope, AST};
@@ -62,6 +60,7 @@ impl ScriptedRenderer {
         self.main_ast = Some(
             self.engine
                 .compile(script)
+                // todo insert line numbers after \n?
                 .with_context(|| format!("Error compiling script:\n{}", script))?,
         );
         Ok(())
@@ -114,7 +113,7 @@ impl Renderer for ScriptedRenderer {
                     RENDER_FILE_FN_NAME
                 )
             })?;
-        writer.write(result.to_string().as_bytes())?;
+        writer.write(result.to_owned().as_bytes())?;
         Ok(())
     }
 }
@@ -127,7 +126,7 @@ fn file_name(file: &mut FileDescriptorProto) -> String {
     file.name
         .as_ref()
         .map(|s| s.clone())
-        .unwrap_or("".to_string())
+        .unwrap_or("".to_owned())
 }
 
 fn compile_file(engine: &mut rhai::Engine, path: &Path) -> Result<AST> {
@@ -141,7 +140,7 @@ mod tests {
     use std::{fs, io};
 
     use anyhow::Result;
-    use prost_types::FileDescriptorProto;
+    use prost_types::{DescriptorProto, EnumDescriptorProto, FileDescriptorProto, FileOptions};
     use tempfile::tempdir;
 
     use crate::renderer::context::FileContext;
@@ -154,7 +153,8 @@ mod tests {
 
         use crate::renderer::context::FileContext;
         use crate::renderer::scripted::renderer::tests::{
-            default_file_proto, file_with_imports, test_render_file,
+            default_enum_proto, default_file_proto, default_message_proto, file_with_enums,
+            file_with_imports, file_with_messages, test_render_file,
         };
         use crate::renderer::RendererConfig;
 
@@ -169,19 +169,7 @@ mod tests {
             )
         }
 
-        #[test]
-        fn imports() -> Result<()> {
-            let context = file_with_imports(&["123", "456"])?;
-            test_render_file(
-                &context,
-                r#"
-                for i in context.imports {
-                    output.append(i.file_name);
-                }
-                "#,
-                "123456",
-            )
-        }
+        // The rest are tested in their own section since we use render_file anyway.
     }
 
     mod import_context {
@@ -196,20 +184,20 @@ mod tests {
 
         #[test]
         fn file_path() -> Result<()> {
-            import_test("file_path", "relative/path/file.txt")
+            run_test("file_path", "relative/path/file.txt")
         }
 
         #[test]
         fn file_name() -> Result<()> {
-            import_test("file_name", "file")
+            run_test("file_name", "file")
         }
 
         #[test]
         fn file_name_with_ext() -> Result<()> {
-            import_test("file_name_with_ext", "file.txt")
+            run_test("file_name_with_ext", "file.txt")
         }
 
-        fn import_test(method: &str, expected_output: &str) -> Result<()> {
+        fn run_test(method: &str, expected_output: &str) -> Result<()> {
             let proto = default_file_proto();
             let context = file_with_imports(&["relative/path/file.txt"])?;
             test_render_file(
@@ -228,9 +216,74 @@ mod tests {
 
     mod metadata_context {}
 
+    mod file_options {
+        use crate::renderer::scripted::renderer::tests::{
+            default_file_proto, file_with_options, test_render_file,
+        };
+        use anyhow::Result;
+        use prost_types::FileOptions;
+
+        macro_rules! opt_test {
+            ($name: ident, $value: expr) => {
+                #[test]
+                fn $name() -> Result<()> {
+                    let options = FileOptions {
+                        $name: Some($value),
+                        ..Default::default()
+                    };
+                    run_test(options, stringify!($name), &$value.to_string())
+                }
+            };
+        }
+
+        opt_test!(deprecated, true);
+        opt_test!(go_package, "some value".to_owned());
+        opt_test!(java_package, "some value".to_owned());
+        opt_test!(ruby_package, "some value".to_owned());
+        opt_test!(csharp_namespace, "some value".to_owned());
+        opt_test!(php_namespace, "some value".to_owned());
+        opt_test!(php_metadata_namespace, "some value".to_owned());
+        opt_test!(swift_prefix, "some value".to_owned());
+        opt_test!(java_generic_services, true);
+        opt_test!(java_outer_classname, "some value".to_owned());
+        opt_test!(java_multiple_files, true);
+        opt_test!(cc_generic_services, true);
+        opt_test!(cc_enable_arenas, true);
+        opt_test!(java_string_check_utf8, true);
+        opt_test!(optimize_for, 123);
+        opt_test!(php_generic_services, true);
+        opt_test!(php_class_prefix, "some value".to_owned());
+        opt_test!(py_generic_services, true);
+        opt_test!(objc_class_prefix, "some value".to_owned());
+
+        fn run_test(options: FileOptions, method: &str, expected_output: &str) -> Result<()> {
+            let proto = default_file_proto();
+            let context = file_with_options(options)?;
+            test_render_file(
+                &context,
+                &format!("output.append(context.options.{});", method),
+                expected_output,
+            )
+        }
+    }
+
     fn default_file_proto() -> FileDescriptorProto {
         FileDescriptorProto {
-            name: Some("name".to_string()),
+            name: Some("name".to_owned()),
+            ..Default::default()
+        }
+    }
+
+    fn default_message_proto(name: &str) -> DescriptorProto {
+        DescriptorProto {
+            name: Some(name.to_owned()),
+            ..Default::default()
+        }
+    }
+
+    fn default_enum_proto(name: &str) -> EnumDescriptorProto {
+        EnumDescriptorProto {
+            name: Some(name.to_owned()),
             ..Default::default()
         }
     }
@@ -240,6 +293,24 @@ mod tests {
         for import in imports {
             proto.dependency.push(import.to_string());
         }
+        FileContext::new(&proto, &RendererConfig::default())
+    }
+
+    fn file_with_enums(enums: Vec<EnumDescriptorProto>) -> Result<FileContext> {
+        let mut proto = default_file_proto();
+        proto.enum_type = enums;
+        FileContext::new(&proto, &RendererConfig::default())
+    }
+
+    fn file_with_messages(messages: Vec<DescriptorProto>) -> Result<FileContext> {
+        let mut proto = default_file_proto();
+        proto.message_type = messages;
+        FileContext::new(&proto, &RendererConfig::default())
+    }
+
+    fn file_with_options(options: FileOptions) -> Result<FileContext> {
+        let mut proto = default_file_proto();
+        proto.options = Some(options);
         FileContext::new(&proto, &RendererConfig::default())
     }
 

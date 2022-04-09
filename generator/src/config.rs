@@ -157,7 +157,7 @@ where
 }
 
 fn join_help(lines: &[&str]) -> String {
-    lines.join(LONG_HELP_NEWLINE).to_string()
+    lines.join(LONG_HELP_NEWLINE).to_owned()
 }
 
 pub struct Config {
@@ -335,7 +335,7 @@ fn parse_extra_protoc_args(args: &ArgMatches) -> Vec<String> {
 fn parse_arg_to_vec(arg_name: &str, args: &ArgMatches) -> Vec<String> {
     args.values_of(arg_name)
         .unwrap_or(Values::default())
-        .map(&str::to_string)
+        .map(&str::to_owned)
         .collect()
 }
 
@@ -455,7 +455,7 @@ mod tests {
             "cpp",
             &current_dir()?.join("proto_cpp").display_normalized(),
         ]
-        .map(|s| s.to_string())
+        .map(|s| s.to_owned())
         .into();
         for arg in additional_args {
             args.push(arg.into());

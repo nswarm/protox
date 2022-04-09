@@ -97,7 +97,7 @@ mod tests {
         let output_dir = test_dir.path().join("output");
         let descriptor_set = FileDescriptorSet {
             file: vec![FileDescriptorProto {
-                name: Some("test.proto".to_string()),
+                name: Some("test.proto".to_owned()),
                 ..Default::default()
             }],
         };

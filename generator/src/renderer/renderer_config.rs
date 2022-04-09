@@ -89,7 +89,7 @@ fn default_case_config() -> CaseConfig {
 }
 
 fn default_metadata_file_name() -> String {
-    METADATA_TEMPLATE_NAME.to_string()
+    METADATA_TEMPLATE_NAME.to_owned()
 }
 
 fn default_package_separator() -> String {
@@ -97,7 +97,7 @@ fn default_package_separator() -> String {
 }
 
 fn default_package_file_name() -> String {
-    "unknown".to_string()
+    "unknown".to_owned()
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -126,7 +126,7 @@ impl Default for CaseConfig {
 impl Default for RendererConfig {
     fn default() -> Self {
         Self {
-            file_extension: "".to_string(),
+            file_extension: "".to_owned(),
             type_config: default_type_config(),
             case_config: Default::default(),
             metadata_file_name: default_metadata_file_name(),

@@ -18,10 +18,7 @@ pub fn insert_custom_options<E: Extendable>(
         Ok(value) => {
             for kv in value {
                 let (key, value) = split_kv_or_error(kv)?;
-                map.insert(
-                    key.to_string(),
-                    serde_json::Value::String(value.to_string()),
-                );
+                map.insert(key.to_owned(), serde_json::Value::String(value.to_owned()));
             }
             Ok(())
         }
@@ -75,16 +72,16 @@ mod tests {
         let extension = &proto_options::FILE_KEY_VALUE;
         options.set_extension_data(
             extension,
-            vec!["key0=value0".to_string(), "key1=value1".to_string()],
+            vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
         )?;
         insert_custom_options(&mut map, &options, extension)?;
         assert_eq!(
             map.get("key0"),
-            Some(&serde_json::Value::String("value0".to_string()))
+            Some(&serde_json::Value::String("value0".to_owned()))
         );
         assert_eq!(
             map.get("key1"),
-            Some(&serde_json::Value::String("value1".to_string()))
+            Some(&serde_json::Value::String("value1".to_owned()))
         );
         Ok(())
     }

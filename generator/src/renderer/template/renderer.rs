@@ -73,7 +73,7 @@ impl TemplateRenderer<'_> {
                 None => continue,
                 Some(file_name) => match file_name.to_str() {
                     None => continue,
-                    Some(name) => name.to_string(),
+                    Some(name) => name.to_owned(),
                 },
             };
 
@@ -96,7 +96,7 @@ impl TemplateRenderer<'_> {
     }
 
     #[allow(dead_code)]
-    fn render_to_string<S: Serialize>(&self, template: &str, data: &S) -> Result<String> {
+    fn render_to_owned<S: Serialize>(&self, template: &str, data: &S) -> Result<String> {
         let rendered = self
             .hbs
             .render(template, data)
@@ -163,7 +163,7 @@ fn render_error_context<S: Serialize>(name: &str, data: &S) -> String {
     format!(
         "Failed to render template '{}' for data: {}",
         name,
-        serde_json::to_string(data).unwrap_or("(failed to serialize)".to_string()),
+        serde_json::to_string(data).unwrap_or("(failed to serialize)".to_owned()),
     )
 }
 
@@ -190,7 +190,7 @@ mod tests {
         load_message_template(&mut renderer, "{{name}}")?;
         load_message_template(&mut renderer, "{{name}}")?;
 
-        let file_name = "file_name".to_string();
+        let file_name = "file_name".to_owned();
         let enum0 = fake_enum::<&str, &str>("enum0", &[]);
         let msg0 = fake_message("msg0", Vec::new());
         let msg1 = fake_message("msg1", Vec::new());
@@ -221,10 +221,10 @@ mod tests {
             "{{file_path}}{{file_name}}{{file_name_with_ext}}",
         )?;
 
-        let file_name = "file_name".to_string();
+        let file_name = "file_name".to_owned();
         let mut file = fake_file_empty(&file_name);
-        let import0 = "root/test/value.txt".to_string();
-        let import1 = "root/other/value2.rs".to_string();
+        let import0 = "root/test/value.txt".to_owned();
+        let import1 = "root/other/value2.rs".to_owned();
         file.dependency.push(import0.clone());
         file.dependency.push(import1.clone());
 
@@ -254,11 +254,11 @@ mod tests {
         let mut renderer = TemplateRenderer::with_config(config);
         load_message_template(
             &mut renderer,
-            "{{name}}{{#each fields}}{{> field}}{{/each}}".to_string(),
+            "{{name}}{{#each fields}}{{> field}}{{/each}}".to_owned(),
         )?;
-        load_field_template(&mut renderer, "{{name}}:::{{native_type}}".to_string())?;
+        load_field_template(&mut renderer, "{{name}}:::{{native_type}}".to_owned())?;
 
-        let msg_name = "MsgName".to_string();
+        let msg_name = "MsgName".to_owned();
         let field0 = fake_field("field0", primitive::FLOAT);
         let field1 = fake_field("field1", primitive::BOOL);
         let field0_rendered = render_field(&renderer, &field0, None)?;
@@ -281,7 +281,7 @@ mod tests {
         let mut config = RendererConfig::default();
         config
             .type_config
-            .insert(primitive::FLOAT.to_string(), type_name.clone());
+            .insert(primitive::FLOAT.to_owned(), type_name.clone());
         let mut renderer = TemplateRenderer::with_config(config);
         load_field_template(
             &mut renderer,
@@ -289,7 +289,7 @@ mod tests {
         )?;
 
         let field = fake_field("field-name", primitive::FLOAT);
-        let result = render_field(&mut renderer, &field, Some(&".test.package".to_string()))?;
+        let result = render_field(&mut renderer, &field, Some(&".test.package".to_owned()))?;
         assert_eq!(result, [field_name, separator, &type_name].concat());
         Ok(())
     }
@@ -301,17 +301,17 @@ mod tests {
         renderer.load_file_template_string("{{#each messages}}{{> message}}{{/each}}")?;
         load_message_template(
             &mut renderer,
-            "{{#each fields}}{{> field}}{{/each}}".to_string(),
+            "{{#each fields}}{{> field}}{{/each}}".to_owned(),
         )?;
-        load_field_template(&mut renderer, "{{relative_type}}".to_string())?;
+        load_field_template(&mut renderer, "{{relative_type}}".to_owned())?;
 
         let field = fake_field("field-name", ".test.package.inner.TypeName");
         let message = fake_message("msg-name", vec![field]);
         let mut file = fake_file("file-name", vec![], vec![message]);
-        file.package = Some(".test.package".to_string());
+        file.package = Some(".test.package".to_owned());
         let file_context = FileContext::new(&file, &renderer.config)?;
 
-        let result = renderer.render_to_string(FILE_TEMPLATE_NAME, &file_context)?;
+        let result = renderer.render_to_owned(FILE_TEMPLATE_NAME, &file_context)?;
         assert_eq!(result, "inner.TypeName");
         Ok(())
     }
@@ -333,7 +333,7 @@ mod tests {
             let directory = "directory/path";
             let mut renderer = TemplateRenderer::new();
             renderer.load_metadata_template_string("{{directory}}")?;
-            let result = render_metadata_context_to_string(
+            let result = render_metadata_context_to_owned(
                 &mut renderer,
                 HashSet::new(),
                 Vec::new(),
@@ -350,7 +350,7 @@ mod tests {
             renderer.load_metadata_template_string(
                 "{{#each subdirectories}}{{this}}{{#unless @last}}:::{{/unless}}{{/each}}",
             )?;
-            let result = render_metadata_context_to_string(
+            let result = render_metadata_context_to_owned(
                 &mut renderer,
                 HashSet::from_iter(
                     vec![
@@ -378,7 +378,7 @@ mod tests {
             let mut renderer = TemplateRenderer::new();
             renderer
                 .load_metadata_template_string("{{#each file_names_with_ext}}{{this}}{{/each}}")?;
-            let result = render_metadata_context_to_string(
+            let result = render_metadata_context_to_owned(
                 &mut renderer,
                 HashSet::new(),
                 vec![
@@ -393,7 +393,7 @@ mod tests {
             Ok(())
         }
 
-        fn render_metadata_context_to_string(
+        fn render_metadata_context_to_owned(
             renderer: &mut impl Renderer,
             dirs: HashSet<PathBuf>,
             files: Vec<PathBuf>,
@@ -469,7 +469,7 @@ mod tests {
         renderer: &mut TemplateRenderer,
         enum_proto: &EnumDescriptorProto,
     ) -> Result<String> {
-        renderer.render_to_string(
+        renderer.render_to_owned(
             ENUM_TEMPLATE_NAME,
             &EnumContext::new(&enum_proto, &renderer.config)?,
         )
@@ -479,7 +479,7 @@ mod tests {
         renderer: &mut TemplateRenderer,
         message: &DescriptorProto,
     ) -> Result<String> {
-        renderer.render_to_string(
+        renderer.render_to_owned(
             MESSAGE_TEMPLATE_NAME,
             &MessageContext::new(&message, None, &renderer.config)?,
         )
@@ -491,6 +491,6 @@ mod tests {
         package: Option<&String>,
     ) -> Result<String> {
         let context = FieldContext::new(field, package, &HashMap::new(), &renderer.config)?;
-        renderer.render_to_string(FIELD_TEMPLATE_NAME, &context)
+        renderer.render_to_owned(FIELD_TEMPLATE_NAME, &context)
     }
 }

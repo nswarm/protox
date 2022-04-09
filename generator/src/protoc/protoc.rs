@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn proto_path() -> Result<()> {
-        let input = env::current_dir().unwrap().to_str().unwrap().to_string();
+        let input = env::current_dir().unwrap().to_str().unwrap().to_owned();
         let mut config = Config::default();
         config.input = PathBuf::from(&input);
         let proto_paths = collect_proto_paths(&config)?;
@@ -155,10 +155,10 @@ mod tests {
 
     #[test]
     fn collects_extra_includes() -> Result<()> {
-        let input = env::current_dir().unwrap().to_str().unwrap().to_string();
+        let input = env::current_dir().unwrap().to_str().unwrap().to_owned();
         let mut config = Config::default();
         config.input = PathBuf::from(&input);
-        config.includes = vec!["include0".to_string(), "include1".to_string()];
+        config.includes = vec!["include0".to_owned(), "include1".to_owned()];
         let args = collect_proto_paths(&config)?;
         for include in config.includes {
             assert!(args.contains(&arg_with_value(PROTOC_ARG_PROTO_PATH, &include)));

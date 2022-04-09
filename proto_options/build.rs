@@ -34,6 +34,6 @@ fn collect_protos(dir: &Path) -> Vec<String> {
                 .map(|ext| ext == "proto")
                 .unwrap_or(false)
         })
-        .map(|e| e.path().to_str().unwrap().to_string())
+        .map(|e| e.path().to_str().unwrap().to_owned())
         .collect::<Vec<String>>()
 }

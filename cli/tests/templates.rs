@@ -17,10 +17,10 @@ fn smoketest_templates() -> Result<()> {
         test_dir.path().join("output-b"),
     ];
     let args = vec![
-        "--template".to_string(),
+        "--template".to_owned(),
         util::path_to_str(&inputs[0])?,
         util::path_to_str(&outputs[0])?,
-        "--template".to_string(),
+        "--template".to_owned(),
         util::path_to_str(&inputs[1])?,
         util::path_to_str(&outputs[1])?,
     ];

@@ -49,7 +49,7 @@ mod tests {
     pub fn path_to_str<P: AsRef<Path>>(path: P) -> Result<String> {
         path.as_ref()
             .to_str()
-            .map(&str::to_string)
+            .map(&str::to_owned)
             .ok_or(anyhow!("Invalid path: {:?}", path.as_ref()))
     }
 

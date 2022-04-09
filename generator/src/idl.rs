@@ -41,7 +41,7 @@ impl Idl {
         match self {
             Idl::Proto => "proto",
         }
-        .to_string()
+        .to_owned()
     }
 }
 

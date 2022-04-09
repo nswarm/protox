@@ -23,14 +23,14 @@ enum ChangeCase {
 impl ProtoType {
     pub fn from_field(field: &FieldDescriptorProto) -> Result<Self> {
         if let Some(native_type) = native_type_override(field) {
-            return Ok(ProtoType::NativeTypeOverride(native_type.to_string()));
+            return Ok(ProtoType::NativeTypeOverride(native_type.to_owned()));
         }
         match &field.type_name {
             None => match field.r#type {
                 None => Err(error_missing_type(field)),
                 Some(proto_type_id) => Ok(ProtoType::Type(proto_type_id)),
             },
-            Some(type_name) => Ok(ProtoType::TypeName(type_name.to_string())),
+            Some(type_name) => Ok(ProtoType::TypeName(type_name.to_owned())),
         }
     }
 

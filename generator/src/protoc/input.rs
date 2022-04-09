@@ -24,7 +24,7 @@ pub fn collect(config: &Config) -> Result<Vec<String>> {
             .strip_prefix(&config.input)?
             .to_str()
             .ok_or(anyhow!("Failed to convert path to str: {:?}", entry.path()))?
-            .to_string();
+            .to_owned();
         inputs.push(util::normalize_slashes(&input));
     }
     Ok(inputs)

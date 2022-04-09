@@ -94,7 +94,7 @@ pub struct PackageTreeNode {
 impl MetadataContext {
     pub fn new() -> Self {
         Self {
-            directory: "".to_string(),
+            directory: "".to_owned(),
             file_names: vec![],
             file_names_with_ext: vec![],
             subdirectories: vec![],
@@ -112,7 +112,7 @@ impl MetadataContext {
                     "Cannot create MetadataContext, dir path is not valid: {:?}",
                     directory
                 ))?
-                .to_string(),
+                .to_owned(),
             file_names: vec![],
             file_names_with_ext: vec![],
             subdirectories: vec![],
@@ -171,7 +171,7 @@ impl MetadataContext {
         self.package_files_full = package_files
             .into_iter()
             .map(|(package, path)| PackageFile {
-                package: package.to_string(),
+                package: package.to_owned(),
                 file_name: path.as_ref().display_normalized(),
             })
             .collect::<Vec<PackageFile>>();
@@ -195,7 +195,7 @@ fn create_package_file_tree(package_files: &HashMap<String, impl AsRef<Path>>) -
         let components_len = components.clone().count();
         for (i, component) in components.enumerate() {
             let node = package_it
-                .entry(component.to_string())
+                .entry(component.to_owned())
                 .or_insert_with(|| PackageTreeNode::default());
             if i == components_len - 1 {
                 node.file_name = Some(file_name.as_ref().display_normalized());
@@ -220,7 +220,7 @@ mod tests {
             let root = PathBuf::from("root");
             let mut context = MetadataContext::with_relative_dir(&root)?;
             context.push_file(&root.join("file.txt"))?;
-            assert_eq!(context.file_names.get(0), Some(&"file".to_string()));
+            assert_eq!(context.file_names.get(0), Some(&"file".to_owned()));
             Ok(())
         }
 
@@ -238,10 +238,10 @@ mod tests {
             let root = PathBuf::from("root");
             let mut context = MetadataContext::with_relative_dir(&root)?;
             context.push_file(&root.join("file.txt"))?;
-            assert_eq!(context.file_names.get(0), Some(&"file".to_string()));
+            assert_eq!(context.file_names.get(0), Some(&"file".to_owned()));
             assert_eq!(
                 context.file_names_with_ext.get(0),
-                Some(&"file.txt".to_string())
+                Some(&"file.txt".to_owned())
             );
             Ok(())
         }
@@ -259,7 +259,7 @@ mod tests {
             let root = PathBuf::from("root");
             let mut context = MetadataContext::with_relative_dir(&root)?;
             context.push_subdirectory(&root.join("sub"))?;
-            assert_eq!(context.subdirectories.get(0), Some(&"sub".to_string()));
+            assert_eq!(context.subdirectories.get(0), Some(&"sub".to_owned()));
             Ok(())
         }
 
@@ -372,7 +372,7 @@ mod tests {
                     .get(component)
                     .ok_or(anyhow!("Expected tree to have component: {}", package))?;
             }
-            assert_eq!(node.file_name, file_name.map(str::to_string));
+            assert_eq!(node.file_name, file_name.map(str::to_owned));
             Ok(())
         }
     }

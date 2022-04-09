@@ -8,7 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub fn unquote_arg(arg: &str) -> String {
-    arg[1..arg.len() - 1].to_string()
+    arg[1..arg.len() - 1].to_owned()
 }
 
 pub(crate) fn check_dir_is_empty(dir: &Path) -> Result<()> {
@@ -78,7 +78,7 @@ pub fn file_name_or_error(path: &Path) -> Result<String> {
             "File path is not unicode: '{}'",
             path.display_normalized()
         ))?
-        .to_string();
+        .to_owned();
     Ok(result)
 }
 
@@ -166,7 +166,7 @@ mod tests {
         let path = PathBuf::from("/test\\path\\display/slashes");
         assert_eq!(
             path.display_normalized(),
-            "/test/path/display/slashes".to_string()
+            "/test/path/display/slashes".to_owned()
         );
     }
 

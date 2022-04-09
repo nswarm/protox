@@ -31,7 +31,7 @@ impl<'a> TypePath<'a> {
             components: package
                 .map(|pkg| break_into_components(pkg))
                 .unwrap_or_else(|| Vec::new()),
-            type_name: type_name.map(str::to_string),
+            type_name: type_name.map(str::to_owned),
             separator: None,
             type_name_case: None,
             package_case: None,
@@ -47,7 +47,7 @@ impl<'a> TypePath<'a> {
         self.type_name
             .as_ref()
             .map(|name| match self.type_name_case {
-                None => name.to_string(),
+                None => name.to_owned(),
                 Some(case) => case.rename(&name),
             })
     }
@@ -74,17 +74,17 @@ impl<'a> TypePath<'a> {
         self.separator.unwrap_or(PACKAGE_SEPARATOR_STR)
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn to_owned(&self) -> String {
         let mut components = self
             .components
             .iter()
             .map(|s| match self.package_case {
-                None => s.to_string(),
+                None => s.to_owned(),
                 Some(case) => case.rename(s),
             })
             .collect::<Vec<String>>();
         if let Some(type_name) = &self.type_name_with_case() {
-            components.push(type_name.to_string());
+            components.push(type_name.to_owned());
         };
         components.join(self.separator())
     }
@@ -95,7 +95,7 @@ impl<'a> TypePath<'a> {
         parent_prefix: Option<F>,
     ) -> String {
         let package = match package {
-            None => return self.to_string(),
+            None => return self.to_owned(),
             Some(package) => TypePath::from_package(package.as_ref()),
         };
         let matching_depth = TypePath::matching_depth(&self, &package) as usize;
@@ -108,7 +108,7 @@ impl<'a> TypePath<'a> {
             )
         } else {
             // No package components means we're a top-level type.
-            "".to_string()
+            "".to_owned()
         };
         if parent_prefix.is_none() && package.depth() > self.depth() {
             // When not using a parent prefix, if the package is deeper, it _has_ to specify us
@@ -117,7 +117,7 @@ impl<'a> TypePath<'a> {
             // self:    root.sub.TypeName
             // package: root.sub.inner.pkg
             // In this case, not using a prefix would conflict.
-            return self.to_string();
+            return self.to_owned();
         }
         self.to_relative_string(matching_depth, full_prefix)
     }
@@ -164,7 +164,7 @@ impl<'a> TypePath<'a> {
         separator: &str,
     ) -> String {
         match parent_prefix {
-            None => "".to_string(),
+            None => "".to_owned(),
             Some(parent_prefix) => {
                 let parent_count = from_depth - matching_depth;
                 vec![parent_prefix.as_ref(); parent_count].join(separator)
@@ -219,7 +219,7 @@ fn extract_package_from_type(type_name: &str) -> (Option<&str>, Option<&str>) {
 fn break_into_components(package: &str) -> Vec<String> {
     normalize_prefix(package)
         .split(PACKAGE_SEPARATOR)
-        .map(str::to_string)
+        .map(str::to_owned)
         .collect::<Vec<String>>()
 }
 
@@ -311,53 +311,53 @@ mod tests {
         }
     }
 
-    mod to_string {
+    mod to_owned {
         use crate::renderer::case::Case;
         use crate::renderer::proto::TypePath;
 
         #[test]
         fn combines_package_and_type() {
             let path = TypePath::from_type("root.sub.TypeName");
-            assert_eq!(path.to_string(), "root.sub.TypeName");
+            assert_eq!(path.to_owned(), "root.sub.TypeName");
         }
 
         #[test]
         fn normalizes_incoming_package() {
             let path = TypePath::from_type(".root.sub.TypeName");
-            assert_eq!(path.to_string(), "root.sub.TypeName");
+            assert_eq!(path.to_owned(), "root.sub.TypeName");
         }
 
         #[test]
         fn uses_custom_separator() {
             let mut path = TypePath::from_type("root.sub.TypeName");
             path.set_separator("::");
-            assert_eq!(path.to_string(), "root::sub::TypeName");
+            assert_eq!(path.to_owned(), "root::sub::TypeName");
         }
 
         #[test]
         fn package_only() {
             let path = TypePath::from_package("root.sub");
-            assert_eq!(path.to_string(), "root.sub");
+            assert_eq!(path.to_owned(), "root.sub");
         }
 
         #[test]
         fn type_only() {
             let path = TypePath::from_type("TypeName");
-            assert_eq!(path.to_string(), "TypeName");
+            assert_eq!(path.to_owned(), "TypeName");
         }
 
         #[test]
         fn with_name_case() {
             let mut path = TypePath::from_type("root.sub.TypeName");
             path.set_name_case(Some(Case::UpperSnake));
-            assert_eq!(path.to_string(), "root.sub.TYPE_NAME");
+            assert_eq!(path.to_owned(), "root.sub.TYPE_NAME");
         }
 
         #[test]
         fn with_package_case() {
             let mut path = TypePath::from_type("rootPkg.subPkg.TypeName");
             path.set_package_case(Some(Case::UpperSnake));
-            assert_eq!(path.to_string(), "ROOT_PKG.SUB_PKG.TypeName");
+            assert_eq!(path.to_owned(), "ROOT_PKG.SUB_PKG.TypeName");
         }
     }
 
@@ -369,21 +369,21 @@ mod tests {
         fn no_package_uses_fully_qualified_type() {
             let qualified = TypePath::from_type("root.sub.TypeName");
             let result = qualified.relative_to::<&str, &str>(None, None);
-            assert_eq!(result, qualified.to_string());
+            assert_eq!(result, qualified.to_owned());
         }
 
         #[test]
         fn different_prefix_uses_fully_qualified_type() {
             let qualified = TypePath::from_type("root.sub.TypeName");
             let result = qualified.relative_to::<&str, &str>(Some("other.sub"), None);
-            assert_eq!(result, qualified.to_string());
+            assert_eq!(result, qualified.to_owned());
         }
 
         #[test]
         fn matching_longer_prefix_uses_fully_qualified_type() {
             let qualified = TypePath::from_type("root.sub.TypeName");
             let result = qualified.relative_to::<&str, &str>(Some("root.sub.sub2.sub3"), None);
-            assert_eq!(result, qualified.to_string());
+            assert_eq!(result, qualified.to_owned());
         }
 
         #[test]
