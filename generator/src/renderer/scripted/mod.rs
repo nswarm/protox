@@ -7,6 +7,9 @@ use crate::{Config, InOutConfig};
 mod api;
 mod renderer;
 
+#[cfg(test)]
+mod integration_tests;
+
 pub fn generate(config: &Config) -> Result<()> {
     Generator {
         config,

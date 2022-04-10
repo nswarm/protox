@@ -33,28 +33,29 @@ mod context {
     pub type MetadataContext = context::MetadataContext;
 
     pub type FileOptions = prost_types::FileOptions;
+    pub type EnumOptions = prost_types::EnumOptions;
 
     ////////////////////////////////////////////////////
     // FileContext
 
     #[rhai_fn(get = "source_file")]
-    pub fn source_file(context: &mut FileContext) -> String {
+    pub fn file_source_file(context: &mut FileContext) -> String {
         context.source_file().to_owned()
     }
     #[rhai_fn(get = "imports")]
-    pub fn imports(context: &mut FileContext) -> rhai::Dynamic {
+    pub fn file_imports(context: &mut FileContext) -> rhai::Dynamic {
         context.imports().clone().into()
     }
     #[rhai_fn(get = "enums")]
-    pub fn enums(context: &mut FileContext) -> rhai::Dynamic {
+    pub fn file_enums(context: &mut FileContext) -> rhai::Dynamic {
         context.enums().clone().into()
     }
     #[rhai_fn(get = "messages")]
-    pub fn messages(context: &mut FileContext) -> rhai::Dynamic {
+    pub fn file_messages(context: &mut FileContext) -> rhai::Dynamic {
         context.messages().clone().into()
     }
     #[rhai_fn(get = "options")]
-    pub fn options(context: &mut FileContext) -> FileOptions {
+    pub fn file_options(context: &mut FileContext) -> FileOptions {
         context.options().clone().unwrap_or(FileOptions::default())
     }
 
@@ -62,17 +63,17 @@ mod context {
     // ImportContext
 
     #[rhai_fn(get = "file_path")]
-    pub fn file_path(context: &mut ImportContext) -> String {
+    pub fn import_file_path(context: &mut ImportContext) -> String {
         context.file_path().to_owned()
     }
 
     #[rhai_fn(get = "file_name")]
-    pub fn file_name(context: &mut ImportContext) -> String {
+    pub fn import_file_name(context: &mut ImportContext) -> String {
         context.file_name().to_owned()
     }
 
     #[rhai_fn(get = "file_name_with_ext")]
-    pub fn file_name_with_ext(context: &mut ImportContext) -> String {
+    pub fn import_file_name_with_ext(context: &mut ImportContext) -> String {
         context.file_name_with_ext().to_owned()
     }
 
@@ -82,6 +83,29 @@ mod context {
     #[rhai_fn(get = "name")]
     pub fn enum_name(context: &mut EnumContext) -> String {
         context.name().to_owned()
+    }
+
+    #[rhai_fn(get = "values")]
+    pub fn enum_values(context: &mut EnumContext) -> rhai::Dynamic {
+        context.values().clone().into()
+    }
+
+    #[rhai_fn(get = "options")]
+    pub fn enum_options(context: &mut EnumContext) -> EnumOptions {
+        context.options().clone().unwrap_or(EnumOptions::default())
+    }
+
+    ////////////////////////////////////////////////////
+    // EnumValueContext
+
+    #[rhai_fn(get = "name")]
+    pub fn enum_value_name(context: &mut EnumValueContext) -> String {
+        context.name().to_owned()
+    }
+
+    #[rhai_fn(get = "number")]
+    pub fn enum_value_number(context: &mut EnumValueContext) -> i64 {
+        context.number().into()
     }
 
     ////////////////////////////////////////////////////
