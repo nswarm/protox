@@ -34,6 +34,7 @@ mod context {
 
     pub type FileOptions = prost_types::FileOptions;
     pub type EnumOptions = prost_types::EnumOptions;
+    pub type MessageOptions = prost_types::MessageOptions;
 
     ////////////////////////////////////////////////////
     // FileContext
@@ -112,8 +113,21 @@ mod context {
     // MessageContext
 
     #[rhai_fn(get = "name")]
-    pub fn msg_name(context: &mut MessageContext) -> String {
+    pub fn message_name(context: &mut MessageContext) -> String {
         context.name().to_owned()
+    }
+
+    #[rhai_fn(get = "fields")]
+    pub fn message_fields(context: &mut MessageContext) -> rhai::Dynamic {
+        context.fields().clone().into()
+    }
+
+    #[rhai_fn(get = "options")]
+    pub fn message_options(context: &mut MessageContext) -> MessageOptions {
+        context
+            .options()
+            .clone()
+            .unwrap_or(MessageOptions::default())
     }
 
     ////////////////////////////////////////////////////

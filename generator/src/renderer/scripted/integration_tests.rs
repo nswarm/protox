@@ -117,7 +117,29 @@ mod enum_value_context {
     }
 }
 
-mod message_context {}
+mod message_context {
+    use crate::renderer::scripted::integration_tests::{
+        default_message_proto, file_with_messages, test_script,
+    };
+    use anyhow::Result;
+
+    #[test]
+    fn name() -> Result<()> {
+        run_test("name", "SomeMessage")
+    }
+
+    // Others are tested in their own sections.
+
+    fn run_test(method: &str, expected_output: &str) -> Result<()> {
+        let message = default_message_proto("SomeMessage");
+        let context = file_with_messages(vec![message])?;
+        test_script(
+            &context,
+            &format!("output.append(context.messages[0].{});", method),
+            expected_output,
+        )
+    }
+}
 
 mod field_context {}
 
