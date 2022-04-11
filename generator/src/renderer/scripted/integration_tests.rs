@@ -26,15 +26,13 @@ mod file_context {
         )
     }
 
-    // The rest are tested in their own section since we go through FileContext anyway.
+    // Others accessors are tested in their own sections.
 }
 
 mod import_context {
     use anyhow::Result;
 
-    use crate::renderer::scripted::integration_tests::{
-        default_file_proto, file_with_imports, test_script,
-    };
+    use crate::renderer::scripted::integration_tests::{file_with_imports, test_script};
 
     #[test]
     fn file_path() -> Result<()> {
@@ -63,7 +61,6 @@ mod import_context {
 
 mod enum_context {
     use anyhow::Result;
-    use prost_types::{EnumDescriptorProto, EnumValueDescriptorProto};
 
     use crate::renderer::scripted::integration_tests::{enum_proto, file_with_enums, test_script};
 
@@ -72,7 +69,7 @@ mod enum_context {
         run_test("name", enum_proto().name())
     }
 
-    // Others are tested in their own sections.
+    // Others accessors are tested in their own sections.
 
     fn run_test(method: &str, expected_output: &str) -> Result<()> {
         let context = file_with_enums(vec![enum_proto()])?;
@@ -86,7 +83,6 @@ mod enum_context {
 
 mod enum_value_context {
     use anyhow::Result;
-    use prost_types::{EnumDescriptorProto, EnumValueDescriptorProto};
 
     use crate::renderer::scripted::integration_tests::{enum_proto, file_with_enums, test_script};
 
@@ -118,17 +114,18 @@ mod enum_value_context {
 }
 
 mod message_context {
+    use anyhow::Result;
+
     use crate::renderer::scripted::integration_tests::{
         default_message_proto, file_with_messages, test_script,
     };
-    use anyhow::Result;
 
     #[test]
     fn name() -> Result<()> {
         run_test("name", "SomeMessage")
     }
 
-    // Others are tested in their own sections.
+    // Others accessors are tested in their own sections.
 
     fn run_test(method: &str, expected_output: &str) -> Result<()> {
         let message = default_message_proto("SomeMessage");
@@ -141,7 +138,146 @@ mod message_context {
     }
 }
 
-mod field_context {}
+mod field_context {
+    use crate::renderer::scripted::integration_tests::{
+        default_message_proto, file_with_messages, test_script,
+    };
+    use anyhow::Result;
+    use prost_types::field_descriptor_proto::{Label, Type};
+    use prost_types::{DescriptorProto, FieldDescriptorProto, FieldOptions, MessageOptions};
+
+    #[test]
+    fn name() -> Result<()> {
+        run_test(field(), "name", "some_field")
+    }
+    #[test]
+    fn fully_qualified_type() -> Result<()> {
+        run_test(field(), "fully_qualified_type", "package.SomeType")
+    }
+    #[test]
+    fn relative_type() -> Result<()> {
+        run_test(field(), "relative_type", "package.SomeType")
+    }
+    #[test]
+    fn is_oneof() -> Result<()> {
+        run_test(field(), "is_oneof", "true")
+    }
+
+    #[test]
+    fn is_array() -> Result<()> {
+        run_test(array_field(), "is_array", "true")
+    }
+
+    #[test]
+    fn is_map() -> Result<()> {
+        run_map_test("is_map", "true")
+    }
+    #[test]
+    fn fully_qualified_key_type() -> Result<()> {
+        run_map_test("fully_qualified_key_type", "string")
+    }
+    #[test]
+    fn fully_qualified_value_type() -> Result<()> {
+        run_map_test("fully_qualified_value_type", "int32")
+    }
+    #[test]
+    fn relative_key_type() -> Result<()> {
+        run_map_test("relative_key_type", "string")
+    }
+    #[test]
+    fn relative_value_type() -> Result<()> {
+        run_map_test("relative_value_type", "int32")
+    }
+
+    fn field() -> FieldDescriptorProto {
+        FieldDescriptorProto {
+            name: Some("some_field".to_owned()),
+            type_name: Some(".package.SomeType".to_owned()),
+            oneof_index: Some(0),
+            ..Default::default()
+        }
+    }
+
+    fn array_field() -> FieldDescriptorProto {
+        FieldDescriptorProto {
+            name: Some("some_field".to_owned()),
+            type_name: Some(".package.SomeType".to_owned()),
+            label: Some(Label::Repeated as i32),
+            ..Default::default()
+        }
+    }
+
+    fn map_field() -> FieldDescriptorProto {
+        FieldDescriptorProto {
+            name: Some("some_field".to_owned()),
+            type_name: Some(".MapOwner.MapEntry".to_owned()),
+            ..Default::default()
+        }
+    }
+
+    fn run_test(field: FieldDescriptorProto, method: &str, expected_output: &str) -> Result<()> {
+        let context = file_with_messages(vec![message(vec![field])])?;
+        test_script(
+            &context,
+            &format!(
+                r#"
+            let message = context.messages[0];
+            let field = message.fields[0];
+            output.append(field.{});
+            "#,
+                method
+            ),
+            expected_output,
+        )
+    }
+
+    fn run_map_test(method: &str, expected_output: &str) -> Result<()> {
+        let context = file_with_messages(vec![map_message()])?;
+        test_script(
+            &context,
+            &format!(
+                r#"
+            let message = context.messages[0];
+            let field = message.fields[0];
+            output.append(field.{});
+            "#,
+                method
+            ),
+            expected_output,
+        )
+    }
+
+    fn message(fields: Vec<FieldDescriptorProto>) -> DescriptorProto {
+        let mut message = default_message_proto("SomeName");
+        message.field = fields;
+        message
+    }
+
+    fn map_message() -> DescriptorProto {
+        let mut message = default_message_proto("MapOwner");
+        let mut map_entry = DescriptorProto {
+            name: Some("MapEntry".to_owned()),
+            ..Default::default()
+        };
+        map_entry.options = Some(MessageOptions {
+            map_entry: Some(true),
+            ..Default::default()
+        });
+        map_entry.field.push(FieldDescriptorProto {
+            name: Some("key".to_owned()),
+            r#type: Some(Type::String as i32),
+            ..Default::default()
+        });
+        map_entry.field.push(FieldDescriptorProto {
+            name: Some("value".to_owned()),
+            r#type: Some(Type::Int32 as i32),
+            ..Default::default()
+        });
+        message.nested_type.push(map_entry);
+        message.field.push(map_field());
+        message
+    }
+}
 
 mod metadata_context {}
 

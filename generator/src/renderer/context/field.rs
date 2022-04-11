@@ -151,9 +151,38 @@ impl FieldContext {
         Ok(context)
     }
 
-    #[allow(dead_code)]
     pub fn name(&self) -> &str {
         &self.field_name
+    }
+    pub fn fully_qualified_type(&self) -> Option<&String> {
+        self.fully_qualified_type.as_ref()
+    }
+    pub fn relative_type(&self) -> Option<&String> {
+        self.relative_type.as_ref()
+    }
+    pub fn is_array(&self) -> bool {
+        self.is_array
+    }
+    pub fn is_map(&self) -> bool {
+        self.is_map
+    }
+    pub fn is_oneof(&self) -> bool {
+        self.is_oneof
+    }
+    pub fn fully_qualified_key_type(&self) -> Option<&String> {
+        self.fully_qualified_key_type.as_ref()
+    }
+    pub fn fully_qualified_value_type(&self) -> Option<&String> {
+        self.fully_qualified_value_type.as_ref()
+    }
+    pub fn relative_key_type(&self) -> Option<&String> {
+        self.relative_key_type.as_ref()
+    }
+    pub fn relative_value_type(&self) -> Option<&String> {
+        self.relative_value_type.as_ref()
+    }
+    pub fn options(&self) -> Option<&FieldOptions> {
+        self.options.as_ref()
     }
 }
 

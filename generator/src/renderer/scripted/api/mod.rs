@@ -13,8 +13,8 @@ fn context(engine: &mut rhai::Engine) {
     engine.register_global_module(exported_module!(context).into());
 }
 
-fn get_str_or_new(opt: &Option<String>) -> String {
-    opt.as_ref().map(&String::clone).unwrap_or(String::new())
+fn get_str_or_new(opt: Option<&String>) -> String {
+    opt.map(&String::clone).unwrap_or(String::new())
 }
 
 #[export_module]
@@ -35,6 +35,7 @@ mod context {
     pub type FileOptions = prost_types::FileOptions;
     pub type EnumOptions = prost_types::EnumOptions;
     pub type MessageOptions = prost_types::MessageOptions;
+    pub type FieldOptions = prost_types::FieldOptions;
 
     ////////////////////////////////////////////////////
     // FileContext
@@ -133,6 +134,64 @@ mod context {
     ////////////////////////////////////////////////////
     // FieldContext
 
+    #[rhai_fn(get = "name")]
+    pub fn field_name(context: &mut FieldContext) -> String {
+        context.name().to_owned()
+    }
+
+    #[rhai_fn(get = "fully_qualified_type")]
+    pub fn field_fully_qualified_type(context: &mut FieldContext) -> String {
+        get_str_or_new(context.fully_qualified_type())
+    }
+
+    #[rhai_fn(get = "relative_type")]
+    pub fn field_relative_type(context: &mut FieldContext) -> String {
+        get_str_or_new(context.relative_type())
+    }
+
+    #[rhai_fn(get = "is_array")]
+    pub fn field_is_array(context: &mut FieldContext) -> bool {
+        context.is_array()
+    }
+
+    #[rhai_fn(get = "is_map")]
+    pub fn field_is_map(context: &mut FieldContext) -> bool {
+        context.is_map()
+    }
+
+    #[rhai_fn(get = "is_oneof")]
+    pub fn field_is_oneof(context: &mut FieldContext) -> bool {
+        context.is_oneof()
+    }
+
+    #[rhai_fn(get = "fully_qualified_key_type")]
+    pub fn field_fully_qualified_key_type(context: &mut FieldContext) -> String {
+        get_str_or_new(context.fully_qualified_key_type())
+    }
+
+    #[rhai_fn(get = "fully_qualified_value_type")]
+    pub fn field_fully_qualified_value_type(context: &mut FieldContext) -> String {
+        get_str_or_new(context.fully_qualified_value_type())
+    }
+
+    #[rhai_fn(get = "relative_key_type")]
+    pub fn field_relative_key_type(context: &mut FieldContext) -> String {
+        get_str_or_new(context.relative_key_type())
+    }
+
+    #[rhai_fn(get = "relative_value_type")]
+    pub fn field_relative_value_type(context: &mut FieldContext) -> String {
+        get_str_or_new(context.relative_value_type())
+    }
+
+    #[rhai_fn(get = "options")]
+    pub fn field_options(context: &mut FieldContext) -> FieldOptions {
+        context
+            .options()
+            .map(FieldOptions::clone)
+            .unwrap_or(FieldOptions::default())
+    }
+
     ////////////////////////////////////////////////////
     // MetadataContext
 
@@ -147,31 +206,31 @@ mod context {
     }
     #[rhai_fn(get = "go_package")]
     pub fn file_opt_go_package(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.go_package)
+        get_str_or_new(opt.go_package.as_ref())
     }
     #[rhai_fn(get = "java_package")]
     pub fn file_opt_java_package(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.java_package)
+        get_str_or_new(opt.java_package.as_ref())
     }
     #[rhai_fn(get = "ruby_package")]
     pub fn file_opt_ruby_package(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.ruby_package)
+        get_str_or_new(opt.ruby_package.as_ref())
     }
     #[rhai_fn(get = "csharp_namespace")]
     pub fn file_opt_csharp_namespace(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.csharp_namespace)
+        get_str_or_new(opt.csharp_namespace.as_ref())
     }
     #[rhai_fn(get = "php_namespace")]
     pub fn file_opt_php_namespace(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.php_namespace)
+        get_str_or_new(opt.php_namespace.as_ref())
     }
     #[rhai_fn(get = "php_metadata_namespace")]
     pub fn file_opt_php_metadata_namespace(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.php_metadata_namespace)
+        get_str_or_new(opt.php_metadata_namespace.as_ref())
     }
     #[rhai_fn(get = "swift_prefix")]
     pub fn file_opt_swift_prefix(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.swift_prefix)
+        get_str_or_new(opt.swift_prefix.as_ref())
     }
     #[rhai_fn(get = "java_generic_services")]
     pub fn file_opt_java_generic_services(opt: &mut FileOptions) -> bool {
@@ -179,7 +238,7 @@ mod context {
     }
     #[rhai_fn(get = "java_outer_classname")]
     pub fn file_opt_java_outer_classname(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.java_outer_classname)
+        get_str_or_new(opt.java_outer_classname.as_ref())
     }
     #[rhai_fn(get = "java_multiple_files")]
     pub fn file_opt_java_multiple_files(opt: &mut FileOptions) -> bool {
@@ -209,7 +268,7 @@ mod context {
     }
     #[rhai_fn(get = "php_class_prefix")]
     pub fn file_opt_php_class_prefix(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.php_class_prefix)
+        get_str_or_new(opt.php_class_prefix.as_ref())
     }
     #[rhai_fn(get = "py_generic_services")]
     pub fn file_opt_py_generic_services(opt: &mut FileOptions) -> bool {
@@ -217,7 +276,7 @@ mod context {
     }
     #[rhai_fn(get = "objc_class_prefix")]
     pub fn file_opt_objc_class_prefix(opt: &mut FileOptions) -> String {
-        get_str_or_new(&opt.objc_class_prefix)
+        get_str_or_new(opt.objc_class_prefix.as_ref())
     }
 
     // Key-value custom proto options.
