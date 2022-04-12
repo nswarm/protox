@@ -104,7 +104,7 @@ mod enum_value_context {
                 r#"
             let enum = context.enums[0];
             let enum_value = enum.values[0];
-            output.append(enum_value.{});
+            output.append(enum_value.{}.to_string());
             "#,
                 method
             ),
@@ -223,7 +223,7 @@ mod field_context {
                 r#"
             let message = context.messages[0];
             let field = message.fields[0];
-            output.append(field.{});
+            output.append(field.{}.to_string());
             "#,
                 method
             ),
@@ -239,7 +239,7 @@ mod field_context {
                 r#"
             let message = context.messages[0];
             let field = message.fields[0];
-            output.append(field.{});
+            output.append(field.{}.to_string());
             "#,
                 method
             ),
@@ -325,7 +325,7 @@ mod file_options {
         let context = file_with_options(options)?;
         test_script(
             &context,
-            &format!("output.append(context.options.{});", method),
+            &format!("output.append(context.options.{}.to_string());", method),
             expected_output,
         )
     }
