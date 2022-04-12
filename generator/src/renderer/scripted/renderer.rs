@@ -2,6 +2,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
+use log::{debug, info};
 use rhai::module_resolvers::FileModuleResolver;
 use rhai::{Dynamic, Engine, Scope, AST};
 
@@ -41,6 +42,10 @@ impl ScriptedRenderer {
     fn create_engine() -> Engine {
         let mut engine = Engine::new();
         // todo go through & set options
+        engine.on_print(|msg| info!("[script] {}", msg));
+        engine.on_debug(|msg, src, pos| debug!("[script] {}: {}", pos, msg));
+        engine.set_max_expr_depths(128, 64);
+        engine.set_max_operations(0);
         api::register(&mut engine);
         engine
     }

@@ -23,19 +23,19 @@ fn render_file(context, output) {
     // Messages from: {{source_file}}`);
 
     for enum in context.enums {
-        enum(enum, output);
+        enum!(enum);
     }
     output.line("");
     for message in context.messages {
-        message(message, output);
+        message!(message);
     }
     return output;
 }
 
-fn enum(enum, output) {
+fn enum(enum) {
     output.line(enum.name)
 }
 
-fn message(message, output) {
+fn message(message) {
     output.line(message.name)
 }
