@@ -281,6 +281,19 @@ mod field_context {
 
 mod metadata_context {}
 
+macro_rules! opt_test {
+    ($opt_type: ident, $name: ident, $value: expr) => {
+        #[test]
+        fn $name() -> Result<()> {
+            let options = $opt_type {
+                $name: Some($value),
+                ..Default::default()
+            };
+            run_test(options, stringify!($name), &$value.to_string())
+        }
+    };
+}
+
 mod file_options {
     use anyhow::Result;
     use prost::Extendable;
@@ -288,38 +301,25 @@ mod file_options {
 
     use crate::renderer::scripted::integration_tests::{file_with_options, test_script};
 
-    macro_rules! opt_test {
-        ($name: ident, $value: expr) => {
-            #[test]
-            fn $name() -> Result<()> {
-                let options = FileOptions {
-                    $name: Some($value),
-                    ..Default::default()
-                };
-                run_test(options, stringify!($name), &$value.to_string())
-            }
-        };
-    }
-
-    opt_test!(deprecated, true);
-    opt_test!(go_package, "some value".to_owned());
-    opt_test!(java_package, "some value".to_owned());
-    opt_test!(ruby_package, "some value".to_owned());
-    opt_test!(csharp_namespace, "some value".to_owned());
-    opt_test!(php_namespace, "some value".to_owned());
-    opt_test!(php_metadata_namespace, "some value".to_owned());
-    opt_test!(swift_prefix, "some value".to_owned());
-    opt_test!(java_generic_services, true);
-    opt_test!(java_outer_classname, "some value".to_owned());
-    opt_test!(java_multiple_files, true);
-    opt_test!(cc_generic_services, true);
-    opt_test!(cc_enable_arenas, true);
-    opt_test!(java_string_check_utf8, true);
-    opt_test!(optimize_for, 123);
-    opt_test!(php_generic_services, true);
-    opt_test!(php_class_prefix, "some value".to_owned());
-    opt_test!(py_generic_services, true);
-    opt_test!(objc_class_prefix, "some value".to_owned());
+    opt_test!(FileOptions, deprecated, true);
+    opt_test!(FileOptions, go_package, "some value".to_owned());
+    opt_test!(FileOptions, java_package, "some value".to_owned());
+    opt_test!(FileOptions, ruby_package, "some value".to_owned());
+    opt_test!(FileOptions, csharp_namespace, "some value".to_owned());
+    opt_test!(FileOptions, php_namespace, "some value".to_owned());
+    opt_test!(FileOptions, php_metadata_namespace, "some value".to_owned());
+    opt_test!(FileOptions, swift_prefix, "some value".to_owned());
+    opt_test!(FileOptions, java_generic_services, true);
+    opt_test!(FileOptions, java_outer_classname, "some value".to_owned());
+    opt_test!(FileOptions, java_multiple_files, true);
+    opt_test!(FileOptions, cc_generic_services, true);
+    opt_test!(FileOptions, cc_enable_arenas, true);
+    opt_test!(FileOptions, java_string_check_utf8, true);
+    opt_test!(FileOptions, optimize_for, 123);
+    opt_test!(FileOptions, php_generic_services, true);
+    opt_test!(FileOptions, php_class_prefix, "some value".to_owned());
+    opt_test!(FileOptions, py_generic_services, true);
+    opt_test!(FileOptions, objc_class_prefix, "some value".to_owned());
 
     fn run_test(options: FileOptions, method: &str, expected_output: &str) -> Result<()> {
         let context = file_with_options(options)?;
@@ -342,6 +342,33 @@ mod file_options {
             &context,
             "output.append(context.options[\"test_key\"]);",
             "some_value",
+        )
+    }
+}
+
+mod message_options {
+    use crate::renderer::scripted::integration_tests::{
+        default_message_proto, file_with_messages, test_script,
+    };
+    use anyhow::Result;
+    use prost_types::MessageOptions;
+
+    opt_test!(MessageOptions, message_set_wire_format, true);
+    opt_test!(MessageOptions, no_standard_descriptor_accessor, true);
+    opt_test!(MessageOptions, deprecated, true);
+    opt_test!(MessageOptions, map_entry, true);
+
+    fn run_test(options: MessageOptions, method: &str, expected_output: &str) -> Result<()> {
+        let mut message = default_message_proto("SomeMessage");
+        message.options = Some(options);
+        let context = file_with_messages(vec![message])?;
+        test_script(
+            &context,
+            &format!(
+                "output.append(context.messages[0].options.{}.to_string());",
+                method
+            ),
+            expected_output,
         )
     }
 }

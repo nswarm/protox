@@ -34,6 +34,7 @@ mod context {
 
     pub type FileOptions = prost_types::FileOptions;
     pub type EnumOptions = prost_types::EnumOptions;
+    pub type EnumValueOptions = prost_types::EnumValueOptions;
     pub type MessageOptions = prost_types::MessageOptions;
     pub type FieldOptions = prost_types::FieldOptions;
 
@@ -297,4 +298,53 @@ mod context {
         }
         return String::new();
     }
+
+    ////////////////////////////////////////////////////
+    // EnumOptions
+
+    // Built-in.
+
+    #[rhai_fn(get = "allow_alias")]
+    pub fn enum_opt_allow_alias(opt: &mut EnumOptions) -> bool {
+        opt.allow_alias.unwrap_or(false)
+    }
+    #[rhai_fn(get = "deprecated")]
+    pub fn enum_opt_deprecated(opt: &mut EnumOptions) -> bool {
+        opt.deprecated.unwrap_or(false)
+    }
+
+    ////////////////////////////////////////////////////
+    // EnumValueOptions
+
+    // Built-in.
+
+    #[rhai_fn(get = "deprecated")]
+    pub fn enum_value_opt_deprecated(opt: &mut EnumValueOptions) -> bool {
+        opt.deprecated.unwrap_or(false)
+    }
+
+    ////////////////////////////////////////////////////
+    // MessageOptions
+
+    // Built-in.
+
+    #[rhai_fn(get = "message_set_wire_format")]
+    pub fn message_opt_message_set_wire_format(opt: &mut MessageOptions) -> bool {
+        opt.message_set_wire_format.unwrap_or(false)
+    }
+    #[rhai_fn(get = "no_standard_descriptor_accessor")]
+    pub fn message_opt_no_standard_descriptor_accessor(opt: &mut MessageOptions) -> bool {
+        opt.no_standard_descriptor_accessor.unwrap_or(false)
+    }
+    #[rhai_fn(get = "deprecated")]
+    pub fn message_opt_deprecated(opt: &mut MessageOptions) -> bool {
+        opt.deprecated.unwrap_or(false)
+    }
+    #[rhai_fn(get = "map_entry")]
+    pub fn message_opt_map_entry(opt: &mut MessageOptions) -> bool {
+        opt.map_entry.unwrap_or(false)
+    }
+
+    ////////////////////////////////////////////////////
+    // FieldOptions
 }
