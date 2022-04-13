@@ -347,4 +347,29 @@ mod context {
 
     ////////////////////////////////////////////////////
     // FieldOptions
+
+    #[rhai_fn(get = "ctype")]
+    pub fn field_opt_ctype(opt: &mut FieldOptions) -> i64 {
+        opt.ctype.unwrap_or(0) as i64
+    }
+    #[rhai_fn(get = "jstype")]
+    pub fn field_opt_jstype(opt: &mut FieldOptions) -> i64 {
+        opt.jstype.unwrap_or(0) as i64
+    }
+    #[rhai_fn(get = "packed")]
+    pub fn field_opt_packed(opt: &mut FieldOptions) -> bool {
+        opt.packed.unwrap_or(false)
+    }
+    #[rhai_fn(get = "lazy")]
+    pub fn field_opt_lazy(opt: &mut FieldOptions) -> bool {
+        opt.lazy.unwrap_or(false)
+    }
+    #[rhai_fn(get = "deprecated")]
+    pub fn field_opt_deprecated(opt: &mut FieldOptions) -> bool {
+        opt.deprecated.unwrap_or(false)
+    }
+    #[rhai_fn(get = "weak")]
+    pub fn field_opt_weak(opt: &mut FieldOptions) -> bool {
+        opt.weak.unwrap_or(false)
+    }
 }

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use prost_types::{
-    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FileDescriptorProto,
-    FileOptions,
+    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+    FileDescriptorProto, FileOptions,
 };
 
 use crate::renderer::context::FileContext;
@@ -144,7 +144,7 @@ mod field_context {
     };
     use anyhow::Result;
     use prost_types::field_descriptor_proto::{Label, Type};
-    use prost_types::{DescriptorProto, FieldDescriptorProto, FieldOptions, MessageOptions};
+    use prost_types::{DescriptorProto, FieldDescriptorProto, MessageOptions};
 
     #[test]
     fn name() -> Result<()> {
@@ -373,6 +373,37 @@ mod message_options {
     }
 }
 
+mod field_options {
+    use crate::renderer::scripted::integration_tests::{
+        default_field_proto, default_message_proto, file_with_messages, test_script,
+    };
+    use anyhow::Result;
+    use prost_types::FieldOptions;
+
+    opt_test!(FieldOptions, ctype, 1);
+    opt_test!(FieldOptions, jstype, 2);
+    opt_test!(FieldOptions, packed, true);
+    opt_test!(FieldOptions, lazy, true);
+    opt_test!(FieldOptions, deprecated, true);
+    opt_test!(FieldOptions, weak, true);
+
+    fn run_test(options: FieldOptions, method: &str, expected_output: &str) -> Result<()> {
+        let mut field = default_field_proto("some_field", "SomeType");
+        field.options = Some(options);
+        let mut message = default_message_proto("SomeMessage");
+        message.field.push(field);
+        let context = file_with_messages(vec![message])?;
+        test_script(
+            &context,
+            &format!(
+                "output.append(context.messages[0].fields[0].options.{}.to_string());",
+                method
+            ),
+            expected_output,
+        )
+    }
+}
+
 fn default_file_proto() -> FileDescriptorProto {
     FileDescriptorProto {
         name: Some("name".to_owned()),
@@ -383,6 +414,14 @@ fn default_file_proto() -> FileDescriptorProto {
 fn default_message_proto(name: &str) -> DescriptorProto {
     DescriptorProto {
         name: Some(name.to_owned()),
+        ..Default::default()
+    }
+}
+
+fn default_field_proto(name: &str, type_name: &str) -> FieldDescriptorProto {
+    FieldDescriptorProto {
+        name: Some(name.to_owned()),
+        type_name: Some(type_name.to_owned()),
         ..Default::default()
     }
 }
