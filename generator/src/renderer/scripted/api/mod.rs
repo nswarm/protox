@@ -1,3 +1,5 @@
+use crate::renderer::option_key_value::get_key_values;
+use prost::{Extendable, ExtensionImpl};
 use rhai;
 use rhai::exported_module;
 use rhai::plugin::*;
@@ -17,10 +19,26 @@ fn get_str_or_new(opt: Option<&String>) -> String {
     opt.map(&String::clone).unwrap_or(String::new())
 }
 
+fn opt_get_kv<T: Extendable>(
+    options: &T,
+    index: String,
+    ext: &ExtensionImpl<Vec<String>>,
+) -> String {
+    let kv = match get_key_values(options, &ext) {
+        Err(err) => panic!("Error getting kv option '{}': {}", index, err),
+        Ok(kv) => kv,
+    };
+    for (key, value) in kv {
+        if key == index {
+            return value.to_owned();
+        }
+    }
+    return String::new();
+}
+
 #[export_module]
 mod context {
     use crate::renderer::context;
-    use crate::renderer::option_key_value::get_key_values;
 
     use super::get_str_or_new;
 
@@ -284,19 +302,7 @@ mod context {
 
     #[rhai_fn(index_get)]
     pub fn file_opt_get_kv(options: &mut FileOptions, index: String) -> String {
-        let kv = match get_key_values(options, &proto_options::FILE_KEY_VALUE) {
-            Err(err) => panic!(
-                "Error getting kv option '{}' in FileOptions: {}",
-                index, err,
-            ),
-            Ok(kv) => kv,
-        };
-        for (key, value) in kv {
-            if key == index {
-                return value.to_owned();
-            }
-        }
-        return String::new();
+        opt_get_kv(options, index, &proto_options::FILE_KEY_VALUE)
     }
 
     ////////////////////////////////////////////////////
@@ -345,6 +351,13 @@ mod context {
         opt.map_entry.unwrap_or(false)
     }
 
+    // Key-value custom proto options.
+
+    #[rhai_fn(index_get)]
+    pub fn message_opt_get_kv(options: &mut MessageOptions, index: String) -> String {
+        opt_get_kv(options, index, &proto_options::MSG_KEY_VALUE)
+    }
+
     ////////////////////////////////////////////////////
     // FieldOptions
 
@@ -371,5 +384,12 @@ mod context {
     #[rhai_fn(get = "weak")]
     pub fn field_opt_weak(opt: &mut FieldOptions) -> bool {
         opt.weak.unwrap_or(false)
+    }
+
+    // Key-value custom proto options.
+
+    #[rhai_fn(index_get)]
+    pub fn field_opt_get_kv(options: &mut FieldOptions, index: String) -> String {
+        opt_get_kv(options, index, &proto_options::FIELD_KEY_VALUE)
     }
 }

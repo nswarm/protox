@@ -43,7 +43,7 @@ impl ScriptedRenderer {
         let mut engine = Engine::new();
         // todo go through & set options
         engine.on_print(|msg| info!("[script] {}", msg));
-        engine.on_debug(|msg, src, pos| debug!("[script] {}: {}", pos, msg));
+        engine.on_debug(|msg, _, pos| debug!("[script] {}: {}", pos, msg));
         engine.set_max_expr_depths(128, 64);
         engine.set_max_operations(0);
         api::register(&mut engine);

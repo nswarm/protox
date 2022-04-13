@@ -347,10 +347,12 @@ mod file_options {
 }
 
 mod message_options {
+    use crate::renderer::context::FileContext;
     use crate::renderer::scripted::integration_tests::{
         default_message_proto, file_with_messages, test_script,
     };
     use anyhow::Result;
+    use prost::Extendable;
     use prost_types::MessageOptions;
 
     opt_test!(MessageOptions, message_set_wire_format, true);
@@ -359,9 +361,7 @@ mod message_options {
     opt_test!(MessageOptions, map_entry, true);
 
     fn run_test(options: MessageOptions, method: &str, expected_output: &str) -> Result<()> {
-        let mut message = default_message_proto("SomeMessage");
-        message.options = Some(options);
-        let context = file_with_messages(vec![message])?;
+        let context = file_context(options)?;
         test_script(
             &context,
             &format!(
@@ -371,14 +371,37 @@ mod message_options {
             expected_output,
         )
     }
+
+    #[test]
+    fn kv_option() -> Result<()> {
+        let mut options = MessageOptions::default();
+        options.set_extension_data(
+            proto_options::MSG_KEY_VALUE,
+            vec!["test_key=some_value".to_owned()],
+        )?;
+        let context = file_context(options)?;
+        test_script(
+            &context,
+            "output.append(context.messages[0].options[\"test_key\"]);",
+            "some_value",
+        )
+    }
+
+    fn file_context(options: MessageOptions) -> Result<FileContext> {
+        let mut message = default_message_proto("SomeMessage");
+        message.options = Some(options);
+        file_with_messages(vec![message])
+    }
 }
 
 mod field_options {
+    use crate::renderer::context::FileContext;
     use crate::renderer::scripted::integration_tests::{
         default_field_proto, default_message_proto, file_with_messages, test_script,
     };
     use anyhow::Result;
-    use prost_types::FieldOptions;
+    use prost::Extendable;
+    use prost_types::{FieldOptions, FileDescriptorProto};
 
     opt_test!(FieldOptions, ctype, 1);
     opt_test!(FieldOptions, jstype, 2);
@@ -388,11 +411,7 @@ mod field_options {
     opt_test!(FieldOptions, weak, true);
 
     fn run_test(options: FieldOptions, method: &str, expected_output: &str) -> Result<()> {
-        let mut field = default_field_proto("some_field", "SomeType");
-        field.options = Some(options);
-        let mut message = default_message_proto("SomeMessage");
-        message.field.push(field);
-        let context = file_with_messages(vec![message])?;
+        let context = file_context(options)?;
         test_script(
             &context,
             &format!(
@@ -401,6 +420,29 @@ mod field_options {
             ),
             expected_output,
         )
+    }
+
+    #[test]
+    fn kv_option() -> Result<()> {
+        let mut options = FieldOptions::default();
+        options.set_extension_data(
+            proto_options::FIELD_KEY_VALUE,
+            vec!["test_key=some_value".to_owned()],
+        )?;
+        let context = file_context(options)?;
+        test_script(
+            &context,
+            "output.append(context.messages[0].fields[0].options[\"test_key\"]);",
+            "some_value",
+        )
+    }
+
+    fn file_context(options: FieldOptions) -> Result<FileContext> {
+        let mut field = default_field_proto("some_field", "SomeType");
+        field.options = Some(options);
+        let mut message = default_message_proto("SomeMessage");
+        message.field.push(field);
+        file_with_messages(vec![message])
     }
 }
 
