@@ -321,15 +321,6 @@ mod file_options {
     opt_test!(FileOptions, py_generic_services, true);
     opt_test!(FileOptions, objc_class_prefix, "some value".to_owned());
 
-    fn run_test(options: FileOptions, method: &str, expected_output: &str) -> Result<()> {
-        let context = file_with_options(options)?;
-        test_script(
-            &context,
-            &format!("output.append(context.options.{}.to_string());", method),
-            expected_output,
-        )
-    }
-
     #[test]
     fn kv_option() -> Result<()> {
         let mut options = FileOptions::default();
@@ -343,6 +334,95 @@ mod file_options {
             "output.append(context.options[\"test_key\"]);",
             "some_value",
         )
+    }
+
+    fn run_test(options: FileOptions, method: &str, expected_output: &str) -> Result<()> {
+        let context = file_with_options(options)?;
+        test_script(
+            &context,
+            &format!("output.append(context.options.{}.to_string());", method),
+            expected_output,
+        )
+    }
+}
+
+mod enum_options {
+    use crate::renderer::context::FileContext;
+    use crate::renderer::scripted::integration_tests::{
+        default_enum_proto, default_message_proto, file_with_enums, file_with_messages, test_script,
+    };
+    use anyhow::Result;
+    use prost::Extendable;
+    use prost_types::EnumOptions;
+
+    opt_test!(EnumOptions, deprecated, true);
+    opt_test!(EnumOptions, allow_alias, true);
+
+    #[test]
+    fn kv_option() -> Result<()> {
+        let mut options = EnumOptions::default();
+        options.set_extension_data(
+            proto_options::ENUM_KEY_VALUE,
+            vec!["test_key=some_value".to_owned()],
+        )?;
+        let context = file_context(options)?;
+        test_script(
+            &context,
+            "output.append(context.enums[0].options[\"test_key\"]);",
+            "some_value",
+        )
+    }
+
+    fn run_test(options: EnumOptions, method: &str, expected_output: &str) -> Result<()> {
+        let context = file_context(options)?;
+        test_script(
+            &context,
+            &format!(
+                "output.append(context.enums[0].options.{}.to_string());",
+                method
+            ),
+            expected_output,
+        )
+    }
+
+    fn file_context(options: EnumOptions) -> Result<FileContext> {
+        let mut proto = default_enum_proto("SomeEnum");
+        proto.options = Some(options);
+        file_with_enums(vec![proto])
+    }
+}
+
+mod enum_value_options {
+    use crate::renderer::context::{EnumValueContext, FileContext};
+    use crate::renderer::scripted::integration_tests::{
+        default_enum_proto, default_message_proto, file_with_enums, file_with_messages, test_script,
+    };
+    use anyhow::Result;
+    use prost::Extendable;
+    use prost_types::{EnumOptions, EnumValueDescriptorProto, EnumValueOptions};
+
+    opt_test!(EnumValueOptions, deprecated, true);
+
+    fn run_test(options: EnumValueOptions, method: &str, expected_output: &str) -> Result<()> {
+        let context = file_context(options)?;
+        test_script(
+            &context,
+            &format!(
+                "output.append(context.enums[0].values[0].options.{}.to_string());",
+                method
+            ),
+            expected_output,
+        )
+    }
+
+    fn file_context(options: EnumValueOptions) -> Result<FileContext> {
+        let mut proto = default_enum_proto("SomeEnum");
+        proto.value.push(EnumValueDescriptorProto {
+            name: Some("SomeEnumValue".to_string()),
+            number: Some(1),
+            options: Some(options),
+        });
+        file_with_enums(vec![proto])
     }
 }
 
@@ -360,18 +440,6 @@ mod message_options {
     opt_test!(MessageOptions, deprecated, true);
     opt_test!(MessageOptions, map_entry, true);
 
-    fn run_test(options: MessageOptions, method: &str, expected_output: &str) -> Result<()> {
-        let context = file_context(options)?;
-        test_script(
-            &context,
-            &format!(
-                "output.append(context.messages[0].options.{}.to_string());",
-                method
-            ),
-            expected_output,
-        )
-    }
-
     #[test]
     fn kv_option() -> Result<()> {
         let mut options = MessageOptions::default();
@@ -384,6 +452,18 @@ mod message_options {
             &context,
             "output.append(context.messages[0].options[\"test_key\"]);",
             "some_value",
+        )
+    }
+
+    fn run_test(options: MessageOptions, method: &str, expected_output: &str) -> Result<()> {
+        let context = file_context(options)?;
+        test_script(
+            &context,
+            &format!(
+                "output.append(context.messages[0].options.{}.to_string());",
+                method
+            ),
+            expected_output,
         )
     }
 

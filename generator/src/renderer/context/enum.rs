@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::renderer::option_key_value::insert_custom_options;
 use anyhow::{anyhow, Result};
 use log::debug;
-use prost_types::{EnumDescriptorProto, EnumOptions};
+use prost_types::{EnumDescriptorProto, EnumOptions, EnumValueOptions};
 use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
@@ -49,6 +49,10 @@ pub struct EnumContext {
 pub struct EnumValueContext {
     name: String,
     number: i32,
+
+    /// Currently only supported in scripted renderer.
+    #[serde(skip)]
+    options: Option<EnumValueOptions>,
 }
 
 impl EnumContext {
@@ -80,6 +84,9 @@ impl EnumValueContext {
     pub fn number(&self) -> i32 {
         self.number
     }
+    pub fn options(&self) -> &Option<EnumValueOptions> {
+        &self.options
+    }
 }
 
 fn log_new_enum(name: &Option<String>) {
@@ -102,6 +109,7 @@ fn values(proto: &EnumDescriptorProto, config: &RendererConfig) -> Result<Vec<En
         values.push(EnumValueContext {
             name: case.rename(&name),
             number,
+            options: value.options.clone(),
         });
     }
     Ok(values)

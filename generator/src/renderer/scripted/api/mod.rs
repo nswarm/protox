@@ -58,7 +58,6 @@ mod context {
 
     ////////////////////////////////////////////////////
     // FileContext
-
     #[rhai_fn(get = "source_file")]
     pub fn file_source_file(context: &mut FileContext) -> String {
         context.source_file().to_owned()
@@ -82,7 +81,6 @@ mod context {
 
     ////////////////////////////////////////////////////
     // ImportContext
-
     #[rhai_fn(get = "file_path")]
     pub fn import_file_path(context: &mut ImportContext) -> String {
         context.file_path().to_owned()
@@ -100,7 +98,6 @@ mod context {
 
     ////////////////////////////////////////////////////
     // EnumContext
-
     #[rhai_fn(get = "name")]
     pub fn enum_name(context: &mut EnumContext) -> String {
         context.name().to_owned()
@@ -118,7 +115,6 @@ mod context {
 
     ////////////////////////////////////////////////////
     // EnumValueContext
-
     #[rhai_fn(get = "name")]
     pub fn enum_value_name(context: &mut EnumValueContext) -> String {
         context.name().to_owned()
@@ -129,9 +125,16 @@ mod context {
         context.number().into()
     }
 
+    #[rhai_fn(get = "options")]
+    pub fn enum_value_options(context: &mut EnumValueContext) -> EnumValueOptions {
+        context
+            .options()
+            .clone()
+            .unwrap_or(EnumValueOptions::default())
+    }
+
     ////////////////////////////////////////////////////
     // MessageContext
-
     #[rhai_fn(get = "name")]
     pub fn message_name(context: &mut MessageContext) -> String {
         context.name().to_owned()
@@ -152,7 +155,6 @@ mod context {
 
     ////////////////////////////////////////////////////
     // FieldContext
-
     #[rhai_fn(get = "name")]
     pub fn field_name(context: &mut FieldContext) -> String {
         context.name().to_owned()
@@ -218,7 +220,6 @@ mod context {
     // FileOptions
 
     // Built-in.
-
     #[rhai_fn(get = "deprecated")]
     pub fn file_opt_deprecated(opt: &mut FileOptions) -> bool {
         opt.deprecated.unwrap_or(false)
@@ -299,7 +300,6 @@ mod context {
     }
 
     // Key-value custom proto options.
-
     #[rhai_fn(index_get)]
     pub fn file_opt_get_kv(options: &mut FileOptions, index: String) -> String {
         opt_get_kv(options, index, &proto_options::FILE_KEY_VALUE)
@@ -307,9 +307,6 @@ mod context {
 
     ////////////////////////////////////////////////////
     // EnumOptions
-
-    // Built-in.
-
     #[rhai_fn(get = "allow_alias")]
     pub fn enum_opt_allow_alias(opt: &mut EnumOptions) -> bool {
         opt.allow_alias.unwrap_or(false)
@@ -319,11 +316,14 @@ mod context {
         opt.deprecated.unwrap_or(false)
     }
 
+    // Key-value custom proto options.
+    #[rhai_fn(index_get)]
+    pub fn enum_opt_get_kv(options: &mut EnumOptions, index: String) -> String {
+        opt_get_kv(options, index, &proto_options::ENUM_KEY_VALUE)
+    }
+
     ////////////////////////////////////////////////////
     // EnumValueOptions
-
-    // Built-in.
-
     #[rhai_fn(get = "deprecated")]
     pub fn enum_value_opt_deprecated(opt: &mut EnumValueOptions) -> bool {
         opt.deprecated.unwrap_or(false)
@@ -331,9 +331,6 @@ mod context {
 
     ////////////////////////////////////////////////////
     // MessageOptions
-
-    // Built-in.
-
     #[rhai_fn(get = "message_set_wire_format")]
     pub fn message_opt_message_set_wire_format(opt: &mut MessageOptions) -> bool {
         opt.message_set_wire_format.unwrap_or(false)
@@ -352,7 +349,6 @@ mod context {
     }
 
     // Key-value custom proto options.
-
     #[rhai_fn(index_get)]
     pub fn message_opt_get_kv(options: &mut MessageOptions, index: String) -> String {
         opt_get_kv(options, index, &proto_options::MSG_KEY_VALUE)
@@ -360,7 +356,6 @@ mod context {
 
     ////////////////////////////////////////////////////
     // FieldOptions
-
     #[rhai_fn(get = "ctype")]
     pub fn field_opt_ctype(opt: &mut FieldOptions) -> i64 {
         opt.ctype.unwrap_or(0) as i64
@@ -387,7 +382,6 @@ mod context {
     }
 
     // Key-value custom proto options.
-
     #[rhai_fn(index_get)]
     pub fn field_opt_get_kv(options: &mut FieldOptions, index: String) -> String {
         opt_get_kv(options, index, &proto_options::FIELD_KEY_VALUE)
