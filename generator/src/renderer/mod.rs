@@ -61,7 +61,7 @@ pub trait Renderer {
     fn has_metadata(&self) -> bool;
     fn render_metadata<W: io::Write>(&self, context: MetadataContext, writer: &mut W)
         -> Result<()>;
-    fn render_file<W: io::Write>(&self, context: &FileContext, writer: &mut W) -> Result<()>;
+    fn render_file<W: io::Write>(&self, context: FileContext, writer: &mut W) -> Result<()>;
 
     fn output_ext(&self) -> &str {
         &self.config().file_extension
@@ -91,7 +91,7 @@ pub trait Renderer {
             let mut writer = self.file_writer(&path)?;
             log_render_file(&file.name, &self.config().file_extension);
             let context = FileContext::new(file, &self.config())?;
-            self.render_file(&context, &mut writer)?;
+            self.render_file(context, &mut writer)?;
         }
         Ok(())
     }
@@ -109,7 +109,7 @@ pub trait Renderer {
             for file in files {
                 log_render_package_file(file, package);
                 let context = FileContext::new(file, &self.config())?;
-                self.render_file(&context, &mut writer)?;
+                self.render_file(context, &mut writer)?;
             }
             package_files.insert(
                 package.to_owned(),
@@ -695,7 +695,7 @@ mod tests {
             Ok(())
         }
 
-        fn render_file<W: io::Write>(&self, _context: &FileContext, _writer: &mut W) -> Result<()> {
+        fn render_file<W: io::Write>(&self, _context: FileContext, _writer: &mut W) -> Result<()> {
             Ok(())
         }
     }

@@ -1,8 +1,9 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{util, DisplayNormalized};
 
@@ -11,12 +12,13 @@ pub type PackageTree = HashMap<String, PackageTreeNode>;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MetadataContext {
     /// Relative path to this directory.
-    directory: String,
+    #[serde(serialize_with = "serialize_directory", skip_deserializing)]
+    directory: PathBuf,
 
     /// Names of files in this directory, without extensions.
     file_names: Vec<String>,
 
-    /// Names of tiles in this directory, with extensions.
+    /// Names of files in this directory, with extensions.
     file_names_with_ext: Vec<String>,
 
     /// Names of directories in this directory.
@@ -74,17 +76,16 @@ pub struct MetadataContext {
     /// Note: Currently indentation does not work for partials.
     ///
     package_file_tree: PackageTree,
-
-    #[serde(skip)]
-    directory_path: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-struct PackageFile {
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct PackageFile {
     package: String,
     file_name: String,
 }
 
+/// A node in a package tree. Typically it will represent _either_ a single file _or_ a component
+/// in the package path with children of its own.
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct PackageTreeNode {
     file_name: Option<String>,
@@ -94,37 +95,48 @@ pub struct PackageTreeNode {
 impl MetadataContext {
     pub fn new() -> Self {
         Self {
-            directory: "".to_owned(),
+            directory: Default::default(),
             file_names: vec![],
             file_names_with_ext: vec![],
             subdirectories: vec![],
             package_files_full: vec![],
             package_file_tree: Default::default(),
-            directory_path: Default::default(),
         }
     }
 
     pub fn with_relative_dir(directory: &Path) -> Result<Self> {
         let context = Self {
-            directory: directory
-                .to_str()
-                .ok_or(anyhow!(
-                    "Cannot create MetadataContext, dir path is not valid: {:?}",
-                    directory
-                ))?
-                .to_owned(),
+            directory: directory.to_path_buf(),
             file_names: vec![],
             file_names_with_ext: vec![],
             subdirectories: vec![],
             package_files_full: vec![],
             package_file_tree: Default::default(),
-            directory_path: directory.to_path_buf(),
         };
         Ok(context)
     }
 
+    pub fn directory(&self) -> &Path {
+        &self.directory
+    }
+    pub fn file_names(&self) -> &[String] {
+        &self.file_names
+    }
+    pub fn file_names_with_ext(&self) -> &[String] {
+        &self.file_names_with_ext
+    }
+    pub fn subdirectories(&self) -> &[String] {
+        &self.subdirectories
+    }
+    pub fn package_files_full(&self) -> &[PackageFile] {
+        &self.package_files_full
+    }
+    pub fn package_file_tree(&self) -> &PackageTree {
+        &self.package_file_tree
+    }
+
     pub fn relative_dir(&self) -> &Path {
-        &self.directory_path
+        &self.directory
     }
 
     pub fn push_file(&mut self, path: &Path) -> Result<()> {
@@ -175,14 +187,40 @@ impl MetadataContext {
                 file_name: path.as_ref().display_normalized(),
             })
             .collect::<Vec<PackageFile>>();
+        self.package_files_full.sort()
     }
 
     fn is_direct_child(&self, path: &Path) -> bool {
         match path.parent() {
-            None => self.directory_path.as_os_str().is_empty(),
-            Some(parent) => parent == self.directory_path,
+            None => self.directory.as_os_str().is_empty(),
+            Some(parent) => parent == self.directory,
         }
     }
+}
+
+impl PackageFile {
+    pub fn file_name(&self) -> &str {
+        &self.file_name
+    }
+    pub fn package(&self) -> &str {
+        &self.package
+    }
+}
+
+impl PackageTreeNode {
+    pub fn file_name(&self) -> Option<&String> {
+        self.file_name.as_ref()
+    }
+    pub fn children(&self) -> &PackageTree {
+        &self.children
+    }
+}
+
+fn serialize_directory<S: Serializer>(
+    directory: &PathBuf,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.collect_str(&directory.display_normalized())
 }
 
 /// Converts a map of fully-qualified package -> file name to a tree of package components that

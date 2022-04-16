@@ -96,7 +96,7 @@ impl TemplateRenderer<'_> {
     }
 
     #[allow(dead_code)]
-    fn render_to_owned<S: Serialize>(&self, template: &str, data: &S) -> Result<String> {
+    fn render_to_string<S: Serialize>(&self, template: &str, data: &S) -> Result<String> {
         let rendered = self
             .hbs
             .render(template, data)
@@ -154,7 +154,7 @@ impl Renderer for TemplateRenderer<'_> {
         self.render_to_write(METADATA_TEMPLATE_NAME, &context, writer)
     }
 
-    fn render_file<W: io::Write>(&self, context: &FileContext, writer: &mut W) -> Result<()> {
+    fn render_file<W: io::Write>(&self, context: FileContext, writer: &mut W) -> Result<()> {
         self.render_to_write(FILE_TEMPLATE_NAME, &context, writer)
     }
 }
@@ -201,7 +201,7 @@ mod tests {
 
         let mut bytes = Vec::<u8>::new();
         let context = FileContext::new(&file, &config)?;
-        renderer.render_file(&context, &mut bytes)?;
+        renderer.render_file(context, &mut bytes)?;
 
         let result = String::from_utf8(bytes)?;
         assert_eq!(
@@ -230,7 +230,7 @@ mod tests {
 
         let mut bytes = Vec::<u8>::new();
         let context = FileContext::new(&file, &config)?;
-        renderer.render_file(&context, &mut bytes)?;
+        renderer.render_file(context, &mut bytes)?;
 
         let result = String::from_utf8(bytes)?;
         assert_eq!(
@@ -311,7 +311,7 @@ mod tests {
         file.package = Some(".test.package".to_owned());
         let file_context = FileContext::new(&file, &renderer.config)?;
 
-        let result = renderer.render_to_owned(FILE_TEMPLATE_NAME, &file_context)?;
+        let result = renderer.render_to_string(FILE_TEMPLATE_NAME, &file_context)?;
         assert_eq!(result, "inner.TypeName");
         Ok(())
     }
@@ -333,7 +333,7 @@ mod tests {
             let directory = "directory/path";
             let mut renderer = TemplateRenderer::new();
             renderer.load_metadata_template_string("{{directory}}")?;
-            let result = render_metadata_context_to_owned(
+            let result = render_metadata_context_to_string(
                 &mut renderer,
                 HashSet::new(),
                 Vec::new(),
@@ -350,7 +350,7 @@ mod tests {
             renderer.load_metadata_template_string(
                 "{{#each subdirectories}}{{this}}{{#unless @last}}:::{{/unless}}{{/each}}",
             )?;
-            let result = render_metadata_context_to_owned(
+            let result = render_metadata_context_to_string(
                 &mut renderer,
                 HashSet::from_iter(
                     vec![
@@ -378,7 +378,7 @@ mod tests {
             let mut renderer = TemplateRenderer::new();
             renderer
                 .load_metadata_template_string("{{#each file_names_with_ext}}{{this}}{{/each}}")?;
-            let result = render_metadata_context_to_owned(
+            let result = render_metadata_context_to_string(
                 &mut renderer,
                 HashSet::new(),
                 vec![
@@ -393,7 +393,7 @@ mod tests {
             Ok(())
         }
 
-        fn render_metadata_context_to_owned(
+        fn render_metadata_context_to_string(
             renderer: &mut impl Renderer,
             dirs: HashSet<PathBuf>,
             files: Vec<PathBuf>,
@@ -469,7 +469,7 @@ mod tests {
         renderer: &mut TemplateRenderer,
         enum_proto: &EnumDescriptorProto,
     ) -> Result<String> {
-        renderer.render_to_owned(
+        renderer.render_to_string(
             ENUM_TEMPLATE_NAME,
             &EnumContext::new(&enum_proto, &renderer.config)?,
         )
@@ -479,7 +479,7 @@ mod tests {
         renderer: &mut TemplateRenderer,
         message: &DescriptorProto,
     ) -> Result<String> {
-        renderer.render_to_owned(
+        renderer.render_to_string(
             MESSAGE_TEMPLATE_NAME,
             &MessageContext::new(&message, None, &renderer.config)?,
         )
@@ -491,6 +491,6 @@ mod tests {
         package: Option<&String>,
     ) -> Result<String> {
         let context = FieldContext::new(field, package, &HashMap::new(), &renderer.config)?;
-        renderer.render_to_owned(FIELD_TEMPLATE_NAME, &context)
+        renderer.render_to_string(FIELD_TEMPLATE_NAME, &context)
     }
 }

@@ -3,6 +3,7 @@ use prost::{Extendable, ExtensionImpl};
 use rhai;
 use rhai::exported_module;
 use rhai::plugin::*;
+use std::collections::{BTreeMap, HashMap};
 
 pub mod output;
 
@@ -33,12 +34,21 @@ fn opt_get_kv<T: Extendable>(
             return value.to_owned();
         }
     }
-    return String::new();
+    String::new()
+}
+
+fn hash_to_btree<K: Ord, V>(map: HashMap<K, V>) -> BTreeMap<K, V> {
+    let mut btree = BTreeMap::<K, V>::new();
+    for (k, v) in map {
+        btree.insert(k, v);
+    }
+    btree
 }
 
 #[export_module]
 mod context {
     use crate::renderer::context;
+    use crate::util::DisplayNormalized;
 
     use super::get_str_or_new;
 
@@ -48,7 +58,10 @@ mod context {
     pub type EnumValueContext = context::EnumValueContext;
     pub type MessageContext = context::MessageContext;
     pub type FieldContext = context::FieldContext;
+
     pub type MetadataContext = context::MetadataContext;
+    pub type PackageFile = context::PackageFile;
+    pub type PackageTreeNode = context::PackageTreeNode;
 
     pub type FileOptions = prost_types::FileOptions;
     pub type EnumOptions = prost_types::EnumOptions;
@@ -215,6 +228,62 @@ mod context {
 
     ////////////////////////////////////////////////////
     // MetadataContext
+
+    #[rhai_fn(get = "directory")]
+    pub fn metadata_directory(context: &mut MetadataContext) -> String {
+        context.directory().display_normalized()
+    }
+
+    #[rhai_fn(get = "file_names")]
+    pub fn metadata_file_names(context: &mut MetadataContext) -> rhai::Dynamic {
+        context.file_names().clone().into()
+    }
+
+    #[rhai_fn(get = "file_names_with_ext")]
+    pub fn metadata_file_names_with_ext(context: &mut MetadataContext) -> rhai::Dynamic {
+        context.file_names_with_ext().to_vec().into()
+    }
+
+    #[rhai_fn(get = "subdirectories")]
+    pub fn metadata_subdirectories(context: &mut MetadataContext) -> rhai::Dynamic {
+        context.subdirectories().to_vec().into()
+    }
+
+    #[rhai_fn(get = "package_files_full")]
+    pub fn metadata_package_files_full(context: &mut MetadataContext) -> rhai::Dynamic {
+        context.package_files_full().to_vec().into()
+    }
+
+    #[rhai_fn(get = "package_file_tree")]
+    pub fn metadata_package_file_tree(context: &mut MetadataContext) -> rhai::Dynamic {
+        hash_to_btree(context.package_file_tree().clone()).into()
+    }
+
+    ////////////////////////////////////////////////////
+    // PackageFile
+
+    #[rhai_fn(get = "file_name")]
+    pub fn package_file_file_name(context: &mut PackageFile) -> String {
+        context.file_name().to_owned()
+    }
+
+    #[rhai_fn(get = "file_package")]
+    pub fn package_file_package(context: &mut PackageFile) -> String {
+        context.package().to_owned()
+    }
+
+    ////////////////////////////////////////////////////
+    // PackageTreeNode
+
+    #[rhai_fn(get = "file_name")]
+    pub fn package_tree_node_file_name(context: &mut PackageTreeNode) -> String {
+        get_str_or_new(context.file_name())
+    }
+
+    #[rhai_fn(get = "children")]
+    pub fn package_tree_node_children(context: &mut PackageTreeNode) -> rhai::Dynamic {
+        hash_to_btree(context.children().clone()).into()
+    }
 
     ////////////////////////////////////////////////////
     // FileOptions

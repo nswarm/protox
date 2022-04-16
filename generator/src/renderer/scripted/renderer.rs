@@ -15,6 +15,7 @@ use crate::DisplayNormalized;
 pub const SCRIPT_EXT: &'static str = "rhai";
 pub const MAIN_SCRIPT_NAME: &'static str = "main";
 pub const RENDER_FILE_FN_NAME: &'static str = "render_file";
+pub const RENDER_METADATA_FN_NAME: &'static str = "render_metadata";
 
 pub struct ScriptedRenderer {
     engine: Engine,
@@ -57,6 +58,23 @@ impl ScriptedRenderer {
         }
     }
 
+    fn render<W: Write>(
+        &self,
+        context: rhai::Dynamic,
+        fn_name: &str,
+        writer: &mut W,
+    ) -> Result<()> {
+        let mut scope = Scope::new();
+        let ast = self.main_ast_or_error()?;
+        let output = Output::new();
+        let result: Output = self
+            .engine
+            .call_fn(&mut scope, ast, fn_name, (context, output))
+            .with_context(|| format!("Error returned from script function: {}'", fn_name))?;
+        writer.write(result.to_owned().as_bytes())?;
+        Ok(())
+    }
+
     #[cfg(test)]
     pub fn load_test_script(&mut self, script: &str) -> Result<()> {
         self.main_ast = Some(
@@ -93,29 +111,11 @@ impl Renderer for ScriptedRenderer {
     }
 
     fn render_metadata<W: Write>(&self, context: MetadataContext, writer: &mut W) -> Result<()> {
-        todo!()
+        self.render(Dynamic::from(context), RENDER_METADATA_FN_NAME, writer)
     }
 
-    fn render_file<W: Write>(&self, context: &FileContext, writer: &mut W) -> Result<()> {
-        let mut scope = Scope::new();
-        let ast = self.main_ast_or_error()?;
-        let output = Output::new();
-        let result: Output = self
-            .engine
-            .call_fn(
-                &mut scope,
-                ast,
-                RENDER_FILE_FN_NAME,
-                (Dynamic::from(context.clone()), output),
-            )
-            .with_context(|| {
-                format!(
-                    "Error returned from script function: {}'",
-                    RENDER_FILE_FN_NAME
-                )
-            })?;
-        writer.write(result.to_owned().as_bytes())?;
-        Ok(())
+    fn render_file<W: Write>(&self, context: FileContext, writer: &mut W) -> Result<()> {
+        self.render(Dynamic::from(context.clone()), RENDER_FILE_FN_NAME, writer)
     }
 }
 
