@@ -10,7 +10,7 @@ use crate::renderer::context::{FileContext, MetadataContext};
 use crate::renderer::scripted::api;
 use crate::renderer::scripted::api::output::Output;
 use crate::renderer::{Renderer, RendererConfig};
-use crate::DisplayNormalized;
+use crate::{DisplayNormalized, CONFIG_FILE_NAME};
 
 pub const SCRIPT_EXT: &'static str = "rhai";
 pub const MAIN_SCRIPT_NAME: &'static str = "main";
@@ -88,6 +88,7 @@ impl ScriptedRenderer {
 
 impl Renderer for ScriptedRenderer {
     fn load(&mut self, input_root: &Path) -> anyhow::Result<()> {
+        self.config = self.load_config(&input_root.join(CONFIG_FILE_NAME))?;
         let resolver = FileModuleResolver::new_with_path_and_extension(input_root, SCRIPT_EXT);
         self.engine.set_module_resolver(resolver);
         self.main_ast = Some(compile_file(

@@ -1,41 +1,69 @@
-// fn render_file(file) {
-    // append(`${message_type} ${name}`);
-    // push_scope();
-    // for field in message.fields {
-    // if field.is_map {
-    //     error("field {}: maps are unsupported in fbs.", field.name);
-    //     return;
-    // }
-    // if field.is_array() {
-    //     append(`${field.name}: [${field.relative_type}]`);
-    // } else {
-    //     append(`${field.name}: ${field.relative_type}`);
-    // }
-    // append(field_separator(field));
-    // }
-    // pop_scope();
-//     return 0;
-// }
-
-fn render_file(context, output) {
+fn render_file(file, output) {
     output.line(`
     /////////////////////////////////////////////////
-    // Messages from: {{source_file}}`);
+    // Messages from: ${file.source_file}
+    `);
 
-    for enum in context.enums {
+    for enum in file.enums {
         enum!(enum);
+        output.line();
     }
-    output.line("");
-    for message in context.messages {
+    for message in file.messages {
         message!(message);
+        output.line();
     }
     return output;
 }
 
 fn enum(enum) {
-    output.line(enum.name)
+    output.line(`enum ${enum.name} : ${enum_type(enum)} {`);
+    for value in enum.values {
+        output.line(`${value.name} = ${value.number},`);
+    }
+    output.line("}");
+}
+
+fn enum_type(enum) {
+    if enum.options.fbs_enum_type != "" {
+        enum.options.fbs_enum_type
+    } else {
+        "ubyte"
+    }
 }
 
 fn message(message) {
-    output.line(message.name)
+    output.line(`${message_type(message)} ${message.name} {`);
+    for field in message.fields {
+        field!(field, message.options.fbs_msg_type);
+    }
+    output.line("}");
+}
+
+fn message_type(message) {
+    if message.options.fbs_msg_type != "" {
+        message.options.fbs_msg_type
+    } else {
+        "table"
+    }
+}
+
+fn field(field, msg_type) {
+    if field.is_map {
+        print(`WARNING: Field '${field.name}' has a map, which are unsupported in fbs.`);
+        return;
+    }
+    if field.is_array {
+        output.append(`${field.name}: [${field.relative_type}]`);
+    } else {
+        output.append(`${field.name}: ${field.relative_type}`);
+    }
+    output.line(field_separator(field, msg_type));
+}
+
+fn field_separator(field, msg_type) {
+    if msg_type == "union" {
+        ","
+    } else {
+        ";"
+    }
 }

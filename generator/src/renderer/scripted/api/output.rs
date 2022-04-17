@@ -4,7 +4,8 @@ pub fn register(engine: &mut rhai::Engine) {
     engine
         .register_type::<Output>()
         .register_fn("append", Output::append)
-        .register_fn("line", Output::line);
+        .register_fn("line", Output::line)
+        .register_fn("line", Output::newline);
 }
 
 #[derive(Default, Clone)]
@@ -24,6 +25,10 @@ impl Output {
 
     pub fn line(&mut self, content: &str) {
         self.append(content);
+        self.newline();
+    }
+
+    pub fn newline(&mut self) {
         self.content.push('\n');
     }
 

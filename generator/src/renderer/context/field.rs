@@ -193,13 +193,12 @@ fn log_new_field(name: &Option<String>) {
 fn field_name(field: &FieldDescriptorProto, config: &RendererConfig) -> Result<String> {
     let field_name = util::str_or_error(&field.name, || "Field has no 'name'".to_owned())?;
     let case = config.case_config.field_name;
-    let result = case.rename(
-        config
-            .field_name_override
-            .get(field_name)
-            .map(String::as_str)
-            .unwrap_or(field_name),
-    );
+    let renamed = case.rename(field_name);
+    let result = config
+        .field_name_override
+        .get(&renamed)
+        .map(String::clone)
+        .unwrap_or(renamed);
     Ok(result)
 }
 
@@ -257,9 +256,11 @@ mod tests {
 
     #[test]
     fn override_field_name() -> Result<()> {
-        let old_name = "old_name".to_owned();
-        let new_name = "new_name".to_owned();
+        let old_name = "bad_name".to_owned();
+        let new_name = "good_name".to_owned();
         let mut config = RendererConfig::default();
+        config.case_config.field_name = Case::LowerSnake;
+        // Note override takes place AFTER case adjustment
         config
             .field_name_override
             .insert(old_name.clone(), new_name.clone());
