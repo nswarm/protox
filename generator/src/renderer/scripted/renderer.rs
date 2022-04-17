@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 use log::{debug, info};
 use rhai::module_resolvers::FileModuleResolver;
-use rhai::{Dynamic, Engine, Scope, AST};
+use rhai::{Dynamic, Engine, Scope, ScriptFnMetadata, AST};
 
 use crate::renderer::context::{FileContext, MetadataContext};
 use crate::renderer::scripted::api;
@@ -91,7 +91,7 @@ impl Renderer for ScriptedRenderer {
     }
 
     fn reset(&mut self) {
-        // todo
+        self.main_ast = None;
     }
 
     fn config(&self) -> &RendererConfig {
@@ -99,7 +99,12 @@ impl Renderer for ScriptedRenderer {
     }
 
     fn has_metadata(&self) -> bool {
-        // todo
+        if let Some(ast) = &self.main_ast {
+            return ast
+                .iter_functions()
+                .find(|f: &ScriptFnMetadata| f.name == RENDER_METADATA_FN_NAME)
+                .is_some();
+        }
         false
     }
 
@@ -120,4 +125,66 @@ fn compile_file(engine: &mut rhai::Engine, path: &Path) -> Result<AST> {
     engine
         .compile_file(path.to_path_buf())
         .with_context(|| format!("Error compiling script: {}", path.display_normalized()))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::renderer::context::{FileContext, MetadataContext};
+    use anyhow::Result;
+    use prost_types::FileDescriptorProto;
+    use std::path::PathBuf;
+
+    use crate::renderer::scripted::renderer::ScriptedRenderer;
+    use crate::renderer::{Renderer, RendererConfig};
+
+    #[test]
+    fn render_file() -> Result<()> {
+        let expected = "FileName".to_owned();
+        let file = &FileDescriptorProto {
+            name: Some(expected.clone()),
+            ..Default::default()
+        };
+        let context = FileContext::new(file, &RendererConfig::default())?;
+        let mut renderer = ScriptedRenderer::new();
+        renderer.load_test_script(
+            r#"fn render_file(f, o) {
+                o.append(`hello ${f.source_file}!`);
+                o
+            }"#,
+        )?;
+
+        let mut output = Vec::new();
+        renderer.render_file(context, &mut output)?;
+        assert_eq!(String::from_utf8(output)?, format!("hello {}!", expected));
+        Ok(())
+    }
+
+    #[test]
+    fn render_metadata() -> Result<()> {
+        let expected = "some/directory";
+        let context = MetadataContext::with_relative_dir(&PathBuf::from(expected))?;
+        let mut renderer = ScriptedRenderer::new();
+        renderer.load_test_script(
+            r#"fn render_metadata(m, o) {
+                o.append(`hello ${m.directory}!`);
+                o
+            }"#,
+        )?;
+
+        let mut output = Vec::new();
+        renderer.render_metadata(context, &mut output)?;
+        assert_eq!(String::from_utf8(output)?, format!("hello {}!", expected));
+        Ok(())
+    }
+
+    #[test]
+    fn has_metadata() -> Result<()> {
+        let mut renderer = ScriptedRenderer::new();
+        assert!(!renderer.has_metadata());
+        renderer.load_test_script("fn some_fn() {}")?;
+        assert!(!renderer.has_metadata());
+        renderer.load_test_script("fn render_metadata(m, o) {}")?;
+        assert!(renderer.has_metadata());
+        Ok(())
+    }
 }
