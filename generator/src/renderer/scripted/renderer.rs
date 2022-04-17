@@ -32,14 +32,6 @@ impl ScriptedRenderer {
         }
     }
 
-    pub fn with_config(config: RendererConfig) -> Self {
-        Self {
-            engine: Self::create_engine(),
-            main_ast: None,
-            config,
-        }
-    }
-
     fn create_engine() -> Engine {
         let mut engine = Engine::new();
         // todo go through & set options

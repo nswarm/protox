@@ -399,7 +399,7 @@ mod tests {
                 ignored_files: vec!["file1".to_owned(), "test/sub/file4".to_owned()],
                 ..Default::default()
             };
-            let mut renderer = FakeRenderer::with_config(config);
+            let renderer = FakeRenderer::with_config(config);
             let test_dir = tempdir()?;
             renderer.render(&test_file_set(), test_dir.path())?;
 
@@ -413,13 +413,13 @@ mod tests {
 
         #[test]
         fn does_not_render_ignored_files_collapsed() -> Result<()> {
-            let mut config = RendererConfig {
+            let config = RendererConfig {
                 one_file_per_package: true,
                 default_package_file_name: "pkg-root".to_owned(),
                 ignored_files: vec!["file1".to_owned(), "test/sub/file4".to_owned()],
                 ..Default::default()
             };
-            let mut renderer = FakeRenderer::with_config(config);
+            let renderer = FakeRenderer::with_config(config);
             let test_dir = tempdir()?;
             renderer.render(&test_file_set(), test_dir.path())?;
 

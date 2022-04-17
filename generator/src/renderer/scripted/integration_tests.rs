@@ -283,14 +283,12 @@ mod field_context {
 
 mod metadata_context {
     use crate::renderer::context::MetadataContext;
-    use crate::renderer::{Renderer, RendererConfig};
+    use crate::renderer::scripted::integration_tests::test_metadata_script;
+    use crate::renderer::Renderer;
     use anyhow::Result;
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    use crate::renderer::scripted::integration_tests::{
-        default_message_proto, file_with_messages, test_file_script, test_metadata_script,
-    };
     use crate::renderer::scripted::renderer::ScriptedRenderer;
 
     #[test]
@@ -316,8 +314,8 @@ mod metadata_context {
     #[test]
     fn file_names() -> Result<()> {
         let mut context = MetadataContext::new();
-        context.push_file(&PathBuf::from("file0.ext"));
-        context.push_file(&PathBuf::from("file1.ext"));
+        context.push_file(&PathBuf::from("file0.ext"))?;
+        context.push_file(&PathBuf::from("file1.ext"))?;
         test_metadata_script(
             context,
             r#"
@@ -332,8 +330,8 @@ mod metadata_context {
     #[test]
     fn file_names_with_ext() -> Result<()> {
         let mut context = MetadataContext::new();
-        context.push_file(&PathBuf::from("file0.ext"));
-        context.push_file(&PathBuf::from("file1.ext"));
+        context.push_file(&PathBuf::from("file0.ext"))?;
+        context.push_file(&PathBuf::from("file1.ext"))?;
         test_metadata_script(
             context,
             r#"
@@ -348,8 +346,8 @@ mod metadata_context {
     #[test]
     fn subdirectories() -> Result<()> {
         let mut context = MetadataContext::new();
-        context.push_subdirectory(&PathBuf::from("subdir0"));
-        context.push_subdirectory(&PathBuf::from("subdir1"));
+        context.push_subdirectory(&PathBuf::from("subdir0"))?;
+        context.push_subdirectory(&PathBuf::from("subdir1"))?;
         test_metadata_script(
             context,
             r#"
@@ -495,8 +493,7 @@ mod enum_options {
 
     use crate::renderer::context::FileContext;
     use crate::renderer::scripted::integration_tests::{
-        default_enum_proto, default_message_proto, file_with_enums, file_with_messages,
-        test_file_script,
+        default_enum_proto, file_with_enums, test_file_script,
     };
 
     opt_test!(EnumOptions, deprecated, true);
@@ -538,13 +535,11 @@ mod enum_options {
 
 mod enum_value_options {
     use anyhow::Result;
-    use prost::Extendable;
-    use prost_types::{EnumOptions, EnumValueDescriptorProto, EnumValueOptions};
+    use prost_types::{EnumValueDescriptorProto, EnumValueOptions};
 
-    use crate::renderer::context::{EnumValueContext, FileContext};
+    use crate::renderer::context::FileContext;
     use crate::renderer::scripted::integration_tests::{
-        default_enum_proto, default_message_proto, file_with_enums, file_with_messages,
-        test_file_script,
+        default_enum_proto, file_with_enums, test_file_script,
     };
 
     opt_test!(EnumValueOptions, deprecated, true);
@@ -624,7 +619,7 @@ mod message_options {
 mod field_options {
     use anyhow::Result;
     use prost::Extendable;
-    use prost_types::{FieldOptions, FileDescriptorProto};
+    use prost_types::FieldOptions;
 
     use crate::renderer::context::FileContext;
     use crate::renderer::scripted::integration_tests::{

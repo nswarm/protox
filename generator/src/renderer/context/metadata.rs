@@ -1,8 +1,7 @@
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{util, DisplayNormalized};

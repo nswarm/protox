@@ -2,7 +2,7 @@ use crate::renderer::case::Case;
 use crate::renderer::template::METADATA_TEMPLATE_NAME;
 use crate::renderer::{primitive, proto};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct RendererConfig {
