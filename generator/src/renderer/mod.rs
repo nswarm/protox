@@ -85,6 +85,10 @@ pub trait Renderer {
 
     fn render_files(&self, descriptor_set: &FileDescriptorSet, output_path: &Path) -> Result<()> {
         for file in &descriptor_set.file {
+            if self.is_ignored_file(file) {
+                log_ignore_file(&file.name, &self.config().file_extension);
+                continue;
+            }
             let file_name = &file_name(file, self.output_ext())?;
             info!("Rendering file for descriptor '{}'", file_name);
             let path = &output_path.join(file_name);
@@ -104,6 +108,13 @@ pub trait Renderer {
         let package_to_files = self.collect_package_to_file_map(descriptor_set);
         let mut package_files = HashMap::new();
         for (package, files) in package_to_files {
+            let files = files
+                .into_iter()
+                .filter(|f| !self.is_ignored_file(f))
+                .collect::<Vec<&FileDescriptorProto>>();
+            if files.is_empty() {
+                continue;
+            }
             let path = &self.package_to_file_path(output_path, package);
             let mut writer = self.file_writer(&path)?;
             for file in files {
@@ -207,6 +218,13 @@ pub trait Renderer {
             .join(self.metadata_file_name())
             .with_extension(&self.config().file_extension)
     }
+
+    fn is_ignored_file(&self, file: &FileDescriptorProto) -> bool {
+        match file.name.as_ref() {
+            None => true,
+            Some(file) => self.config().ignored_files.contains(file),
+        }
+    }
 }
 
 fn collect_dirs_and_files(
@@ -254,6 +272,12 @@ fn package<'a>(file: &'a FileDescriptorProto, default: &'a String) -> &'a str {
 fn log_render_file(file_name: &Option<String>, ext: &str) {
     debug!(
         "Rendering file: {}",
+        util::replace_proto_ext(util::str_or_unknown(file_name), ext)
+    );
+}
+fn log_ignore_file(file_name: &Option<String>, ext: &str) {
+    debug!(
+        "Ignoring file because it is on the ignore list: {}",
         util::replace_proto_ext(util::str_or_unknown(file_name), ext)
     );
 }
@@ -366,6 +390,49 @@ mod tests {
             renderer.render(&set, test_dir.path())?;
 
             assert!(test_dir.path().join("PKG_ROOT").exists());
+            Ok(())
+        }
+
+        #[test]
+        fn does_not_render_ignored_files() -> Result<()> {
+            let config = RendererConfig {
+                ignored_files: vec!["file1".to_owned(), "test/sub/file4".to_owned()],
+                ..Default::default()
+            };
+            let mut renderer = FakeRenderer::with_config(config);
+            let test_dir = tempdir()?;
+            renderer.render(&test_file_set(), test_dir.path())?;
+
+            assert!(!test_dir.path().join("file1").exists());
+            assert!(test_dir.path().join("test/file2").exists());
+            assert!(test_dir.path().join("test/file3").exists());
+            assert!(!test_dir.path().join("test/sub/file4").exists());
+            assert!(test_dir.path().join("other/sub/inner/file5").exists());
+            Ok(())
+        }
+
+        #[test]
+        fn does_not_render_ignored_files_collapsed() -> Result<()> {
+            let mut config = RendererConfig {
+                one_file_per_package: true,
+                default_package_file_name: "pkg-root".to_owned(),
+                ignored_files: vec!["file1".to_owned(), "test/sub/file4".to_owned()],
+                ..Default::default()
+            };
+            let mut renderer = FakeRenderer::with_config(config);
+            let test_dir = tempdir()?;
+            renderer.render(&test_file_set(), test_dir.path())?;
+
+            assert!(
+                !test_dir.path().join("pkg-root").exists(),
+                "should not exist because it contains an ignored file"
+            );
+            assert!(test_dir.path().join("test").exists());
+            assert!(
+                !test_dir.path().join("test-sub").exists(),
+                "should not exist because it contains an ignored file"
+            );
+            assert!(test_dir.path().join("other-sub-inner").exists());
             Ok(())
         }
 

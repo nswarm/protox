@@ -2,7 +2,7 @@ use crate::renderer::case::Case;
 use crate::renderer::template::METADATA_TEMPLATE_NAME;
 use crate::renderer::{primitive, proto};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct RendererConfig {
@@ -64,6 +64,16 @@ pub struct RendererConfig {
     /// Would replace any fields called `enum` with `new_name`.
     #[serde(default)]
     pub field_name_override: HashMap<String, String>,
+
+    /// A list of input files that will not be rendered.
+    /// e.g. "some/useless/file.proto"
+    #[serde(default)]
+    pub ignored_files: Vec<String>,
+
+    /// A list of proto imports that will not be printed to the final file imports.
+    /// e.g. "some/useless/file.proto"
+    #[serde(default)]
+    pub ignored_imports: Vec<String>,
 
     /// If set, relative types in parent scopes will be specified with this prefix _instead_ of using the
     /// fully qualified type.
@@ -134,6 +144,8 @@ impl Default for RendererConfig {
             one_file_per_package: false,
             default_package_file_name: default_package_file_name(),
             field_name_override: Default::default(),
+            ignored_files: vec![],
+            ignored_imports: vec![],
             field_relative_parent_prefix: None,
             generated_header: None,
         }

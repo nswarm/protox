@@ -58,7 +58,7 @@ impl FileContext {
         );
         let context = Self {
             source_file: source_file(file)?,
-            imports: imports(file)?,
+            imports: imports(file, &config.ignored_imports)?,
             enums: enums(file, config)?,
             messages: messages(file, file.package.as_ref(), config)?,
             options: file.options.clone(),
@@ -89,9 +89,12 @@ fn source_file(file: &FileDescriptorProto) -> Result<String> {
         .ok_or(anyhow!("File has no 'name'".to_owned()))
 }
 
-fn imports(file: &FileDescriptorProto) -> Result<Vec<ImportContext>> {
+fn imports(file: &FileDescriptorProto, ignored_imports: &[String]) -> Result<Vec<ImportContext>> {
     let mut imports = Vec::new();
     for import in &file.dependency {
+        if ignored_imports.contains(import) {
+            continue;
+        }
         imports.push(ImportContext::new(import)?);
     }
     Ok(imports)
@@ -194,8 +197,10 @@ mod tests {
     fn source_file() -> Result<()> {
         let config = RendererConfig::default();
         let name = "file_name".to_owned();
-        let mut file = default_file();
-        file.name = Some(name.clone());
+        let file = FileDescriptorProto {
+            name: Some(name.clone()),
+            ..Default::default()
+        };
         let context = FileContext::new(&file, &config)?;
         assert_eq!(context.source_file, name);
         Ok(())
@@ -204,7 +209,7 @@ mod tests {
     #[test]
     fn missing_name_errors() {
         let config = RendererConfig::default();
-        let file = default_file();
+        let file = FileDescriptorProto::default();
         let result = FileContext::new(&file, &config);
         assert!(result.is_err());
     }
@@ -213,32 +218,34 @@ mod tests {
     #[allow(deprecated)]
     fn file_options() -> Result<()> {
         let config = RendererConfig::default();
-        let mut file = default_file();
-        file.name = Some("file_name".to_owned());
-        file.options = Some(FileOptions {
-            java_package: Some("java_package".to_owned()),
-            java_outer_classname: Some("java_outer_classname".to_owned()),
-            java_multiple_files: Some(true),
-            java_generate_equals_and_hash: None,
-            java_string_check_utf8: Some(true),
-            optimize_for: Some(1234),
-            go_package: Some("go_package".to_owned()),
-            cc_generic_services: Some(true),
-            java_generic_services: Some(true),
-            py_generic_services: Some(true),
-            php_generic_services: Some(true),
-            deprecated: Some(true),
-            cc_enable_arenas: Some(true),
-            objc_class_prefix: Some("objc_class_prefix".to_owned()),
-            csharp_namespace: Some("csharp_namespace".to_owned()),
-            swift_prefix: Some("swift_prefix".to_owned()),
-            php_class_prefix: Some("php_class_prefix".to_owned()),
-            php_namespace: Some("php_namespace".to_owned()),
-            php_metadata_namespace: Some("php_metadata_namespace".to_owned()),
-            ruby_package: Some("ruby_package".to_owned()),
-            uninterpreted_option: vec![],
-            extension_set: ExtensionSet::default(),
-        });
+        let file = FileDescriptorProto {
+            name: Some("file_name".to_owned()),
+            options: Some(FileOptions {
+                java_package: Some("java_package".to_owned()),
+                java_outer_classname: Some("java_outer_classname".to_owned()),
+                java_multiple_files: Some(true),
+                java_generate_equals_and_hash: None,
+                java_string_check_utf8: Some(true),
+                optimize_for: Some(1234),
+                go_package: Some("go_package".to_owned()),
+                cc_generic_services: Some(true),
+                java_generic_services: Some(true),
+                py_generic_services: Some(true),
+                php_generic_services: Some(true),
+                deprecated: Some(true),
+                cc_enable_arenas: Some(true),
+                objc_class_prefix: Some("objc_class_prefix".to_owned()),
+                csharp_namespace: Some("csharp_namespace".to_owned()),
+                swift_prefix: Some("swift_prefix".to_owned()),
+                php_class_prefix: Some("php_class_prefix".to_owned()),
+                php_namespace: Some("php_namespace".to_owned()),
+                php_metadata_namespace: Some("php_metadata_namespace".to_owned()),
+                ruby_package: Some("ruby_package".to_owned()),
+                uninterpreted_option: vec![],
+                extension_set: ExtensionSet::default(),
+            }),
+            ..Default::default()
+        };
         let context = FileContext::new(&file, &config)?;
         let json = serde_json::to_string(&context)?;
         println!("{}", json);
@@ -266,17 +273,18 @@ mod tests {
 
     #[test]
     fn key_value_options() -> Result<()> {
-        let config = RendererConfig::default();
-        let mut file = default_file();
-        file.name = Some("file_name".to_owned());
         let mut options = FileOptions::default();
         options.set_extension_data(
             &proto_options::FILE_KEY_VALUE,
             vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
         )?;
-        file.options = Some(options);
+        let file = FileDescriptorProto {
+            name: Some("file_name".to_owned()),
+            options: Some(options),
+            ..Default::default()
+        };
 
-        let context = FileContext::new(&file, &config)?;
+        let context = FileContext::new(&file, &RendererConfig::default())?;
         let json = serde_json::to_string(&context)?;
         println!("{}", json);
         assert!(json.contains(r#""key0":"value0""#));
@@ -284,20 +292,27 @@ mod tests {
         Ok(())
     }
 
-    fn default_file() -> FileDescriptorProto {
-        FileDescriptorProto {
-            name: None,
-            package: None,
-            dependency: vec![],
-            public_dependency: vec![],
-            weak_dependency: vec![],
-            message_type: vec![],
-            enum_type: vec![],
-            service: vec![],
-            extension: vec![],
-            options: None,
-            source_code_info: None,
-            syntax: None,
-        }
+    #[test]
+    fn ignored_imports() -> Result<()> {
+        let ignored_file = "some/ignored/file.proto";
+        let other_file = "included/file.proto";
+        let mut config = RendererConfig::default();
+        config
+            .ignored_imports
+            .push("some/ignored/file.proto".to_owned());
+        let file = FileDescriptorProto {
+            name: Some("name".to_owned()),
+            dependency: vec![ignored_file.to_owned(), other_file.to_owned()],
+            ..Default::default()
+        };
+
+        let context = FileContext::new(&file, &config)?;
+        assert_eq!(
+            context.imports.len(),
+            1,
+            "If 2 imports we didn't ignore the configured one"
+        );
+        assert_eq!(context.imports[0].file_path(), other_file);
+        Ok(())
     }
 }

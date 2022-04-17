@@ -4,6 +4,11 @@ fn render_file(file, output) {
     // Messages from: ${file.source_file}
     `);
 
+    for imp in file.imports {
+        output.line(`include "${imp.file_name}.fbs;"`);
+    }
+    output.line();
+
     for enum in file.enums {
         enum!(enum);
         output.line();

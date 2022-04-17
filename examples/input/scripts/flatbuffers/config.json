@@ -32,6 +32,12 @@
   "field_name_override": {
     "enum": "enum_"
   },
+  "ignored_files": [
+    "options_impl.proto"
+  ],
+  "ignored_imports": [
+    "idlx.proto"
+  ],
   "field_relative_parent_prefix": null,
   "generated_header": null
 }
