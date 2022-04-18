@@ -30,8 +30,8 @@ fn enum(enum) {
 }
 
 fn enum_type(enum) {
-    if enum.options.fbs_enum_type != "" {
-        enum.options.fbs_enum_type
+    if enum.options.enum_type != "" {
+        enum.options.enum_type
     } else {
         "ubyte"
     }
@@ -41,14 +41,14 @@ fn message(message) {
     output.append(`${message_type(message)} ${message.name}`);
     output.push_scope();
     for field in message.fields {
-        field!(field, message.options.fbs_msg_type);
+        field!(field, message.options.msg_type);
     }
     output.pop_scope();
 }
 
 fn message_type(message) {
-    if message.options.fbs_msg_type != "" {
-        message.options.fbs_msg_type
+    if message.options.msg_type != "" {
+        message.options.msg_type
     } else {
         "table"
     }
