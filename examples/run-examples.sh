@@ -38,7 +38,6 @@ cargo run -- \
   --proto js proto-js \
   --template-root examples/input/templates \
   --template rust-server rust-server \
-  --template flatbuffers template-flatbuffers \
   --script-root examples/input/scripts \
-  --script flatbuffers scripted-flatbuffers
+  --script flatbuffers flatbuffers
 
