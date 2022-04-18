@@ -131,11 +131,13 @@ pub enum IndentChar {
 pub struct ScriptedConfig {
     /// Character to use when Output indent methods are used.
     pub indent_char: IndentChar,
+    /// Config for Output scope.
+    pub scope: ScopeConfig,
 }
 
 /// Options for the ScriptedRenderer Output methods related to scope.
 #[derive(Serialize, Deserialize, Clone, Default)]
-pub struct Scope {
+pub struct ScopeConfig {
     /// Character to use when opening a scope.
     pub open: String,
     /// Character to use when closing a scope.
@@ -168,7 +170,7 @@ impl Default for CaseConfig {
 impl Default for RendererConfig {
     fn default() -> Self {
         Self {
-            file_extension: "".to_owned(),
+            file_extension: "".to_string(),
             type_config: default_type_config(),
             case_config: Default::default(),
             metadata_file_name: default_metadata_file_name(),

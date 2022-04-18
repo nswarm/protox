@@ -8,9 +8,12 @@ pub fn register(engine: &mut rhai::Engine) {
         .register_fn("line", Output::line)
         .register_fn("line", Output::newline)
         .register_fn("indent", Output::indent)
-        .register_fn("unindent", Output::unindent);
+        .register_fn("unindent", Output::unindent)
+        .register_fn("push_scope", Output::push_scope)
+        .register_fn("pop_scope", Output::pop_scope);
 }
 
+/// NOTE: This API is used in rhai, so it follows rhai rules like always using &mut self and i64.
 #[derive(Default, Clone)]
 pub struct Output {
     config: ScriptedConfig,
@@ -27,7 +30,7 @@ impl Output {
     }
 
     pub fn append(&mut self, new_content: &str) {
-        if self.content.is_empty() || self.content.ends_with("\n") {
+        if self.content.is_empty() || self.content.ends_with('\n') {
             self.push_indent();
         }
         // trim_start + unindent lets users use multiline strings indented inside of their
@@ -66,6 +69,25 @@ impl Output {
         }
     }
 
+    fn push_scope(&mut self) {
+        if self.config.scope.open_on_new_line {
+            self.newline();
+        } else if !self.content.ends_with(' ') && !self.content.ends_with('\n') {
+            self.content.push(' ');
+        }
+        self.content.push_str(&self.config.scope.open);
+        self.indent(self.config.scope.indent as i64);
+        self.newline();
+    }
+
+    fn pop_scope(&mut self) {
+        self.unindent(self.config.scope.indent as i64);
+        if !self.content.ends_with('\n') {
+            self.newline();
+        }
+        self.line("}");
+    }
+
     pub fn to_string(self) -> String {
         self.content
     }
@@ -73,6 +95,7 @@ impl Output {
 
 #[cfg(test)]
 mod tests {
+    use crate::renderer::renderer_config::{ScopeConfig, ScriptedConfig};
     use crate::renderer::scripted::api::output::Output;
 
     #[test]
@@ -189,6 +212,97 @@ mod tests {
             output.indent(2);
             output.line("3");
             assert_eq!(&output.to_string(), "0\n 1\n  2\n    3\n");
+        }
+    }
+
+    mod push_scope {
+        use crate::renderer::scripted::api::output::tests::scope_config;
+        use crate::renderer::scripted::api::output::Output;
+
+        #[test]
+        fn adds_open_scope_str_with_space() {
+            let mut output = Output::with_config(scope_config());
+            output.append("0");
+            output.push_scope();
+            assert_eq!(&output.to_string(), "0 {\n");
+        }
+
+        #[test]
+        fn does_not_add_space_if_already_exists() {
+            let mut output = Output::with_config(scope_config());
+            output.append("0 ");
+            output.push_scope();
+            assert_eq!(&output.to_string(), "0 {\n");
+        }
+
+        #[test]
+        fn does_not_add_space_if_on_newline() {
+            let mut output = Output::with_config(scope_config());
+            output.line("0");
+            output.push_scope();
+            assert_eq!(&output.to_string(), "0\n{\n");
+        }
+
+        #[test]
+        fn adds_open_scope_str_on_newline_if_configured() {
+            let mut config = scope_config();
+            config.scope.open_on_new_line = true;
+            let mut output = Output::with_config(config);
+            output.append("0");
+            output.push_scope();
+            assert_eq!(&output.to_string(), "0\n{\n");
+        }
+
+        #[test]
+        fn adds_to_indent() {
+            let mut output = Output::with_config(scope_config());
+            output.append("0 ");
+            output.push_scope();
+            output.append("1");
+            assert_eq!(&output.to_string(), "0 {\n  1");
+        }
+    }
+
+    mod pop_scope {
+        use crate::renderer::scripted::api::output::tests::scope_config;
+        use crate::renderer::scripted::api::output::Output;
+
+        #[test]
+        fn adds_close_scope_str() {
+            let mut output = Output::with_config(scope_config());
+            output.pop_scope();
+            assert_eq!(&output.to_string(), "\n}\n");
+        }
+
+        #[test]
+        fn reduces_indent() {
+            let mut output = Output::with_config(scope_config());
+            output.append("0 ");
+            output.push_scope();
+            output.append("1");
+            output.pop_scope();
+            output.append("2");
+            assert_eq!(&output.to_string(), "0 {\n  1\n}\n2");
+        }
+
+        #[test]
+        fn only_adds_newline_if_not_already_on_newline() {
+            let mut output = Output::with_config(scope_config());
+            output.newline();
+            output.pop_scope();
+            assert_eq!(&output.to_string(), "\n}\n");
+        }
+    }
+
+    fn scope_config() -> ScriptedConfig {
+        ScriptedConfig {
+            scope: ScopeConfig {
+                open: "{".to_string(),
+                close: "}".to_string(),
+                indent: 2,
+                open_on_new_line: false,
+            },
+            ..Default::default()
         }
     }
 }

@@ -5,7 +5,7 @@ fn render_file(file, output) {
     `);
 
     for imp in file.imports {
-        output.line(`include "${imp.file_name}.fbs;"`);
+        output.line(`include "${imp.file_name}.fbs";`);
     }
     output.line();
 
@@ -21,11 +21,12 @@ fn render_file(file, output) {
 }
 
 fn enum(enum) {
-    output.line(`enum ${enum.name} : ${enum_type(enum)} {`);
+    output.append(`enum ${enum.name} : ${enum_type(enum)}`);
+    output.push_scope();
     for value in enum.values {
         output.line(`${value.name} = ${value.number},`);
     }
-    output.line("}");
+    output.pop_scope();
 }
 
 fn enum_type(enum) {
@@ -37,11 +38,12 @@ fn enum_type(enum) {
 }
 
 fn message(message) {
-    output.line(`${message_type(message)} ${message.name} {`);
+    output.append(`${message_type(message)} ${message.name}`);
+    output.push_scope();
     for field in message.fields {
         field!(field, message.options.fbs_msg_type);
     }
-    output.line("}");
+    output.pop_scope();
 }
 
 fn message_type(message) {
