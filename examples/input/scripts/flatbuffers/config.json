@@ -39,5 +39,14 @@
     "idlx.proto"
   ],
   "field_relative_parent_prefix": null,
-  "generated_header": null
+  "generated_header": null,
+  "scripted": {
+    "indent_char": "Space",
+    "scope": {
+      "open": "{",
+      "close": "}",
+      "indent": 4,
+      "open_on_new_line": false
+    }
+  }
 }

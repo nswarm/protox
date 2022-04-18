@@ -31,7 +31,7 @@ pub struct RendererConfig {
     /// ```
     pub type_config: HashMap<String, String>,
 
-    #[serde(default = "default_case_config")]
+    #[serde(default)]
     pub case_config: CaseConfig,
 
     /// Name of directory metadata files.
@@ -92,10 +92,10 @@ pub struct RendererConfig {
     ///
     /// Explicitly setting this to an empty array will disable the header entirely.
     pub generated_header: Option<Vec<String>>,
-}
 
-fn default_case_config() -> CaseConfig {
-    CaseConfig::default()
+    /// Options for the ScriptedRenderer Output methods related to scope.
+    #[serde(default)]
+    pub scripted: ScriptedConfig,
 }
 
 fn default_metadata_file_name() -> String {
@@ -118,6 +118,38 @@ pub struct CaseConfig {
     pub enum_value_name: Case,
     pub message_name: Case,
     pub field_name: Case,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub enum IndentChar {
+    Space,
+    Tab,
+}
+
+/// Options specific to the ScriptedRenderer.
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct ScriptedConfig {
+    /// Character to use when Output indent methods are used.
+    pub indent_char: IndentChar,
+}
+
+/// Options for the ScriptedRenderer Output methods related to scope.
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct Scope {
+    /// Character to use when opening a scope.
+    pub open: String,
+    /// Character to use when closing a scope.
+    pub close: String,
+    /// Number of `Scripted::indent_char` to use when indenting a scope.
+    pub indent: i32,
+    /// If true, opening a scope will end in a newline.
+    pub open_on_new_line: bool,
+}
+
+impl Default for IndentChar {
+    fn default() -> Self {
+        Self::Space
+    }
 }
 
 impl Default for CaseConfig {
@@ -148,6 +180,7 @@ impl Default for RendererConfig {
             ignored_imports: vec![],
             field_relative_parent_prefix: None,
             generated_header: None,
+            scripted: Default::default(),
         }
     }
 }

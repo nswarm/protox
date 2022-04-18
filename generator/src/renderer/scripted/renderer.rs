@@ -58,12 +58,12 @@ impl ScriptedRenderer {
     ) -> Result<()> {
         let mut scope = Scope::new();
         let ast = self.main_ast_or_error()?;
-        let output = Output::new();
+        let output = Output::with_config(self.config.scripted.clone());
         let result: Output = self
             .engine
             .call_fn(&mut scope, ast, fn_name, (context, output))
             .with_context(|| format!("Error returned from script function: {}'", fn_name))?;
-        writer.write(result.to_owned().as_bytes())?;
+        writer.write(result.to_string().as_bytes())?;
         Ok(())
     }
 
