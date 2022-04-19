@@ -15,9 +15,13 @@ jobs:
     steps:
       - name: Setup protoc
         uses: arduino/setup-protoc@v1.1.2
-    
+
       - name: Checkout repository
         uses: actions/checkout@v2
+
+      - name: Setup git for submodule pull through cargo
+        shell: bash
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
       - name: Generate code coverage
         run: cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
