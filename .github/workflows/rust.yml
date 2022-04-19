@@ -18,6 +18,7 @@ jobs:
         uses: arduino/setup-protoc@v1.1.2
 
       - uses: actions/checkout@v2
+      - uses: webfactory/ssh-agent@v0.5.4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
