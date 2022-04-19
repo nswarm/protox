@@ -1,4 +1,4 @@
-[![Rust](https://github.com/nswarm/idlx/actions/workflows/rust.yml/badge.svg)](https://github.com/nswarm/idlx/actions/workflows/rust.yml)
+[![CI](https://github.com/nswarm/idlx/actions/workflows/rust.yml/badge.svg)](https://github.com/nswarm/idlx/actions/workflows/rust.yml)
 
 # idlx
 
