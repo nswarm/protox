@@ -2,9 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - codecov.yml
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - codecov.yml
 
 jobs:
   build-and-test:
