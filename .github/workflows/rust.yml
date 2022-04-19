@@ -6,22 +6,22 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  PROTOC_NO_VENDOR: 1
-
 jobs:
   build-and-test:
-    name: Rust project
+    name: Rust
     runs-on: ubuntu-latest
     steps:
       - name: Setup protoc
         uses: arduino/setup-protoc@v1.1.2
 
       - uses: actions/checkout@v2
+        with:
+          submodules: true
 
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+
       - uses: actions-rs/cargo@v1
         with:
           command: build
