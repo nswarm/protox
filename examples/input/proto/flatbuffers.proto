@@ -2,7 +2,7 @@
 
 syntax = "proto3";
 
-import "idlx.proto";
+import "protox.proto";
 
 package fbs;
 
@@ -10,12 +10,12 @@ package fbs;
 // todo    attribute "priority";
 
 enum ByteEnum {
-  option (idlx.enum_key_value) = "enum_type=byte";
+  option (protox.enum_key_value) = "enum_type=byte";
   Default = 0;
 }
 
 enum Int64Enum {
-  option (idlx.enum_key_value) = "enum_type=int64";
+  option (protox.enum_key_value) = "enum_type=int64";
   Unused = 0;
 }
 
@@ -34,13 +34,13 @@ message OtherTableB {
 }
 
 message Union {
-  option (idlx.msg_key_value) = "msg_type=union";
+  option (protox.msg_key_value) = "msg_type=union";
   OtherTableA a = 1;
   OtherTableA b = 2;
 }
 
 message Struct {
-  option (idlx.msg_key_value) = "msg_type=struct";
+  option (protox.msg_key_value) = "msg_type=struct";
   float x = 1;
   float y = 2;
   float z = 3;
@@ -48,10 +48,10 @@ message Struct {
 
 message Table {
   bool bool_value = 1;
-  int32 byte_value = 2 [(idlx.field_key_value) = "field_type=byte"];
-  int32 ubyte_value = 3 [(idlx.field_key_value) = "field_type=ubyte"];
-  int32 short_value = 4 [(idlx.field_key_value) = "field_type=short"];
-  int32 ushort_value = 5 [(idlx.field_key_value) = "field_type=ushort"];
+  int32 byte_value = 2 [(protox.field_key_value) = "field_type=byte"];
+  int32 ubyte_value = 3 [(protox.field_key_value) = "field_type=ubyte"];
+  int32 short_value = 4 [(protox.field_key_value) = "field_type=short"];
+  int32 ushort_value = 5 [(protox.field_key_value) = "field_type=ushort"];
   int32 i32_value = 6;
   uint32 u32_value = 7;
   float f32_value = 8;

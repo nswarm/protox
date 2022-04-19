@@ -1,28 +1,28 @@
-[![CI](https://github.com/nswarm/idlx/workflows/CI/badge.svg)](https://github.com/nswarm/idlx/actions/workflows/rust.yml)
+[![CI](https://github.com/nswarm/protox/workflows/CI/badge.svg)](https://github.com/nswarm/protox/actions/workflows/rust.yml)
 
-# idlx
+# protox
 
-idlx is an executable that generates code, type definitions, or related output based on an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). It uses types defined by the IDL and renders [handlebars](https://handlebarsjs.com/) templates.
+protox is an executable that generates code, type definitions, or related output based on an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). It uses types defined by the IDL and renders [handlebars](https://handlebarsjs.com/) templates.
 
-idlx is built to generate output based on a set of types or APIs. idlx can eliminate the need to write IDL parsing logic or a protobuf compiler plugin by letting you get straight to writing templates for the existing context hierarchy.
+protox is built to generate output based on a set of types or APIs. protox can eliminate the need to write IDL parsing logic or a protobuf compiler plugin by letting you get straight to writing templates for the existing context hierarchy.
 
 You as a user provide:
 - A set of files written in a supported IDL, e.g. Google's protobuf IDL.
 - A configuration file that defines the specifics of your output, e.g. naming conventions of your output.
 - A set of handlebars template files that structure the data when rendering.
 
-idlx produces:
+protox produces:
 - A set of files based on the IDL definitions, e.g. equivalent type definitions across multiple languages.
 
 ## Installation
 
-Currently idlx must be cloned/downloaded from source and built with `cargo build`. Then you can run it with `cargo run -- <idlx args go here>`.
+Currently protox must be cloned/downloaded from source and built with `cargo build`. Then you can run it with `cargo run -- <protox args go here>`.
 
 ## Usage
 
-Run `idlx --help` to get information on the command line usage.
+Run `protox --help` to get information on the command line usage.
 
-Take a look at `examples/run-examples.sh` which runs idlx on the input inside `examples/input` and will produce sets of output in `examples/output`.
+Take a look at `examples/run-examples.sh` which runs protox on the input inside `examples/input` and will produce sets of output in `examples/output`.
 
 See [Templates](#templates) below for defining your own template set.
 
@@ -39,11 +39,11 @@ Protobuf generated code:
 - All [supported protobuf languages](https://developers.google.com/protocol-buffers) via the protobuf compiler itself (protoc)
 - Rust via [prost](https://github.com/tokio-rs/prost)
 
-See the `examples/run-examples.sh` script for various ways of using idlx.
+See the `examples/run-examples.sh` script for various ways of using protox.
 
 #### Built-in Templates
 
-idlx was primarily built to generate boilerplate code for [FFI](https://en.wikipedia.org/wiki/Foreign_function_interface) between two languages. The built-in templates provide an example of this between Rust and C#.
+protox was primarily built to generate boilerplate code for [FFI](https://en.wikipedia.org/wiki/Foreign_function_interface) between two languages. The built-in templates provide an example of this between Rust and C#.
 
 The user designates a **server** language and a **client** language. Code is generated slightly differently for each:
 - Server language: Classes and a set of C functions for accessing the fields through an opaque pointer.
@@ -55,13 +55,13 @@ See [Server/Client Templates Background](#serverclient-templates-background) bel
 
 ## Templates
 
-Templates are rendered using [Handlebars](https://handlebarsjs.com/). Specifically idlx uses [handlebars-rust](https://github.com/sunng87/handlebars-rust) which supports the majority of handlebars functionality.
+Templates are rendered using [Handlebars](https://handlebarsjs.com/). Specifically protox uses [handlebars-rust](https://github.com/sunng87/handlebars-rust) which supports the majority of handlebars functionality.
 
 ### Setup
 
-idlx requires only a couple files. `file.hbs` is the root of all templates. `config.json` is how you configure the data available in the context when rendering templates.
+protox requires only a couple files. `file.hbs` is the root of all templates. `config.json` is how you configure the data available in the context when rendering templates.
 
-**Note:** You can quickly initialize a directory with default files using `idlx --init`.
+**Note:** You can quickly initialize a directory with default files using `protox --init`.
 
 Required:
 - config.json
@@ -73,17 +73,17 @@ Optional:
 
 ### Configuration
 
-`config.json` defines how the idlx renderer contexts are filled with data. The best source for information on what each field does is the [renderer_config.rs](https://github.com/nswarm/idlx/blob/main/runner/src/template_renderer/renderer_config.rs).
+`config.json` defines how the protox renderer contexts are filled with data. The best source for information on what each field does is the [renderer_config.rs](https://github.com/nswarm/protox/blob/main/runner/src/template_renderer/renderer_config.rs).
 
 ### Data Context
 
 The data available when rendering a template (e.g. what `name` is when you say `{{name}}`) is defined in context objects passed to the handlebars renderer.
 
-All context data structures can be seen [here](https://github.com/nswarm/idlx/tree/main/runner/src/template_renderer/context). `file.rs` and `metadata.rs` map to `file.hbs` and `metadata.hbs`, the rest are contained within those.
+All context data structures can be seen [here](https://github.com/nswarm/protox/tree/main/runner/src/template_renderer/context). `file.rs` and `metadata.rs` map to `file.hbs` and `metadata.hbs`, the rest are contained within those.
 
 ### Directory Metadata - `metadata.hbs`
 
-idlx supports generating an additional metadata file for each directory that has information about the generated files. By including a `metadata.hbs` in your template source directory, a `metadata` file will be generated using the [MetadataContext](https://github.com/nswarm/idlx/blob/main/runner/src/template_renderer/context/metadata.rs) within each generated directory.
+protox supports generating an additional metadata file for each directory that has information about the generated files. By including a `metadata.hbs` in your template source directory, a `metadata` file will be generated using the [MetadataContext](https://github.com/nswarm/protox/blob/main/runner/src/template_renderer/context/metadata.rs) within each generated directory.
 
 ### Using Other Template Files
 
@@ -120,7 +120,7 @@ Fairly self-explanatory:
 
 #### `indent` Helper for Partials
 
-There's a small bug in the template library that does not respect callsite indentation in [partials](https://handlebarsjs.com/guide/partials.html), e.g. `{{> other_template_name}}`. idlx contains a workaround helper for this feature that can be used like so:
+There's a small bug in the template library that does not respect callsite indentation in [partials](https://handlebarsjs.com/guide/partials.html), e.g. `{{> other_template_name}}`. protox contains a workaround helper for this feature that can be used like so:
 ```handlebars
 {{#indent 4}}
 {{> package_tree_node}}
@@ -131,18 +131,18 @@ This will indent all content rendered by the partial by 4 spaces. If you're only
 
 ## Roadmap
 
-While idlx is largely functional, there's a few things it does not yet support, and a few quality of life features I intend on adding. 
+While protox is largely functional, there's a few things it does not yet support, and a few quality of life features I intend on adding. 
 
 - Retain comments from source protos.
 - Protobuf `oneof` types.
 - Protobuf nested types.
 - Support for always using the fully qualified type name.
 - Filtering input descriptor set based on e.g. message options.
-- Template validation tests, so users can specify the expected output of their set of templates to verify nothing breaks e.g. when upgrading idlx's version.
+- Template validation tests, so users can specify the expected output of their set of templates to verify nothing breaks e.g. when upgrading protox's version.
 
 ## Architecture
 
-idlx operates in three main stages:
+protox operates in three main stages:
 1. IDL -> Protobuf.
 2. Protobuf -> Template Contexts.
 3. Template Contexts -> Rendered Templates.
@@ -153,11 +153,11 @@ Google's protobuf compiler `protoc` already can compile `.proto` files to a "des
 
 ### 2. Protobuf -> Template Contexts
 
-The major thing idlx does is convert a protobuf descriptor set into a hierarchy of "Context" objects.
+The major thing protox does is convert a protobuf descriptor set into a hierarchy of "Context" objects.
 
 ### 3. Template Contexts -> Rendered Templates.
 
-The [Handlebars template library](https://handlebarsjs.com/) (specifically, idlx uses [handlebars-rust](https://github.com/sunng87/handlebars-rust)) takes in objects defined in json which can be directly referenced within the template. This step serializes the context objects into json, and writes out files using the user-defined templates with the context as data sources.
+The [Handlebars template library](https://handlebarsjs.com/) (specifically, protox uses [handlebars-rust](https://github.com/sunng87/handlebars-rust)) takes in objects defined in json which can be directly referenced within the template. This step serializes the context objects into json, and writes out files using the user-defined templates with the context as data sources.
 
 ### Examples
 
@@ -195,7 +195,7 @@ Would be parsed into a `MessageContext` and two `FieldContexts` that would look 
 
 The above json is a simplification, you can see all the provided values inside the `runner/src/template_renderer/context` structs.
 
-idlx takes a `config.json` file alongside the template files that can customize the styles, name casing, and more that are provided in the context objects. The intent is to simplify the template files themselves as much as possible, within reason. idlx is built to grow to new use cases over time, expanding its flexibility through configuration.
+protox takes a `config.json` file alongside the template files that can customize the styles, name casing, and more that are provided in the context objects. The intent is to simplify the template files themselves as much as possible, within reason. protox is built to grow to new use cases over time, expanding its flexibility through configuration.
 
 Using a template like below defined in `file.hbs`...
 
@@ -236,7 +236,7 @@ Check out `examples/input/templates` for complete examples of templates and conf
 
 ### Protobuf Compiler
 
-The way that **protoc**, the protobuf compiler, works is it is an executable that can run another executable as a plugin, passing it data on stdin and receiving results on stdout. For this to work inside of idlx, we have the **cli** executable call the protoc executable with our **protoc-plugin** executable. **protoc-plugin** then calls into our **core** library code.
+The way that **protoc**, the protobuf compiler, works is it is an executable that can run another executable as a plugin, passing it data on stdin and receiving results on stdout. For this to work inside of protox, we have the **cli** executable call the protoc executable with our **protoc-plugin** executable. **protoc-plugin** then calls into our **core** library code.
 
 The **protoc** executable is assumed to be on your PATH. You can directly specify which protoc to use by setting the environment variable `PROTOC_EXE` to the path of the executable.
 
@@ -314,7 +314,7 @@ The benefits are it gives you a way to access objects on the other side without 
 
 There's a big downside though: that's a lot of boilerplate! It's also very brittle -- there's a lot of ways to mess it up when writing it by hand across many types.
 
-That's where idlx comes in. It generates code like the above so that you don't have to, eliminating the possibility of hand-written bugs.
+That's where protox comes in. It generates code like the above so that you don't have to, eliminating the possibility of hand-written bugs.
 
 ## License
 

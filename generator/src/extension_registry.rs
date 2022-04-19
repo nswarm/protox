@@ -1,4 +1,4 @@
-//! Create the ExtensionRegistry needed for idlx to function.
+//! Create the ExtensionRegistry needed for protox to function.
 //! This is in a separate file so it's easy to find and register new options.
 use prost::ExtensionRegistry;
 

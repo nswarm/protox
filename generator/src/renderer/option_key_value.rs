@@ -1,4 +1,4 @@
-//! Handling related to arbitrary key=value pairs specified in custom idlx proto options.
+//! Handling related to arbitrary key=value pairs specified in custom protox proto options.
 use anyhow::{anyhow, Result};
 use prost::extension::ExtensionSetError;
 use prost::{Extendable, Extension, ExtensionImpl};

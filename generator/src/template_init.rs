@@ -24,11 +24,11 @@ fn write_file_template(path: &Path) -> Result<()> {
     let mut config_file =
         util::create_file_or_error(&path.join(FILE_TEMPLATE_NAME).with_extension(TEMPLATE_EXT))?;
     let contents = r#"{{!
-This is the root template file for most idlx template output.
+This is the root template file for most protox template output.
 
-See the example templates for usage examples: https://github.com/nswarm/idlx/tree/main/examples/input
+See the example templates for usage examples: https://github.com/nswarm/protox/tree/main/examples/input
 
-Context data objects for information on what data is available in this template: https://github.com/nswarm/idlx/tree/main/runner/src/template_renderer/context
+Context data objects for information on what data is available in this template: https://github.com/nswarm/protox/tree/main/runner/src/template_renderer/context
 
 For more information on Handlebars: https://handlebarsjs.com/guide/
 }}

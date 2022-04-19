@@ -36,7 +36,7 @@
     "options_impl.proto"
   ],
   "ignored_imports": [
-    "idlx.proto"
+    "protox.proto"
   ],
   "field_relative_parent_prefix": null,
   "generated_header": null,

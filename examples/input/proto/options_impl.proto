@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-import "idlx.proto";
+import "protox.proto";
 
 package opt;
 
-option (idlx.file_key_value) = "specialkey=specialvalue";
+option (protox.file_key_value) = "specialkey=specialvalue";

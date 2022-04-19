@@ -12,7 +12,7 @@ syntax = "proto3";
 
 import "google/protobuf/descriptor.proto";
 
-package idlx.fbs;
+package protox.fbs;
 
 extend google.protobuf.FileOptions {
   string attribute = 51000;

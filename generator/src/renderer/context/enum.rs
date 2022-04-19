@@ -39,8 +39,8 @@ pub struct EnumContext {
     /// (NOT YET SUPPORTED) Built-in proto option names and types can be seen here:
     /// https://docs.rs/prost-types/latest/prost_types/struct.EnumOptions.html
     ///
-    /// Additionally, a few idlx-specific options are supported. See the proto files at
-    /// `idlx/proto_options/protos` for more info.
+    /// Additionally, a few protox-specific options are supported. See the proto files at
+    /// `protox/proto_options/protos` for more info.
     #[serde(serialize_with = "serialize_enum_options", skip_deserializing)]
     options: Option<EnumOptions>,
 }

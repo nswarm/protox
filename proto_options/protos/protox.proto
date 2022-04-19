@@ -1,5 +1,5 @@
 //
-// This file contains general idlx protobuf options.
+// This file contains general protox protobuf options.
 //
 
 // Proto tag ids: 50000-50999
@@ -8,7 +8,7 @@ syntax = "proto3";
 
 import "google/protobuf/descriptor.proto";
 
-package idlx;
+package protox;
 
 extend google.protobuf.FileOptions {
   // A user defined key-value pair in the format:
@@ -16,7 +16,7 @@ extend google.protobuf.FileOptions {
   // In templates, the value can be retrieved using {{options.<key>}}.
   //
   // For example:
-  //    option (idlx.file_key_value) = "my_key=my_value";
+  //    option (protox.file_key_value) = "my_key=my_value";
   // in a template file:
   //    My value is {{options.my_key}}!
   // would produce:
@@ -32,7 +32,7 @@ extend google.protobuf.EnumOptions {
   // In templates, the value can be retrieved using {{options.<key>}}.
   //
   // For example:
-  //    option (idlx.enum_key_value) = "my_key=my_value";
+  //    option (protox.enum_key_value) = "my_key=my_value";
   // in a template file:
   //    My value is {{options.my_key}}!
   // would produce:
@@ -48,7 +48,7 @@ extend google.protobuf.MessageOptions {
   // In templates, the value can be retrieved using {{options.<key>}}.
   //
   // For example:
-  //    option (idlx.msg_key_value) = "my_key=my_value";
+  //    option (protox.msg_key_value) = "my_key=my_value";
   // in a template file:
   //    My value is {{options.my_key}}!
   // would produce:
@@ -64,7 +64,7 @@ extend google.protobuf.FieldOptions {
   // In templates, the value can be retrieved using {{options.<key>}}.
   //
   // For example:
-  //    option (idlx.field_key_value) = "my_key=my_value";
+  //    option (protox.field_key_value) = "my_key=my_value";
   // in a template file:
   //    My value is {{options.my_key}}!
   // would produce:
@@ -78,7 +78,7 @@ extend google.protobuf.FieldOptions {
   // in protobuf, but you want to interpret differently in your generated code.
   //
   // For example:
-  //    int32 my_id = 1 [(idlx.native_type) = "IdType"];
+  //    int32 my_id = 1 [(protox.native_type) = "IdType"];
   // in a template file:
   //    {{relative_type}} {{field_name}};
   // would produce:
