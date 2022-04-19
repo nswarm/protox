@@ -18,6 +18,10 @@ jobs:
         with:
           submodules: true
 
+      - name: Setup git for submodule pull through cargo
+        shell: bash
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
