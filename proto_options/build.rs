@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    println!("cargo:rerun-if-changed=proto_options");
+    println!("cargo:rerun-if-changed=protos");
     println!("cargo:rerun-if-changed=build.rs");
 
     let include_dir = PathBuf::from("protos");

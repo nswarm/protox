@@ -1,5 +1,5 @@
 use crate::lang_config::LangConfig;
-use crate::{extension_registry, Config};
+use crate::Config;
 use anyhow::{anyhow, Context, Result};
 use prost::Message;
 use prost_types::FileDescriptorSet;
@@ -136,8 +136,10 @@ pub(crate) fn load_descriptor_set(config: &Config) -> Result<FileDescriptorSet> 
             path.display_normalized()
         )
     })?;
-    let descriptor_set =
-        Message::decode_with_extensions(bytes.as_slice(), extension_registry::create())?;
+    let descriptor_set = Message::decode_with_extensions(
+        bytes.as_slice(),
+        proto_options::create_extension_registry(),
+    )?;
     Ok(descriptor_set)
 }
 

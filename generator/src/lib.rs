@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 
 mod config;
-mod extension_registry;
 mod idl;
 mod in_out_config;
 mod in_out_generator;
