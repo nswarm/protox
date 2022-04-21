@@ -1,8 +1,9 @@
 //
 // This file contains general protox protobuf options.
 //
-
-// Proto tag ids: 50000-50999
+// protox uses option #s starting at 91000 in an attempt to reduce collision with user options.
+// If they do collide, you can change them without issue.
+//
 
 syntax = "proto3";
 
@@ -23,7 +24,7 @@ extend google.protobuf.FileOptions {
   //    My value is my_value!
   //
   // The option can be repeated for additional kv pairs.
-  repeated string file_key_value = 50000;
+  repeated string file_key_value = 91000;
 }
 
 extend google.protobuf.EnumOptions {
@@ -39,7 +40,7 @@ extend google.protobuf.EnumOptions {
   //    My value is my_value!
   //
   // The option can be repeated for additional kv pairs.
-  repeated string enum_key_value = 50000;
+  repeated string enum_key_value = 91000;
 }
 
 extend google.protobuf.MessageOptions {
@@ -55,7 +56,7 @@ extend google.protobuf.MessageOptions {
   //    My value is my_value!
   //
   // The option can be repeated for additional kv pairs.
-  repeated string msg_key_value = 50000;
+  repeated string msg_key_value = 91000;
 }
 
 extend google.protobuf.FieldOptions {
@@ -71,7 +72,7 @@ extend google.protobuf.FieldOptions {
   //    My value is my_value!
   //
   // The option can be repeated for additional kv pairs.
-  repeated string field_key_value = 50000;
+  repeated string field_key_value = 91000;
 
   // When parsing this type in templates, use this value instead of the
   // protobuf type. This allows you to differentiate between types that are the same
@@ -83,5 +84,5 @@ extend google.protobuf.FieldOptions {
   //    {{relative_type}} {{field_name}};
   // would produce:
   //    IdType my_id;
-  string native_type = 50001;
+  string native_type = 91001;
 }

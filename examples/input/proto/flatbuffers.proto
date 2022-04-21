@@ -3,6 +3,7 @@
 syntax = "proto3";
 
 import "protox.proto";
+import "fbs.proto";
 
 package fbs;
 
@@ -10,12 +11,12 @@ package fbs;
 // todo    attribute "priority";
 
 enum ByteEnum {
-  option (protox.enum_key_value) = "enum_type=byte";
+  option (fbs.enum_type) = BYTE;
   Default = 0;
 }
 
-enum Int64Enum {
-  option (protox.enum_key_value) = "enum_type=int64";
+enum LongEnum {
+  option (fbs.enum_type) = LONG;
   Unused = 0;
 }
 
@@ -34,13 +35,13 @@ message OtherTableB {
 }
 
 message Union {
-  option (protox.msg_key_value) = "msg_type=union";
+  option (fbs.message_type) = UNION;
   OtherTableA a = 1;
   OtherTableA b = 2;
 }
 
 message Struct {
-  option (protox.msg_key_value) = "msg_type=struct";
+  option (fbs.message_type) = STRUCT;
   float x = 1;
   float y = 2;
   float z = 3;
@@ -48,10 +49,10 @@ message Struct {
 
 message Table {
   bool bool_value = 1;
-  int32 byte_value = 2 [(protox.field_key_value) = "field_type=byte"];
-  int32 ubyte_value = 3 [(protox.field_key_value) = "field_type=ubyte"];
-  int32 short_value = 4 [(protox.field_key_value) = "field_type=short"];
-  int32 ushort_value = 5 [(protox.field_key_value) = "field_type=ushort"];
+  int32 byte_value = 2 [(fbs.field_type) = "byte"];
+  int32 ubyte_value = 3 [(fbs.field_type) = "ubyte"];
+  int32 short_value = 4 [(fbs.field_type) = "short"];
+  int32 ushort_value = 5 [(fbs.field_type) = "ushort"];
   int32 i32_value = 6;
   uint32 u32_value = 7;
   float f32_value = 8;

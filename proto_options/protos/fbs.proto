@@ -1,0 +1,38 @@
+//
+// This file contains protobuf options for protox flatbuffers scripted rendering.
+// Uses proto ids starting at 92000
+//
+
+syntax = "proto3";
+
+import "google/protobuf/descriptor.proto";
+
+package fbs;
+
+enum IntType {
+  BYTE = 0;
+  UBYTE = 1;
+  SHORT = 2;
+  USHORT = 3;
+  INT = 4;
+  UINT = 5;
+  LONG = 6;
+  ULONG = 7;
+}
+
+enum MessageType {
+  STRUCT = 0;
+  UNION = 1;
+}
+
+extend google.protobuf.EnumOptions {
+  IntType enum_type = 92000;
+}
+
+extend google.protobuf.MessageOptions {
+  MessageType message_type = 92000;
+}
+
+extend google.protobuf.FieldOptions {
+  string field_type = 92000;
+}

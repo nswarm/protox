@@ -9,10 +9,11 @@ pub mod output;
 
 pub fn register(engine: &mut rhai::Engine) {
     output::register(engine);
-    context(engine);
+    register_context(engine);
+    proto_options::register_script_apis(engine);
 }
 
-fn context(engine: &mut rhai::Engine) {
+fn register_context(engine: &mut rhai::Engine) {
     engine.register_global_module(exported_module!(context).into());
 }
 

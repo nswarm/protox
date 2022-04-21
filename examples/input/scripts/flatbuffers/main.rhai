@@ -4,6 +4,8 @@ fn render_file(file, output) {
     // Messages from: ${file.source_file}
     `);
 
+    output.line(file.options.burrito);
+
     for imp in file.imports {
         output.line(`include "${imp.file_name}.fbs";`);
     }
@@ -30,45 +32,55 @@ fn enum(enum) {
 }
 
 fn enum_type(enum) {
-    if enum.options.enum_type != "" {
-        enum.options.enum_type
+    if enum.options.fbs_enum_type != "" {
+        enum.options.fbs_enum_type
     } else {
         "ubyte"
     }
 }
 
 fn message(message) {
-    output.append(`${message_type(message)} ${message.name}`);
+    let message_type = message_type(message);
+    output.append(`${message_type} ${message.name}`);
     output.push_scope();
     for field in message.fields {
-        field!(field, message.options.msg_type);
+        field!(field, message_type);
     }
     output.pop_scope();
 }
 
 fn message_type(message) {
-    if message.options.msg_type != "" {
-        message.options.msg_type
+    if message.options.fbs_message_type != "" {
+        message.options.fbs_message_type
     } else {
         "table"
     }
 }
 
-fn field(field, msg_type) {
+fn field(field, message_type) {
     if field.is_map {
         print(`WARNING: Field '${field.name}' has a map, which are unsupported in fbs.`);
         return;
     }
+    let field_type = field_type(field);
     if field.is_array {
-        output.append(`${field.name}: [${field.relative_type}]`);
+        output.append(`${field.name}: [${field_type}]`);
     } else {
-        output.append(`${field.name}: ${field.relative_type}`);
+        output.append(`${field.name}: ${field_type}`);
     }
-    output.line(field_separator(field, msg_type));
+    output.line(field_separator(field, message_type));
 }
 
-fn field_separator(field, msg_type) {
-    if msg_type == "union" {
+fn field_type(field) {
+    if field.options.fbs_field_type != "" {
+        field.options.fbs_field_type
+    } else {
+        field.relative_type
+    }
+}
+
+fn field_separator(field, message_type) {
+    if message_type == "union" {
         ","
     } else {
         ";"

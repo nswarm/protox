@@ -8,6 +8,8 @@ build = "build.rs"
 # Using my branch of prost which has support for custom options.
 # https://github.com/tokio-rs/prost/pull/591
 prost = { git = "https://github.com/nswarm/prost", branch = "extensions" }
+prost-types = { git = "https://github.com/nswarm/prost", branch = "extensions" }
+rhai = { version = "1.5", features = ["sync"] }
 
 [build-dependencies]
 # Using my branch of prost which has support for custom options.

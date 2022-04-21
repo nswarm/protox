@@ -36,7 +36,8 @@
     "options_impl.proto"
   ],
   "ignored_imports": [
-    "protox.proto"
+    "protox.proto",
+    "fbs.proto"
   ],
   "field_relative_parent_prefix": null,
   "generated_header": null,
