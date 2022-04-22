@@ -112,7 +112,7 @@ impl FieldContext {
         let parent_prefix = config.field_relative_parent_prefix.as_ref();
         let context = Self {
             field_name: field_name(field, &config)?,
-            fully_qualified_type: Some(type_path.to_owned()),
+            fully_qualified_type: Some(type_path.to_string()),
             relative_type: Some(type_path.relative_to(package, parent_prefix)),
             is_array: is_array(field),
             is_map: false,
@@ -142,8 +142,8 @@ impl FieldContext {
             is_array: false,
             is_map: true,
             is_oneof: is_oneof(field),
-            fully_qualified_key_type: Some(key_type_path.to_owned()),
-            fully_qualified_value_type: Some(value_type_path.to_owned()),
+            fully_qualified_key_type: Some(key_type_path.to_string()),
+            fully_qualified_value_type: Some(value_type_path.to_string()),
             relative_key_type: Some(key_type_path.relative_to(package, parent_prefix)),
             relative_value_type: Some(value_type_path.relative_to(package, parent_prefix)),
             options: field.options.clone(),

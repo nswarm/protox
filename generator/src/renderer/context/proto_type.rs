@@ -73,7 +73,7 @@ fn complex_type_path<'a>(
     if change_case == ChangeCase::Yes {
         type_path.set_name_case(Some(config.case_config.message_name));
     }
-    type_path.set_package_case(Some(config.case_config.import));
+    type_path.set_package_case(Some(config.case_config.package));
     type_path.set_separator(&config.package_separator);
     type_path
 }

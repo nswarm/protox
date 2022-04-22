@@ -113,7 +113,8 @@ fn default_package_file_name() -> String {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CaseConfig {
     pub file_name: Case,
-    pub import: Case,
+    // This is used for both package declarations and imports.
+    pub package: Case,
     pub enum_name: Case,
     pub enum_value_name: Case,
     pub message_name: Case,
@@ -158,7 +159,7 @@ impl Default for CaseConfig {
     fn default() -> Self {
         Self {
             file_name: Case::LowerKebab,
-            import: Case::LowerSnake,
+            package: Case::LowerSnake,
             enum_name: Case::UpperCamel,
             enum_value_name: Case::UpperCamel,
             message_name: Case::UpperCamel,

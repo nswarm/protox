@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize, Serializer};
 
 use crate::renderer::context::{EnumContext, ImportContext, MessageContext};
 use crate::renderer::option_key_value::insert_custom_options;
+use crate::renderer::proto::TypePath;
 use crate::renderer::RendererConfig;
 use crate::util;
 
@@ -15,6 +16,9 @@ use crate::util;
 pub struct FileContext {
     /// Relative path to the proto file this context is based on.
     source_file: String,
+
+    /// Package defined in the file.
+    package: String,
 
     /// Other proto file imports of this proto file.
     imports: Vec<ImportContext>,
@@ -58,6 +62,7 @@ impl FileContext {
         );
         let context = Self {
             source_file: source_file(file)?,
+            package: package(file, &config),
             imports: imports(file, &config.ignored_imports)?,
             enums: enums(file, config)?,
             messages: messages(file, file.package.as_ref(), config)?,
@@ -87,6 +92,18 @@ fn source_file(file: &FileDescriptorProto) -> Result<String> {
     file.name
         .clone()
         .ok_or(anyhow!("File has no 'name'".to_owned()))
+}
+
+fn package(file: &FileDescriptorProto, config: &RendererConfig) -> String {
+    match &file.package {
+        None => String::new(),
+        Some(package) => {
+            let mut type_path = TypePath::from_package(package);
+            type_path.set_separator(&config.package_separator);
+            type_path.set_package_case(Some(config.case_config.package));
+            type_path.to_string()
+        }
+    }
 }
 
 fn imports(file: &FileDescriptorProto, ignored_imports: &[String]) -> Result<Vec<ImportContext>> {
@@ -186,11 +203,13 @@ fn try_insert_option<T: Serialize>(
 
 #[cfg(test)]
 mod tests {
+    use crate::renderer::case::Case;
     use anyhow::Result;
     use prost::{Extendable, ExtensionSet};
     use prost_types::{FileDescriptorProto, FileOptions};
 
     use crate::renderer::context::FileContext;
+    use crate::renderer::renderer_config::CaseConfig;
     use crate::renderer::RendererConfig;
 
     #[test]
@@ -203,6 +222,27 @@ mod tests {
         };
         let context = FileContext::new(&file, &config)?;
         assert_eq!(context.source_file, name);
+        Ok(())
+    }
+
+    #[test]
+    fn package() -> Result<()> {
+        let config = RendererConfig {
+            package_separator: "::".to_string(),
+            case_config: CaseConfig {
+                package: Case::Upper,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let name = "file_name".to_owned();
+        let file = FileDescriptorProto {
+            name: Some(name.clone()),
+            package: Some("some.package.name".to_owned()),
+            ..Default::default()
+        };
+        let context = FileContext::new(&file, &config)?;
+        assert_eq!(context.package, "SOME::PACKAGE::NAME");
         Ok(())
     }
 

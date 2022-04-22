@@ -74,7 +74,7 @@ impl<'a> TypePath<'a> {
         self.separator.unwrap_or(PACKAGE_SEPARATOR_STR)
     }
 
-    pub fn to_owned(&self) -> String {
+    pub fn to_string(&self) -> String {
         let mut components = self
             .components
             .iter()
@@ -95,7 +95,7 @@ impl<'a> TypePath<'a> {
         parent_prefix: Option<F>,
     ) -> String {
         let package = match package {
-            None => return self.to_owned(),
+            None => return self.to_string(),
             Some(package) => TypePath::from_package(package.as_ref()),
         };
         let matching_depth = TypePath::matching_depth(&self, &package) as usize;
@@ -117,7 +117,7 @@ impl<'a> TypePath<'a> {
             // self:    root.sub.TypeName
             // package: root.sub.inner.pkg
             // In this case, not using a prefix would conflict.
-            return self.to_owned();
+            return self.to_string();
         }
         self.to_relative_string(matching_depth, full_prefix)
     }
@@ -318,46 +318,46 @@ mod tests {
         #[test]
         fn combines_package_and_type() {
             let path = TypePath::from_type("root.sub.TypeName");
-            assert_eq!(path.to_owned(), "root.sub.TypeName");
+            assert_eq!(path.to_string(), "root.sub.TypeName");
         }
 
         #[test]
         fn normalizes_incoming_package() {
             let path = TypePath::from_type(".root.sub.TypeName");
-            assert_eq!(path.to_owned(), "root.sub.TypeName");
+            assert_eq!(path.to_string(), "root.sub.TypeName");
         }
 
         #[test]
         fn uses_custom_separator() {
             let mut path = TypePath::from_type("root.sub.TypeName");
             path.set_separator("::");
-            assert_eq!(path.to_owned(), "root::sub::TypeName");
+            assert_eq!(path.to_string(), "root::sub::TypeName");
         }
 
         #[test]
         fn package_only() {
             let path = TypePath::from_package("root.sub");
-            assert_eq!(path.to_owned(), "root.sub");
+            assert_eq!(path.to_string(), "root.sub");
         }
 
         #[test]
         fn type_only() {
             let path = TypePath::from_type("TypeName");
-            assert_eq!(path.to_owned(), "TypeName");
+            assert_eq!(path.to_string(), "TypeName");
         }
 
         #[test]
         fn with_name_case() {
             let mut path = TypePath::from_type("root.sub.TypeName");
             path.set_name_case(Some(Case::UpperSnake));
-            assert_eq!(path.to_owned(), "root.sub.TYPE_NAME");
+            assert_eq!(path.to_string(), "root.sub.TYPE_NAME");
         }
 
         #[test]
         fn with_package_case() {
             let mut path = TypePath::from_type("rootPkg.subPkg.TypeName");
             path.set_package_case(Some(Case::UpperSnake));
-            assert_eq!(path.to_owned(), "ROOT_PKG.SUB_PKG.TypeName");
+            assert_eq!(path.to_string(), "ROOT_PKG.SUB_PKG.TypeName");
         }
     }
 
@@ -369,21 +369,21 @@ mod tests {
         fn no_package_uses_fully_qualified_type() {
             let qualified = TypePath::from_type("root.sub.TypeName");
             let result = qualified.relative_to::<&str, &str>(None, None);
-            assert_eq!(result, qualified.to_owned());
+            assert_eq!(result, qualified.to_string());
         }
 
         #[test]
         fn different_prefix_uses_fully_qualified_type() {
             let qualified = TypePath::from_type("root.sub.TypeName");
             let result = qualified.relative_to::<&str, &str>(Some("other.sub"), None);
-            assert_eq!(result, qualified.to_owned());
+            assert_eq!(result, qualified.to_string());
         }
 
         #[test]
         fn matching_longer_prefix_uses_fully_qualified_type() {
             let qualified = TypePath::from_type("root.sub.TypeName");
             let result = qualified.relative_to::<&str, &str>(Some("root.sub.sub2.sub3"), None);
-            assert_eq!(result, qualified.to_owned());
+            assert_eq!(result, qualified.to_string());
         }
 
         #[test]

@@ -23,6 +23,7 @@
   },
   "case_config": {
     "file_name": "lower_snake",
+    "package": "lower_snake",
     "import": "lower_snake",
     "enum_name": "UpperCamel",
     "enum_value_name": "UpperCamel",
