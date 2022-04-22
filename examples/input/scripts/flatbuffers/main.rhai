@@ -4,6 +4,7 @@ fn render_file(file, output) {
     // Messages from: ${file.source_file}
     `);
     namespace!();
+    attributes!();
     imports!();
     enums!();
     messages!();
@@ -15,6 +16,16 @@ fn namespace() {
         return;
     }
     output.line(`namespace ${file.package_};`);
+    output.line();
+}
+
+fn attributes() {
+    if file.options.fbs_attributes.len == 0 {
+        return;
+    }
+    for attr in file.options.fbs_attributes {
+        output.line(`attribute "${attr}";`);
+    }
     output.line();
 }
 

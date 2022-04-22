@@ -7,8 +7,7 @@ import "fbs.proto";
 
 package fbs;
 
-// todo    attribute "priority";
-//option (fbs.attribute) = "priority";
+option (fbs.file_attribute) = "priority";
 
 enum ByteEnum {
   option (fbs.enum_type) = BYTE;

@@ -31,7 +31,15 @@ fn message_type_display(message_type: MessageType) -> String {
 pub mod api {
     ////////////////////////////////////////////////////
     // FileOptions
-    // pub type FileOptions = prost_types::FileOptions;
+    pub type FileOptions = prost_types::FileOptions;
+
+    #[rhai_fn(get = "fbs_attributes")]
+    pub fn file_attribute(opt: &mut FileOptions) -> rhai::Dynamic {
+        opt.extension_data(extensions::fbs::FILE_ATTRIBUTE)
+            .map(Clone::clone)
+            .unwrap_or(Vec::new())
+            .into()
+    }
 
     ////////////////////////////////////////////////////
     // EnumOptions

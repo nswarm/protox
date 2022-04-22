@@ -25,6 +25,10 @@ enum MessageType {
   UNION = 1;
 }
 
+extend google.protobuf.FileOptions {
+  repeated string file_attribute = 92000;
+}
+
 extend google.protobuf.EnumOptions {
   IntType enum_type = 92000;
 }
