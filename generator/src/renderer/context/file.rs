@@ -74,6 +74,9 @@ impl FileContext {
     pub fn source_file(&self) -> &str {
         &self.source_file
     }
+    pub fn package(&self) -> &str {
+        &self.package
+    }
     pub fn imports(&self) -> &Vec<ImportContext> {
         &self.imports
     }

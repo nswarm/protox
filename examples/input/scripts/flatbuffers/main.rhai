@@ -3,23 +3,49 @@ fn render_file(file, output) {
     /////////////////////////////////////////////////
     // Messages from: ${file.source_file}
     `);
+    namespace!();
+    imports!();
+    enums!();
+    messages!();
+    return output;
+}
 
-    output.line(file.options.burrito);
+fn namespace() {
+    if (file.package_ == "") {
+        return;
+    }
+    output.line(`namespace ${file.package_};`);
+    output.line();
+}
 
+fn imports() {
+    if file.imports.len == 0 {
+        return;
+    }
     for imp in file.imports {
         output.line(`include "${imp.file_name}.fbs";`);
     }
     output.line();
+}
 
+fn enums() {
+    if file.enums.len == 0 {
+        return;
+    }
     for enum in file.enums {
         enum!(enum);
         output.line();
+    }
+}
+
+fn messages() {
+    if file.messages.len == 0 {
+        return;
     }
     for message in file.messages {
         message!(message);
         output.line();
     }
-    return output;
 }
 
 fn enum(enum) {

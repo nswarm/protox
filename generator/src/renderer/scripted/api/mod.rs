@@ -76,6 +76,10 @@ mod context {
     pub fn file_source_file(context: &mut FileContext) -> String {
         context.source_file().to_owned()
     }
+    #[rhai_fn(get = "package_")]
+    pub fn file_package(context: &mut FileContext) -> String {
+        context.package().to_owned()
+    }
     #[rhai_fn(get = "imports")]
     pub fn file_imports(context: &mut FileContext) -> rhai::Dynamic {
         context.imports().clone().into()

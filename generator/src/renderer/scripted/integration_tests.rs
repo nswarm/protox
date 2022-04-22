@@ -23,6 +23,14 @@ mod file_context {
         test_file_script(context, "output.append(context.source_file);", &expected)
     }
 
+    #[test]
+    fn package() -> Result<()> {
+        let proto = default_file_proto();
+        let context = FileContext::new(&proto, &RendererConfig::default())?;
+        let expected = context.package().to_owned();
+        test_file_script(context, "output.append(context.package_);", &expected)
+    }
+
     // Others accessors are tested in their own sections.
 }
 
