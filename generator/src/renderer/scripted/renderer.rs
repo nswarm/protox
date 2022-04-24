@@ -113,7 +113,7 @@ impl Renderer for ScriptedRenderer {
     }
 
     fn render_file<W: Write>(&self, context: FileContext, writer: &mut W) -> Result<()> {
-        self.render(Dynamic::from(context.clone()), RENDER_FILE_FN_NAME, writer)
+        self.render(Dynamic::from(context), RENDER_FILE_FN_NAME, writer)
     }
 }
 

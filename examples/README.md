@@ -1,6 +1,6 @@
 # protox Examples
 
-IDL and template inputs for all examples live in `input`
+Inputs for all examples live in `input` except for any that use built-ins such as `flatbuffers`, which is under `builtin` at the top of the repo.
 
 ## CLI Examples
 

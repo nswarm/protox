@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let protox_includes_dir = module_root.join("../proto_options/protos");
     let output_dir = PathBuf::from(env::var("OUT_DIR")?);
     let proto_out = output_dir.join("rust-proto");
-    let template_out = output_dir.join("rust-server");
+    let template_out = output_dir.join("rust-example");
 
     // Clear target dirs. (protox guards against creating output in non-empty directories.)
     clean_dir(&proto_out)?;
@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         output: proto_out,
     });
     config.templates.push(InOutConfig {
-        input: input_dir.join("templates").join("rust-server"),
+        input: input_dir.join("templates").join("rust-example"),
         output: template_out,
     });
 

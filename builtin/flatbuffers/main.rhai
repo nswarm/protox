@@ -15,7 +15,7 @@ fn render_file(file, output) {
 }
 
 fn namespace() {
-    if (file.package_ == "") {
+    if file.package_ == "" {
         return;
     }
     output.line(`namespace ${file.package_};`);
