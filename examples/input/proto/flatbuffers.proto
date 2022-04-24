@@ -63,6 +63,8 @@ message Table {
   Struct struct_value = 14;
   OtherTableA table_value = 15;
   Union union_value = 16;
+
+  int32 value_with_attrs = 17 [(fbs.field_attribute) = "attr0", (fbs.field_attribute) = "attr1", (fbs.field_attribute) = "attr2"];
 }
 // todo default
 // todo optional

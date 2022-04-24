@@ -7,18 +7,20 @@ pub fn register(engine: &mut rhai::Engine) {
         .register_fn("append", Output::append)
         .register_fn("line", Output::line)
         .register_fn("line", Output::newline)
+        .register_fn("space", Output::space)
+        .register_fn("spaces", Output::space)
         .register_fn("indent", Output::indent)
         .register_fn("unindent", Output::unindent)
         .register_fn("push_scope", Output::push_scope)
         .register_fn("pop_scope", Output::pop_scope);
 }
 
-/// NOTE: This API is used in rhai, so it follows rhai rules like always using &mut self and i64.
+/// NOTE: This API is used in rhai, so it follows rhai rules like always using &mut self and rhai::INT.
 #[derive(Default, Clone)]
 pub struct Output {
     config: ScriptedConfig,
     content: String,
-    current_indent: i64,
+    current_indent: rhai::INT,
 }
 
 impl Output {
@@ -48,11 +50,21 @@ impl Output {
         self.content.push('\n');
     }
 
-    pub fn indent(&mut self, amount: i64) {
+    pub fn space(&mut self) {
+        self.content.push(' ');
+    }
+
+    pub fn spaces(&mut self, amount: rhai::INT) {
+        for _ in 0..amount {
+            self.space();
+        }
+    }
+
+    pub fn indent(&mut self, amount: rhai::INT) {
         self.current_indent += amount;
     }
 
-    pub fn unindent(&mut self, amount: i64) {
+    pub fn unindent(&mut self, amount: rhai::INT) {
         self.current_indent = std::cmp::max(self.current_indent - amount, 0);
     }
 
@@ -76,12 +88,12 @@ impl Output {
             self.content.push(' ');
         }
         self.content.push_str(&self.config.scope.open);
-        self.indent(self.config.scope.indent as i64);
+        self.indent(self.config.scope.indent as rhai::INT);
         self.newline();
     }
 
     fn pop_scope(&mut self) {
-        self.unindent(self.config.scope.indent as i64);
+        self.unindent(self.config.scope.indent as rhai::INT);
         if !self.content.ends_with('\n') {
             self.newline();
         }
@@ -122,6 +134,29 @@ mod tests {
         assert_eq!(output.to_string(), "000\n111\n222\n");
     }
 
+    #[test]
+    fn space_adds_single_space() {
+        let mut output = Output::default();
+        output.append("0");
+        output.space();
+        output.line("1");
+        output.space();
+        output.space();
+        output.append("2");
+        assert_eq!(output.to_string(), "0 1\n  2");
+    }
+
+    #[test]
+    fn spaces_adds_multiple_spaces() {
+        let mut output = Output::default();
+        output.append("0");
+        output.spaces(2);
+        output.line("1");
+        output.spaces(4);
+        output.append("2");
+        assert_eq!(output.to_string(), "0  1\n    2");
+    }
+
     mod indent {
         use crate::renderer::scripted::api::output::Output;
 
@@ -139,7 +174,7 @@ mod tests {
                 run_test(IndentChar::Tab, 2, "\t\tx");
             }
 
-            fn run_test(indent_char: IndentChar, amount: i64, expected: &str) {
+            fn run_test(indent_char: IndentChar, amount: rhai::INT, expected: &str) {
                 let config = ScriptedConfig {
                     indent_char,
                     ..Default::default()

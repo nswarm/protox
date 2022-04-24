@@ -33,7 +33,7 @@ pub mod api {
     // FileOptions
     pub type FileOptions = prost_types::FileOptions;
 
-    #[rhai_fn(get = "fbs_attributes")]
+    #[rhai_fn(get = "fbs_file_attributes", pure)]
     pub fn file_attribute(opt: &mut FileOptions) -> rhai::Dynamic {
         opt.extension_data(extensions::fbs::FILE_ATTRIBUTE)
             .map(Clone::clone)
@@ -45,7 +45,7 @@ pub mod api {
     // EnumOptions
     pub type EnumOptions = prost_types::EnumOptions;
 
-    #[rhai_fn(get = "fbs_enum_type")]
+    #[rhai_fn(get = "fbs_enum_type", pure)]
     pub fn enum_type(opt: &mut EnumOptions) -> String {
         let int_type = opt
             .extension_data(extensions::fbs::ENUM_TYPE)
@@ -62,7 +62,7 @@ pub mod api {
     // MessageOptions
     pub type MessageOptions = prost_types::MessageOptions;
 
-    #[rhai_fn(get = "fbs_message_type")]
+    #[rhai_fn(get = "fbs_message_type", pure)]
     pub fn message_type(opt: &mut MessageOptions) -> String {
         let message_type = opt
             .extension_data(extensions::fbs::MESSAGE_TYPE)
@@ -75,10 +75,18 @@ pub mod api {
     // FieldOptions
     pub type FieldOptions = prost_types::FieldOptions;
 
-    #[rhai_fn(get = "fbs_field_type")]
+    #[rhai_fn(get = "fbs_field_type", pure)]
     pub fn field_type(opt: &mut FieldOptions) -> String {
         opt.extension_data(extensions::fbs::FIELD_TYPE)
             .map(&String::clone)
             .unwrap_or(String::new())
+    }
+
+    #[rhai_fn(get = "fbs_field_attributes", pure)]
+    pub fn field_attr(opt: &mut FieldOptions) -> rhai::Dynamic {
+        opt.extension_data(extensions::fbs::FIELD_ATTRIBUTE)
+            .map(Clone::clone)
+            .unwrap_or(Vec::new())
+            .into()
     }
 }

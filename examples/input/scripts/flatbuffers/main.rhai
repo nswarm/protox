@@ -20,10 +20,10 @@ fn namespace() {
 }
 
 fn attributes() {
-    if file.options.fbs_attributes.len == 0 {
+    if file.options.fbs_file_attributes.len == 0 {
         return;
     }
-    for attr in file.options.fbs_attributes {
+    for attr in file.options.fbs_file_attributes {
         output.line(`attribute "${attr}";`);
     }
     output.line();
@@ -105,6 +105,7 @@ fn field(field, message_type) {
     } else {
         output.append(`${field.name}: ${field_type}`);
     }
+    field_attributes!();
     output.line(field_separator(field, message_type));
 }
 
@@ -114,6 +115,16 @@ fn field_type(field) {
     } else {
         field.relative_type
     }
+}
+
+fn field_attributes() {
+    if field.options.fbs_field_attributes.len == 0 {
+        return;
+    }
+    output.space();
+    output.append("(");
+    output.append(field.options.fbs_field_attributes.join(", "));
+    output.append(")")
 }
 
 fn field_separator(field, message_type) {

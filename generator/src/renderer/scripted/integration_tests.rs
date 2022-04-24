@@ -8,6 +8,25 @@ use crate::renderer::context::{FileContext, MetadataContext};
 use crate::renderer::scripted::renderer::ScriptedRenderer;
 use crate::renderer::{Renderer, RendererConfig};
 
+mod utilities {
+    use anyhow::Result;
+
+    use crate::renderer::context::FileContext;
+    use crate::renderer::scripted::integration_tests::{default_file_proto, test_file_script};
+    use crate::renderer::RendererConfig;
+
+    #[test]
+    fn array_join() -> Result<()> {
+        let context = FileContext::new(&default_file_proto(), &RendererConfig::default())?;
+        let expected = "0::1::2".to_owned();
+        test_file_script(
+            context,
+            r#"output.append([0, 1, 2].join("::"));"#,
+            &expected,
+        )
+    }
+}
+
 mod file_context {
     use anyhow::Result;
 
@@ -290,14 +309,15 @@ mod field_context {
 }
 
 mod metadata_context {
-    use crate::renderer::context::MetadataContext;
-    use crate::renderer::scripted::integration_tests::test_metadata_script;
-    use crate::renderer::Renderer;
-    use anyhow::Result;
     use std::collections::HashMap;
     use std::path::PathBuf;
 
+    use anyhow::Result;
+
+    use crate::renderer::context::MetadataContext;
+    use crate::renderer::scripted::integration_tests::test_metadata_script;
     use crate::renderer::scripted::renderer::ScriptedRenderer;
+    use crate::renderer::Renderer;
 
     #[test]
     fn directory() -> Result<()> {
