@@ -39,5 +39,8 @@ extend google.protobuf.MessageOptions {
 
 extend google.protobuf.FieldOptions {
   string field_type = 92000;
-  repeated string field_attribute = 92001;
+  bool bool_default = 92001;
+  int64 int_default = 92002;
+  double float_default = 92003;
+  repeated string field_attribute = 92004;
 }

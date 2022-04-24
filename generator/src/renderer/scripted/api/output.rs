@@ -7,8 +7,9 @@ pub fn register(engine: &mut rhai::Engine) {
         .register_fn("append", Output::append)
         .register_fn("line", Output::line)
         .register_fn("line", Output::newline)
+        .register_fn("multiline", Output::multiline)
         .register_fn("space", Output::space)
-        .register_fn("spaces", Output::space)
+        .register_fn("space", Output::spaces)
         .register_fn("indent", Output::indent)
         .register_fn("unindent", Output::unindent)
         .register_fn("push_scope", Output::push_scope)
@@ -35,14 +36,18 @@ impl Output {
         if self.content.is_empty() || self.content.ends_with('\n') {
             self.push_indent();
         }
-        // trim_start + unindent lets users use multiline strings indented inside of their
-        // code and it will won't have the indent in output.
-        self.content
-            .push_str(unindent_multiline_str(new_content).trim_start());
+        self.content.push_str(new_content);
     }
 
     pub fn line(&mut self, content: &str) {
         self.append(content);
+        self.newline();
+    }
+
+    pub fn multiline(&mut self, new_content: &str) {
+        // trim_start + unindent lets users use multiline strings indented inside of their
+        // code and it will won't have the indent in output.
+        self.append(unindent_multiline_str(new_content).trim_start());
         self.newline();
     }
 
@@ -126,6 +131,13 @@ mod tests {
     }
 
     #[test]
+    fn append_leaves_whitespace() {
+        let mut output = Output::default();
+        output.append("  hello  ");
+        assert_eq!(output.to_string(), "  hello  ");
+    }
+
+    #[test]
     fn line_adds_to_content_with_newline() {
         let mut output = Output::default();
         output.line("000");
@@ -155,6 +167,26 @@ mod tests {
         output.spaces(4);
         output.append("2");
         assert_eq!(output.to_string(), "0  1\n    2");
+    }
+
+    #[test]
+    fn multiline_removes_common_indent() {
+        let mut output = Output::default();
+        output.multiline(
+            r#"
+        0
+            1
+                2
+        0"#,
+        );
+        assert_eq!(
+            output.to_string(),
+            r#"0
+    1
+        2
+0
+"#
+        );
     }
 
     mod indent {

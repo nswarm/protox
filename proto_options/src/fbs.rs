@@ -89,4 +89,25 @@ pub mod api {
             .unwrap_or(Vec::new())
             .into()
     }
+
+    #[rhai_fn(get = "fbs_bool_default", pure)]
+    pub fn field_bool_default(opt: &mut FieldOptions) -> bool {
+        opt.extension_data(extensions::fbs::BOOL_DEFAULT)
+            .map(Clone::clone)
+            .unwrap_or(false)
+    }
+
+    #[rhai_fn(get = "fbs_int_default", pure)]
+    pub fn field_int_default(opt: &mut FieldOptions) -> rhai::INT {
+        opt.extension_data(extensions::fbs::INT_DEFAULT)
+            .map(Clone::clone)
+            .unwrap_or(0)
+    }
+
+    #[rhai_fn(get = "fbs_float_default", pure)]
+    pub fn field_float_default(opt: &mut FieldOptions) -> rhai::FLOAT {
+        opt.extension_data(extensions::fbs::FLOAT_DEFAULT)
+            .map(Clone::clone)
+            .unwrap_or(0.0)
+    }
 }

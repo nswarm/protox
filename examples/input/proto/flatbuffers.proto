@@ -47,14 +47,14 @@ message Struct {
 }
 
 message Table {
-  bool bool_value = 1;
+  bool bool_value = 1 [(fbs.bool_default) = true];
   int32 byte_value = 2 [(fbs.field_type) = "byte"];
   int32 ubyte_value = 3 [(fbs.field_type) = "ubyte"];
   int32 short_value = 4 [(fbs.field_type) = "short"];
   int32 ushort_value = 5 [(fbs.field_type) = "ushort"];
-  int32 i32_value = 6;
+  int32 i32_value = 6 [(fbs.int_default) = 1111];
   uint32 u32_value = 7;
-  float f32_value = 8;
+  float f32_value = 8 [(fbs.float_default) = 1111.2222];
   int64 i64_value = 9;
   uint64 u64_value = 10;
   double f64_value = 11;
@@ -64,11 +64,14 @@ message Table {
   OtherTableA table_value = 15;
   Union union_value = 16;
 
-  int32 value_with_attrs = 17 [(fbs.field_attribute) = "attr0", (fbs.field_attribute) = "attr1", (fbs.field_attribute) = "attr2"];
+  int32 value_with_attrs_and_default = 17 [
+    (fbs.int_default) = 1234,
+    (fbs.field_attribute) = "attr0",
+    (fbs.field_attribute) = "attr1",
+    (fbs.field_attribute) = "attr2"
+  ];
 }
 // todo default
-// todo optional
-// todo required
 
 // todo root_type
 // todo file_identifier "HZGD";

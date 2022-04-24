@@ -42,6 +42,9 @@ fn register_builtin_extensions(registry: &mut ExtensionRegistry) {
     registry.register(extensions::fbs::MESSAGE_TYPE);
     registry.register(extensions::fbs::FIELD_TYPE);
     registry.register(extensions::fbs::FIELD_ATTRIBUTE);
+    registry.register(extensions::fbs::BOOL_DEFAULT);
+    registry.register(extensions::fbs::INT_DEFAULT);
+    registry.register(extensions::fbs::FLOAT_DEFAULT);
 }
 
 #[allow(unused)]

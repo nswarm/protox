@@ -105,6 +105,7 @@ fn field(field, message_type) {
     } else {
         output.append(`${field.name}: ${field_type}`);
     }
+    field_default!();
     field_attributes!();
     output.line(field_separator(field, message_type));
 }
@@ -114,6 +115,20 @@ fn field_type(field) {
         field.options.fbs_field_type
     } else {
         field.relative_type
+    }
+}
+
+fn field_default() {
+    let value = "";
+    if field.options.fbs_bool_default != false {
+        value = field.options.fbs_bool_default.to_string();
+    } else if field.options.fbs_int_default != 0 {
+        value = field.options.fbs_int_default.to_string();
+    } else if field.options.fbs_float_default != 0.0 {
+        value = field.options.fbs_float_default.to_string();
+    }
+    if value != "" {
+        output.append(` = ${value}`);
     }
 }
 
