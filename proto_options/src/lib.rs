@@ -38,6 +38,9 @@ fn register_builtin_extensions(registry: &mut ExtensionRegistry) {
     registry.register(extensions::NATIVE_TYPE);
     // Fbs options.
     registry.register(extensions::fbs::FILE_ATTRIBUTE);
+    registry.register(extensions::fbs::FILE_IDENTIFIER);
+    registry.register(extensions::fbs::FILE_EXTENSION);
+    registry.register(extensions::fbs::ROOT_TYPE);
     registry.register(extensions::fbs::ENUM_TYPE);
     registry.register(extensions::fbs::MESSAGE_TYPE);
     registry.register(extensions::fbs::FIELD_TYPE);

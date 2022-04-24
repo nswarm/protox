@@ -27,6 +27,9 @@ enum MessageType {
 
 extend google.protobuf.FileOptions {
   repeated string file_attribute = 92000;
+  string file_identifier = 92001;
+  string file_extension = 92002;
+  string root_type = 92003;
 }
 
 extend google.protobuf.EnumOptions {

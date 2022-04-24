@@ -71,21 +71,7 @@ message Table {
     (fbs.field_attribute) = "attr2"
   ];
 }
-// todo default
 
-// todo root_type
-// todo file_identifier "HZGD";
-// todo file_extension "gamedata";
-
-//table Monster {
-//pos:Vec3;
-//    mana:short = 150;
-//hp:short = 100;
-//    name:string;
-//friendly:bool = false (deprecated, priority: 1);
-//    inventory:[ubyte];
-//    color:Color = Blue;
-//    test:Any;
-//    }
-//
-//    root_type Monster;
+option (fbs.file_identifier) = "ABCD";
+option (fbs.file_extension) = "data";
+option (fbs.root_type) = "Table";

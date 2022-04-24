@@ -1,5 +1,5 @@
 fn render_file(file, output) {
-    output.line(`
+    output.multiline(`
     /////////////////////////////////////////////////
     // Messages from: ${file.source_file}
     `);
@@ -8,6 +8,9 @@ fn render_file(file, output) {
     imports!();
     enums!();
     messages!();
+    file_identifier!();
+    file_extension!();
+    root_type!();
     return output;
 }
 
@@ -147,5 +150,21 @@ fn field_separator(field, message_type) {
         ","
     } else {
         ";"
+    }
+}
+
+fn file_identifier() {
+    if file.options.fbs_file_identifier != "" {
+        output.line(`file_identifier "${file.options.fbs_file_identifier}";`);
+    }
+}
+fn file_extension() {
+    if file.options.fbs_file_extension != "" {
+        output.line(`file_extension "${file.options.fbs_file_extension}";`);
+    }
+}
+fn root_type() {
+    if file.options.fbs_root_type != "" {
+        output.line(`root_type ${file.options.fbs_root_type};`);
     }
 }
