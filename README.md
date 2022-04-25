@@ -147,7 +147,7 @@ Scripted output is rendered using [rhai](https://rhai.rs/book/). In practice, yo
 
 protox requires only a couple files. `main.rhai` is the root of all scripts. `config.json` is how you configure the data available in the context when rendering.
 
-**Note:** You can quickly initialize a directory with default files using `protox --init`.
+**Note:** You can quickly initialize a directory with default files using `protox --init-script`.
 
 Required:
 - config.json
@@ -218,7 +218,7 @@ Templates are rendered using [Handlebars](https://handlebarsjs.com/). Specifical
 
 protox requires only a couple files. `file.hbs` is the root of all templates. `config.json` is how you configure the data available in the context when rendering templates.
 
-**Note:** You can quickly initialize a directory with default files using `protox --init`.
+**Note:** You can quickly initialize a directory with default files using `protox --init-template`.
 
 Required:
 - config.json

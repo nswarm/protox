@@ -10,6 +10,11 @@ mod renderer;
 #[cfg(test)]
 mod integration_tests;
 
+pub const SCRIPT_EXT: &'static str = "rhai";
+pub const MAIN_SCRIPT_NAME: &'static str = "main";
+pub const RENDER_FILE_FN_NAME: &'static str = "render_file";
+pub const RENDER_METADATA_FN_NAME: &'static str = "render_metadata";
+
 pub fn generate(config: &Config) -> Result<()> {
     Generator {
         config,

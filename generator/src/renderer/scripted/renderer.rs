@@ -7,15 +7,12 @@ use rhai::module_resolvers::FileModuleResolver;
 use rhai::{Dynamic, Engine, Scope, ScriptFnMetadata, AST};
 
 use crate::renderer::context::{FileContext, MetadataContext};
-use crate::renderer::scripted::api;
 use crate::renderer::scripted::api::output::Output;
+use crate::renderer::scripted::{
+    api, MAIN_SCRIPT_NAME, RENDER_FILE_FN_NAME, RENDER_METADATA_FN_NAME, SCRIPT_EXT,
+};
 use crate::renderer::{Renderer, RendererConfig};
 use crate::{DisplayNormalized, CONFIG_FILE_NAME};
-
-pub const SCRIPT_EXT: &'static str = "rhai";
-pub const MAIN_SCRIPT_NAME: &'static str = "main";
-pub const RENDER_FILE_FN_NAME: &'static str = "render_file";
-pub const RENDER_METADATA_FN_NAME: &'static str = "render_metadata";
 
 pub struct ScriptedRenderer {
     engine: Engine,

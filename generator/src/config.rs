@@ -14,13 +14,14 @@ pub const APP_NAME: &str = "protox";
 pub const IDL: &str = "idl";
 pub const INPUT: &str = "input";
 pub const PROTO: &str = "proto";
-pub const TEMPLATE: &str = "template";
 pub const SCRIPT: &str = "script";
+pub const TEMPLATE: &str = "template";
 pub const TEMPLATE_ROOT: &str = "template-root";
 pub const SCRIPT_ROOT: &str = "script-root";
 pub const OUTPUT_ROOT: &str = "output-root";
 pub const INCLUDES: &str = "includes";
-pub const INIT: &str = "init";
+pub const INIT_SCRIPT: &str = "init-script";
+pub const INIT_TEMPLATE: &str = "init-template";
 pub const DESCRIPTOR_SET_OUT: &str = "descriptor-set-out";
 pub const PROTOC_ARGS: &str = "protoc-args";
 pub const LONG_HELP_NEWLINE: &str = "\n\n";
@@ -46,16 +47,19 @@ where
                 .display_order(display_order())
                 .help("IDL type of files expected at the INPUT path.")
                 .long(IDL)
-                .default_value(&Idl::Proto.as_config()),
+                .default_value(&Idl::Proto.as_config())
+                // Only 1 option atm, not useful.
+                .hide(true),
 
             Arg::new(INPUT)
                 .display_order(1)
-                .help("File path to search for IDL files.")
+                .help("File path to search for protobuf IDL files.")
                 .default_short()
                 .long(INPUT)
                 .takes_value(true)
                 .required(true)
-                .conflicts_with(INIT),
+                .conflicts_with(INIT_SCRIPT)
+                .conflicts_with(INIT_TEMPLATE),
 
             Arg::new(PROTO)
                 .display_order(display_order())
@@ -68,8 +72,9 @@ where
                 .long(PROTO)
                 .value_names(&["LANG", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present_any([TEMPLATE, SCRIPT, INIT])
-                .conflicts_with(INIT),
+                .required_unless_present_any([TEMPLATE, SCRIPT, INIT_SCRIPT, INIT_TEMPLATE])
+                .conflicts_with(INIT_SCRIPT)
+                .conflicts_with(INIT_TEMPLATE),
 
             Arg::new(TEMPLATE)
                 .display_order(display_order())
@@ -84,8 +89,9 @@ where
                 .long(TEMPLATE)
                 .value_names(&["INPUT", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present_any([PROTO, SCRIPT, INIT])
-                .conflicts_with(INIT),
+                .required_unless_present_any([PROTO, SCRIPT, INIT_SCRIPT, INIT_TEMPLATE])
+                .conflicts_with(INIT_SCRIPT)
+                .conflicts_with(INIT_TEMPLATE),
 
             Arg::new(SCRIPT)
                 .display_order(display_order())
@@ -100,8 +106,9 @@ where
                 .long(SCRIPT)
                 .value_names(&["INPUT", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present_any([PROTO, TEMPLATE, INIT])
-                .conflicts_with(INIT),
+                .required_unless_present_any([PROTO, TEMPLATE, INIT_SCRIPT, INIT_TEMPLATE])
+                .conflicts_with(INIT_SCRIPT)
+                .conflicts_with(INIT_TEMPLATE),
 
             Arg::new(TEMPLATE_ROOT)
                 .display_order(display_order())
@@ -129,12 +136,21 @@ where
                 .takes_value(true)
                 .multiple_values(true),
 
-            Arg::new(INIT)
+            Arg::new(INIT_SCRIPT)
                 .display_order(display_order())
-                .help(format!("Initialize the TARGET directory as a new template option with the basic input files required for running protox with --{}.", TEMPLATE).as_str())
-                .long(INIT)
+                .help(format!("Initialize the TARGET directory as a new scripted rendering target with the basic input files required for running protox with --{}.", SCRIPT).as_str())
+                .long(INIT_SCRIPT)
                 .takes_value(true)
-                .value_name("TARGET"),
+                .value_name("TARGET")
+                .conflicts_with(INIT_TEMPLATE),
+
+            Arg::new(INIT_TEMPLATE)
+                .display_order(display_order())
+                .help(format!("Initialize the TARGET directory as a new template rendering target with the basic input files required for running protox with --{}.", TEMPLATE).as_str())
+                .long(INIT_TEMPLATE)
+                .takes_value(true)
+                .value_name("TARGET")
+                .conflicts_with(INIT_SCRIPT),
 
             Arg::new(DESCRIPTOR_SET_OUT)
                 .display_order(DISPLAY_ORDER_DEFAULT)
@@ -167,7 +183,8 @@ pub struct Config {
     pub templates: Vec<InOutConfig>,
     pub scripts: Vec<InOutConfig>,
     pub includes: Vec<String>,
-    pub init_target: Option<PathBuf>,
+    pub init_script_target: Option<PathBuf>,
+    pub init_template_target: Option<PathBuf>,
     pub descriptor_set_path: PathBuf,
     pub extra_protoc_args: Vec<String>,
 
@@ -185,7 +202,8 @@ impl Default for Config {
             templates: vec![],
             scripts: vec![],
             includes: vec![],
-            init_target: None,
+            init_script_target: None,
+            init_template_target: None,
             descriptor_set_path: Default::default(),
             extra_protoc_args: vec![],
             intermediate_dir: tempdir().unwrap(),
@@ -225,7 +243,8 @@ impl Config {
                 output_root.as_ref(),
             )?,
             includes: parse_includes(&args),
-            init_target: parse_optional_path_from_arg(INIT, &args)?,
+            init_script_target: parse_optional_path_from_arg(INIT_SCRIPT, &args)?,
+            init_template_target: parse_optional_path_from_arg(INIT_TEMPLATE, &args)?,
             descriptor_set_path,
             extra_protoc_args: parse_extra_protoc_args(&args),
             intermediate_dir,
