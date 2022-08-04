@@ -8,6 +8,7 @@
       <sourceFolder url="file://$MODULE_DIR$/examples/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/generator/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/proto_options/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

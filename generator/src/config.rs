@@ -16,6 +16,7 @@ pub const INPUT: &str = "input";
 pub const PROTO: &str = "proto";
 pub const SCRIPT: &str = "script";
 pub const TEMPLATE: &str = "template";
+pub const BYPASS: &str = "bypass";
 pub const TEMPLATE_ROOT: &str = "template-root";
 pub const SCRIPT_ROOT: &str = "script-root";
 pub const OUTPUT_ROOT: &str = "output-root";
@@ -25,6 +26,8 @@ pub const INIT_TEMPLATE: &str = "init-template";
 pub const DESCRIPTOR_SET_OUT: &str = "descriptor-set-out";
 pub const PROTOC_ARGS: &str = "protoc-args";
 pub const LONG_HELP_NEWLINE: &str = "\n\n";
+
+const MAIN_OPTS: &[&str; 6] = &[PROTO, TEMPLATE, SCRIPT, BYPASS, INIT_SCRIPT, INIT_TEMPLATE];
 
 const DISPLAY_ORDER_DEFAULT: usize = 990;
 const DEFAULT_DESCRIPTOR_SET_FILENAME: &str = "descriptor_set.proto";
@@ -40,7 +43,7 @@ where
         i
     };
     App::new(APP_NAME)
-        .long_about("protox is an executable that generates C-ABI-compatible code in one or more languages for seamless and performant direct usage of those types across the library boundary.")
+        .long_about("protox is an executable that wraps the protobuf compiler (protoc) with a simpler to use interface that makes it easier to write and use custom code generator plugins.")
         .version(crate_version!())
         .args([
             Arg::new(IDL)
@@ -58,8 +61,7 @@ where
                 .long(INPUT)
                 .takes_value(true)
                 .required(true)
-                .conflicts_with(INIT_SCRIPT)
-                .conflicts_with(INIT_TEMPLATE),
+                .conflicts_with_all(&[INIT_SCRIPT, INIT_TEMPLATE]),
 
             Arg::new(PROTO)
                 .display_order(display_order())
@@ -72,9 +74,8 @@ where
                 .long(PROTO)
                 .value_names(&["LANG", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present_any([TEMPLATE, SCRIPT, INIT_SCRIPT, INIT_TEMPLATE])
-                .conflicts_with(INIT_SCRIPT)
-                .conflicts_with(INIT_TEMPLATE),
+                .required_unless_present_any(all_except(MAIN_OPTS, PROTO))
+                .conflicts_with_all(&[INIT_SCRIPT, INIT_TEMPLATE]),
 
             Arg::new(TEMPLATE)
                 .display_order(display_order())
@@ -89,9 +90,8 @@ where
                 .long(TEMPLATE)
                 .value_names(&["INPUT", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present_any([PROTO, SCRIPT, INIT_SCRIPT, INIT_TEMPLATE])
-                .conflicts_with(INIT_SCRIPT)
-                .conflicts_with(INIT_TEMPLATE),
+                .required_unless_present_any(all_except(MAIN_OPTS, TEMPLATE))
+                .conflicts_with_all(&[INIT_SCRIPT, INIT_TEMPLATE]),
 
             Arg::new(SCRIPT)
                 .display_order(display_order())
@@ -106,9 +106,19 @@ where
                 .long(SCRIPT)
                 .value_names(&["INPUT", "OUTPUT"])
                 .multiple_occurrences(true)
-                .required_unless_present_any([PROTO, TEMPLATE, INIT_SCRIPT, INIT_TEMPLATE])
+                .required_unless_present_any(all_except(MAIN_OPTS, SCRIPT))
+                .conflicts_with_all(&[INIT_SCRIPT, INIT_TEMPLATE]),
+
+            Arg::new(BYPASS)
+                .display_order(display_order())
+                .long_help("Bypass protox additional functionality and run protoc directly.")
+                .default_short()
+                .long(BYPASS)
+                .multiple_occurrences(true)
+                .required_unless_present_any(all_except(MAIN_OPTS, BYPASS))
                 .conflicts_with(INIT_SCRIPT)
-                .conflicts_with(INIT_TEMPLATE),
+                .conflicts_with_all(&[INIT_SCRIPT, INIT_TEMPLATE])
+                .conflicts_with_all(&all_except(MAIN_OPTS, BYPASS)),
 
             Arg::new(TEMPLATE_ROOT)
                 .display_order(display_order())
@@ -176,12 +186,19 @@ fn join_help(lines: &[&str]) -> String {
     lines.join(LONG_HELP_NEWLINE).to_owned()
 }
 
+fn all_except<'a>(options: &[&'a str], opt: &'a str) -> Vec<&'a str> {
+    let mut v = options.to_vec();
+    v.retain(|x| *x != opt);
+    v
+}
+
 pub struct Config {
     pub idl: Idl,
     pub input: PathBuf,
     pub protos: Vec<LangConfig>,
     pub templates: Vec<InOutConfig>,
     pub scripts: Vec<InOutConfig>,
+    pub bypass: bool,
     pub includes: Vec<String>,
     pub init_script_target: Option<PathBuf>,
     pub init_template_target: Option<PathBuf>,
@@ -201,6 +218,7 @@ impl Default for Config {
             protos: vec![],
             templates: vec![],
             scripts: vec![],
+            bypass: false,
             includes: vec![],
             init_script_target: None,
             init_template_target: None,
@@ -242,6 +260,7 @@ impl Config {
                 script_root.as_ref(),
                 output_root.as_ref(),
             )?,
+            bypass: args.is_present(BYPASS),
             includes: parse_includes(&args),
             init_script_target: parse_optional_path_from_arg(INIT_SCRIPT, &args)?,
             init_template_target: parse_optional_path_from_arg(INIT_TEMPLATE, &args)?,

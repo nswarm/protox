@@ -23,12 +23,14 @@ impl Protoc {
             .descriptor_set_path
             .to_str()
             .ok_or(anyhow!("Descriptor set path is not valid unicode."))?;
-        // Descriptor set with source info is used by generators.
-        args.push(arg_with_value(
-            PROTOC_ARG_DESCRIPTOR_SET_OUT,
-            descriptor_set_path,
-        ));
-        args.push(["--", PROTOC_ARG_INCLUDE_SOURCE_INFO].concat());
+        if !config.bypass {
+            // Descriptor set with source info is used by generators.
+            args.push(arg_with_value(
+                PROTOC_ARG_DESCRIPTOR_SET_OUT,
+                descriptor_set_path,
+            ));
+            args.push(["--", PROTOC_ARG_INCLUDE_SOURCE_INFO].concat());
+        }
         args.append(&mut collect_extra_protoc_args(config));
         Ok(Self {
             args,
