@@ -53,8 +53,9 @@ impl Protoc {
 
         info!("using protoc at path: {}", protoc_path.display_normalized());
         info!(
-            "running command:\tprotoc {}",
-            util::normalize_slashes(self.args.join(" "))
+            "running command:\tprotoc {} {}",
+            util::normalize_slashes(self.args.join(" ")),
+            util::normalize_slashes(temp_args.join(" ")),
         );
 
         let mut child = Command::new(&protoc_path)
