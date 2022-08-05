@@ -1,18 +1,22 @@
 use anyhow::{Context, Result};
 
-use crate::protoc::protoc::Protoc;
+pub use crate::protoc::protoc::arg_with_value;
+pub use crate::protoc::protoc::Protoc;
 use crate::{Config, Lang};
 
 mod builtin;
-mod input;
+pub mod input;
 mod proto_rust;
 mod protoc;
 
 pub fn generate(config: &Config) -> Result<()> {
+    if !config.requires_descriptor_set() && config.protos.is_empty() {
+        return Ok(());
+    }
     let mut protoc = Protoc::new(config)?;
     protoc.add_input_files(&mut input::collect(config).context("Failed to collect input files.")?);
     builtin::register(config, &mut protoc)?;
-    protoc.execute()?;
+    protoc.execute(None)?;
     proto_rust::generate(config)?;
     Ok(())
 }

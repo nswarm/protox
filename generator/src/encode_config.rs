@@ -3,20 +3,22 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 #[derive(Clone)]
-pub struct InOutConfig {
-    pub input: PathBuf,
+pub struct EncodeConfig {
+    pub target: PathBuf,
+    pub message_type: String,
     pub output: PathBuf,
 }
 
-impl InOutConfig {
+impl EncodeConfig {
     pub fn from_config(
-        input: &str,
+        target: &str,
+        message_type: &str,
         output: &str,
-        input_root: Option<&PathBuf>,
         output_root: Option<&PathBuf>,
     ) -> Result<Self> {
-        Ok(InOutConfig {
-            input: util::path_as_absolute(input, input_root)?,
+        Ok(EncodeConfig {
+            target: PathBuf::from(target),
+            message_type: message_type.to_owned(),
             output: util::path_as_absolute(output, output_root)?,
         })
     }

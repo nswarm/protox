@@ -2,8 +2,9 @@ use crate::{util, Config};
 use anyhow::{anyhow, bail, Context, Result};
 use log::info;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use util::DisplayNormalized;
 
 const PROTOC_ARG_PROTO_PATH: &str = "proto_path";
@@ -23,7 +24,7 @@ impl Protoc {
             .descriptor_set_path
             .to_str()
             .ok_or(anyhow!("Descriptor set path is not valid unicode."))?;
-        if !config.bypass {
+        if config.requires_descriptor_set() {
             // Descriptor set with source info is used by generators.
             args.push(arg_with_value(
                 PROTOC_ARG_DESCRIPTOR_SET_OUT,
@@ -38,7 +39,15 @@ impl Protoc {
         })
     }
 
-    pub fn execute(&mut self) -> Result<()> {
+    pub fn execute(&mut self, stdin: Option<String>) -> Result<Vec<u8>> {
+        self.execute_with_args(stdin, &[])
+    }
+
+    pub fn execute_with_args(
+        &mut self,
+        stdin_data: Option<String>,
+        temp_args: &[&str],
+    ) -> Result<Vec<u8>> {
         let protoc_path = protoc_path();
         self.args.append(&mut self.input_files.clone());
 
@@ -50,6 +59,9 @@ impl Protoc {
 
         let mut child = Command::new(&protoc_path)
             .args(&self.args)
+            .args(temp_args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
             .spawn()
             .with_context(|| {
                 format!(
@@ -57,11 +69,21 @@ impl Protoc {
                     protoc_path
                 )
             })?;
-        let status = child.wait()?;
-        if status.success() {
-            Ok(())
+
+        if let Some(stdin_data) = stdin_data {
+            let mut stdin = child.stdin.take().expect("Failed to open stdin");
+            std::thread::spawn(move || {
+                stdin
+                    .write_all(stdin_data.as_bytes())
+                    .expect("Failed to write to stdin");
+            });
+        }
+
+        let output = child.wait_with_output()?;
+        if output.status.success() {
+            Ok(output.stdout)
         } else {
-            Err(anyhow!("protoc exited with status {}", status))
+            Err(anyhow!("protoc exited with status {}", output.status))
         }
     }
 

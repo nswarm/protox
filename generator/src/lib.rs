@@ -2,6 +2,8 @@
 
 mod config;
 mod dir_init;
+mod encode;
+mod encode_config;
 mod idl;
 mod in_out_config;
 mod in_out_generator;
@@ -45,6 +47,7 @@ fn generate_internal(config: &Config) -> Result<()> {
             protoc::generate(&config)?;
             renderer::template::generate(&config)?;
             renderer::scripted::generate(&config)?;
+            encode::generate(&config)?;
         }
     };
 

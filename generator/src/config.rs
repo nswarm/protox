@@ -1,3 +1,4 @@
+use crate::encode_config::EncodeConfig;
 use crate::idl::Idl;
 use crate::in_out_config::InOutConfig;
 use crate::lang::Lang;
@@ -16,6 +17,7 @@ pub const INPUT: &str = "input";
 pub const PROTO: &str = "proto";
 pub const SCRIPT: &str = "script";
 pub const TEMPLATE: &str = "template";
+pub const ENCODE: &str = "encode";
 pub const BYPASS: &str = "bypass";
 pub const TEMPLATE_ROOT: &str = "template-root";
 pub const SCRIPT_ROOT: &str = "script-root";
@@ -27,7 +29,15 @@ pub const DESCRIPTOR_SET_OUT: &str = "descriptor-set-out";
 pub const PROTOC_ARGS: &str = "protoc-args";
 pub const LONG_HELP_NEWLINE: &str = "\n\n";
 
-const MAIN_OPTS: &[&str; 6] = &[PROTO, TEMPLATE, SCRIPT, BYPASS, INIT_SCRIPT, INIT_TEMPLATE];
+const MAIN_OPTS: &[&str; 7] = &[
+    PROTO,
+    TEMPLATE,
+    SCRIPT,
+    BYPASS,
+    ENCODE,
+    INIT_SCRIPT,
+    INIT_TEMPLATE,
+];
 
 const DISPLAY_ORDER_DEFAULT: usize = 990;
 const DEFAULT_DESCRIPTOR_SET_FILENAME: &str = "descriptor_set.proto";
@@ -109,12 +119,25 @@ where
                 .required_unless_present_any(all_except(MAIN_OPTS, SCRIPT))
                 .conflicts_with_all(&[INIT_SCRIPT, INIT_TEMPLATE]),
 
+            Arg::new(ENCODE)
+                .display_order(display_order())
+                .long_help(join_help(&[
+                    "Encodes the TARGET proto text-format file as the type MESSAGE_TYPE to a file location at OUTPUT.",
+                    &format!("MESSAGE_TYPE must exist in the protos specified by --{}", INPUT),
+                    &format!("If OUTPUT is a relative path, it is evaluated relative to --{}.", OUTPUT_ROOT),
+                ]).as_str())
+                .default_short()
+                .long(ENCODE)
+                .value_names(&["TEXT_PROTO", "MESSAGE_TYPE", "OUTPUT"])
+                .multiple_occurrences(true)
+                .required_unless_present_any(all_except(MAIN_OPTS, ENCODE))
+                .conflicts_with_all(&[INIT_SCRIPT, INIT_TEMPLATE]),
+
             Arg::new(BYPASS)
                 .display_order(display_order())
                 .long_help("Bypass protox additional functionality and run protoc directly.")
                 .default_short()
                 .long(BYPASS)
-                .multiple_occurrences(true)
                 .required_unless_present_any(all_except(MAIN_OPTS, BYPASS))
                 .conflicts_with(INIT_SCRIPT)
                 .conflicts_with_all(&[INIT_SCRIPT, INIT_TEMPLATE])
@@ -198,6 +221,7 @@ pub struct Config {
     pub protos: Vec<LangConfig>,
     pub templates: Vec<InOutConfig>,
     pub scripts: Vec<InOutConfig>,
+    pub encode: Vec<EncodeConfig>,
     pub bypass: bool,
     pub includes: Vec<String>,
     pub init_script_target: Option<PathBuf>,
@@ -218,6 +242,7 @@ impl Default for Config {
             protos: vec![],
             templates: vec![],
             scripts: vec![],
+            encode: vec![],
             bypass: false,
             includes: vec![],
             init_script_target: None,
@@ -260,6 +285,7 @@ impl Config {
                 script_root.as_ref(),
                 output_root.as_ref(),
             )?,
+            encode: parse_encode_configs(args, output_root.as_ref())?,
             bypass: args.is_present(BYPASS),
             includes: parse_includes(&args),
             init_script_target: parse_optional_path_from_arg(INIT_SCRIPT, &args)?,
@@ -270,6 +296,12 @@ impl Config {
         };
         check_proto_supported_languages(&config)?;
         Ok(config)
+    }
+
+    pub fn requires_descriptor_set(&self) -> bool {
+        self.protos.iter().find(|x| x.lang == Lang::Rust).is_some()
+            || !self.templates.is_empty()
+            || !self.scripts.is_empty()
     }
 }
 
@@ -356,6 +388,35 @@ fn parse_in_out_configs(
             input,
             output,
             input_root,
+            output_root,
+        )?);
+    }
+    Ok(configs)
+}
+
+fn parse_encode_configs(
+    args: &ArgMatches,
+    output_root: Option<&PathBuf>,
+) -> Result<Vec<EncodeConfig>> {
+    let mut configs = Vec::new();
+    let values = match args.grouped_values_of(ENCODE) {
+        None => return Ok(configs),
+        Some(values) => values,
+    };
+    for value in values {
+        let target = value
+            .get(0)
+            .ok_or(anyhow!("--{} is missing TARGET", ENCODE))?;
+        let message_type = value
+            .get(1)
+            .ok_or(anyhow!("--{} is missing MESSAGE_TYPE", ENCODE))?;
+        let output = value
+            .get(2)
+            .ok_or(anyhow!("--{} is missing OUTPUT", ENCODE))?;
+        configs.push(EncodeConfig::from_config(
+            target,
+            message_type,
+            output,
             output_root,
         )?);
     }
