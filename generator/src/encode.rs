@@ -19,16 +19,8 @@ pub fn generate(config: &Config) -> Result<()> {
         let encode_arg = protoc::arg_with_value("encode", &encode_config.message_type);
         let target_contents = read_target(&encode_config.target)?;
         let output = protoc.execute_with_args(Some(target_contents), &[&encode_arg])?;
-        File::create(&output_file_path(encode_config))
-            .context("Failed to create encode output file.")?
-            .write_all(&output)
-            .context("Failed to write encoded protobuf.")?;
-        info!(
-            "Wrote '{}' encoded as type '{}' to file: {:?}",
-            encode_config.target.display_normalized(),
-            encode_config.message_type,
-            output_file_path(encode_config).display_normalized(),
-        )
+        encode_to_file(&output_file_path(encode_config), &output)?;
+        log_encode(encode_config);
     }
     Ok(())
 }
@@ -46,4 +38,31 @@ fn output_file_path(config: &EncodeConfig) -> PathBuf {
         .output
         .join(config.target.file_stem().unwrap())
         .with_extension("bin")
+}
+
+fn encode_to_file(path: &Path, data: &[u8]) -> Result<()> {
+    File::create(path)
+        .with_context(|| {
+            format!(
+                "Failed to create encode output file: {:?}",
+                path.display_normalized()
+            )
+        })?
+        .write_all(data)
+        .with_context(|| {
+            format!(
+                "Failed to write encoded protobuf to file: {:?}",
+                path.display_normalized(),
+            )
+        })?;
+    Ok(())
+}
+
+fn log_encode(config: &EncodeConfig) {
+    info!(
+        "Wrote '{}' encoded as type '{}' to file: {:?}",
+        config.target.display_normalized(),
+        config.message_type,
+        output_file_path(config).display_normalized(),
+    )
 }
