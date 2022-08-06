@@ -51,6 +51,31 @@ impl<R: Renderer> Render for R {
 }
 
 pub trait Renderer {
+    fn load_config(path: &Path) -> Result<RendererConfig> {
+        info!("Loading config from: {}", path.display_normalized());
+        let file = fs::File::open(path).context("Failed to read RendererConfig file.")?;
+        let buf_reader = io::BufReader::new(file);
+        match path
+            .extension()
+            .ok_or(anyhow!("Config file must have an extension."))
+        {
+            Err(err) => return Err(err),
+            Ok(x) => match x.to_str() {
+                None => return Err(anyhow!("Config file must have an extension.")),
+                Some("json") => serde_json::from_reader(buf_reader)
+                    .with_context(|| error_deserialize_config("json", &path)),
+                Some("yaml" | "yml") => serde_yaml::from_reader(buf_reader)
+                    .with_context(|| error_deserialize_config("yaml", &path)),
+                Some(x) => {
+                    return Err(anyhow!(
+                        "Unsupported config file type '{}'. Must be yaml, yml, or json",
+                        x
+                    ))
+                }
+            },
+        }
+    }
+
     /// Load any necessary files from the `input_root` directory.
     fn load(&mut self, input_root: &Path) -> Result<()>;
 
@@ -69,18 +94,6 @@ pub trait Renderer {
 
     fn metadata_file_name(&self) -> &str {
         &self.config().metadata_file_name
-    }
-
-    fn load_config(&mut self, path: &Path) -> Result<RendererConfig> {
-        info!("Loading config from: {}", path.display_normalized());
-        let file = fs::File::open(path).context("Failed to read RendererConfig file.")?;
-        let buf_reader = io::BufReader::new(file);
-        serde_json::from_reader(buf_reader).with_context(|| {
-            format!(
-                "Failed to deserialize RendererConfig as json, path: {}",
-                path.display_normalized()
-            )
-        })
     }
 
     fn render_files(&self, descriptor_set: &FileDescriptorSet, output_path: &Path) -> Result<()> {
@@ -297,6 +310,14 @@ fn log_render_metadata(file_path: &Path) {
     );
 }
 
+fn error_deserialize_config(format: &str, path: &Path) -> String {
+    format!(
+        "Failed to deserialize RendererConfig as {}, path: {}",
+        format,
+        path.display_normalized()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use std::io;
@@ -309,6 +330,48 @@ mod tests {
 
     use crate::renderer::context::{FileContext, MetadataContext};
     use crate::renderer::{Renderer, RendererConfig};
+
+    mod load_config {
+        use crate::renderer::tests::FakeRenderer;
+        use crate::renderer::{Renderer, RendererConfig};
+        use anyhow::Result;
+        use std::fs::File;
+        use std::io::Write;
+        use tempfile::tempdir;
+
+        #[test]
+        fn json() -> Result<()> {
+            run_test("config.json", &serde_json::to_string(&config())?)
+        }
+
+        #[test]
+        fn yaml() -> Result<()> {
+            run_test("config.yaml", &serde_yaml::to_string(&config())?)
+        }
+
+        #[test]
+        fn yml() -> Result<()> {
+            run_test("config.yml", &serde_yaml::to_string(&config())?)
+        }
+
+        fn config() -> RendererConfig {
+            RendererConfig {
+                file_extension: "rawr".to_owned(),
+                ..Default::default()
+            }
+        }
+
+        fn run_test(file_name: &str, content: &str) -> Result<()> {
+            let test_dir = tempdir()?;
+            let config_file_path = test_dir.path().join(file_name);
+            File::create(&config_file_path)?.write_all(content.as_bytes())?;
+
+            let config = FakeRenderer::load_config(&config_file_path)?;
+            assert_eq!(config.file_extension, "rawr");
+
+            Ok(())
+        }
+    }
 
     mod render {
         use anyhow::Result;

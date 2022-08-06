@@ -129,7 +129,7 @@ impl Renderer for TemplateRenderer<'_> {
     /// be used in other templates as partials with the syntax {{> file_name}}.
     /// (See also: https://handlebarsjs.com/guide/partials.html)
     fn load(&mut self, root: &Path) -> Result<()> {
-        self.config = self.load_config(&root.join(CONFIG_FILE_NAME))?;
+        self.config = Self::load_config(&root.join(CONFIG_FILE_NAME))?;
         self.load_templates(root)?;
         Ok(())
     }
