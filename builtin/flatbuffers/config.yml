@@ -1,0 +1,45 @@
+file_extension: fbs
+type_config:
+  float: float32
+  double: float64
+  int32: int32
+  int64: int64
+  uint32: uint32
+  uint64: uint64
+  sint32: int32
+  sint64: int64
+  fixed32: uint32
+  fixed64: uint64
+  sfixed32: int32
+  sfixed64: int64
+  bool: bool
+  string: string
+  bytes: "[ubyte]"
+case_config:
+  file_name: lower_snake
+  package: UpperCamel
+  import: UpperCamel
+  enum_name: UpperCamel
+  enum_value_name: UpperCamel
+  message_name: UpperCamel
+  field_name: lower_snake
+metadata_file_name: metadata
+package_separator: .
+one_file_per_package: false
+default_package_file_name: _
+field_name_override:
+  enum: enum_
+ignored_files:
+  - options_impl.proto
+ignored_imports:
+  - protox.proto
+  - fbs.proto
+field_relative_parent_prefix: null
+generated_header: null
+scripted:
+  indent_char: Space
+  scope:
+    open: "{"
+    close: "}"
+    indent: 4,
+    open_on_new_line: false
