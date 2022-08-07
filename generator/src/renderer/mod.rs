@@ -55,25 +55,7 @@ pub trait Renderer {
         info!("Loading config from: {}", path.display_normalized());
         let file = fs::File::open(path).context("Failed to read RendererConfig file.")?;
         let buf_reader = io::BufReader::new(file);
-        match path
-            .extension()
-            .ok_or(anyhow!("Config file must have an extension."))
-        {
-            Err(err) => return Err(err),
-            Ok(x) => match x.to_str() {
-                None => return Err(anyhow!("Config file must have an extension.")),
-                Some("json") => serde_json::from_reader(buf_reader)
-                    .with_context(|| error_deserialize_config("json", &path)),
-                Some("yaml" | "yml") => serde_yaml::from_reader(buf_reader)
-                    .with_context(|| error_deserialize_config("yaml", &path)),
-                Some(x) => {
-                    return Err(anyhow!(
-                        "Unsupported config file type '{}'. Must be yaml, yml, or json",
-                        x
-                    ))
-                }
-            },
-        }
+        serde_yaml::from_reader(buf_reader).with_context(|| error_deserialize_config("yaml", &path))
     }
 
     /// Load any necessary files from the `input_root` directory.
