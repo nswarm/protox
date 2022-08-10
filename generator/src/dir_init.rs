@@ -1,7 +1,7 @@
 use crate::renderer::scripted::{MAIN_SCRIPT_NAME, SCRIPT_EXT};
 use crate::renderer::template::{FILE_TEMPLATE_NAME, TEMPLATE_EXT};
 use crate::renderer::RendererConfig;
-use crate::{util, CONFIG_FILE_NAME};
+use crate::{util, DEFAULT_CONFIG_FILE_NAME};
 use anyhow::Result;
 use std::io::Write;
 use std::path::Path;
@@ -24,7 +24,7 @@ pub fn initialize_template_dir(dir: &Path) -> Result<()> {
 }
 
 fn write_config(path: &Path) -> Result<()> {
-    let config_file = util::create_file_or_error(&path.join(CONFIG_FILE_NAME))?;
+    let config_file = util::create_file_or_error(&path.join(DEFAULT_CONFIG_FILE_NAME))?;
     let config = RendererConfig::default();
     serde_json::to_writer_pretty(config_file, &config)?;
     Ok(())
@@ -112,10 +112,10 @@ fn write_file_template(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use crate::dir_init::initialize_template_dir;
+    use crate::initialize_script_dir;
     use crate::renderer::scripted::{MAIN_SCRIPT_NAME, SCRIPT_EXT};
     use crate::renderer::template::{FILE_TEMPLATE_NAME, TEMPLATE_EXT};
-    use crate::renderer::RendererConfig;
-    use crate::{initialize_script_dir, CONFIG_FILE_NAME};
+    use crate::renderer::{RendererConfig, CONFIG_FILE_NAMES};
     use anyhow::Result;
     use std::fs;
     use std::io::Read;
@@ -125,7 +125,7 @@ mod tests {
     fn writes_config_file() -> Result<()> {
         let tempdir = tempdir()?;
         initialize_template_dir(tempdir.path())?;
-        let config_file = fs::File::open(tempdir.path().join(CONFIG_FILE_NAME))?;
+        let config_file = fs::File::open(tempdir.path().join(CONFIG_FILE_NAMES[0]))?;
         let result: Result<RendererConfig, serde_json::Error> =
             serde_json::from_reader(config_file);
         assert!(result.is_ok());

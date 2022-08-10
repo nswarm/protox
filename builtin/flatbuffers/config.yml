@@ -41,5 +41,12 @@ scripted:
   scope:
     open: "{"
     close: "}"
-    indent: 4,
+    indent: 4
     open_on_new_line: false
+overlays:
+  by_key:
+    hellooo:
+      value: "world!"
+      targets:
+        - "flatbuffers.proto"
+        - "middle/middle_file.proto"

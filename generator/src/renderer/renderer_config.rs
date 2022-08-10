@@ -1,4 +1,5 @@
 use crate::renderer::case::Case;
+use crate::renderer::overlay_config::OverlayConfig;
 use crate::renderer::template::METADATA_TEMPLATE_NAME;
 use crate::renderer::{primitive, proto};
 use serde::{Deserialize, Serialize};
@@ -96,6 +97,9 @@ pub struct RendererConfig {
     /// Options for the ScriptedRenderer Output methods related to scope.
     #[serde(default)]
     pub scripted: ScriptedConfig,
+
+    #[serde(default)]
+    pub overlays: OverlayConfig,
 }
 
 fn default_metadata_file_name() -> String {
@@ -184,6 +188,7 @@ impl Default for RendererConfig {
             field_relative_parent_prefix: None,
             generated_header: None,
             scripted: Default::default(),
+            overlays: Default::default(),
         }
     }
 }

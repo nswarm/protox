@@ -15,7 +15,7 @@ mod renderer;
 mod util;
 
 use crate::dir_init::{initialize_script_dir, initialize_template_dir};
-use crate::renderer::CONFIG_FILE_NAME;
+use crate::renderer::DEFAULT_CONFIG_FILE_NAME;
 use crate::util::DisplayNormalized;
 use anyhow::Result;
 pub use config::Config;

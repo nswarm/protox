@@ -11,8 +11,8 @@ use crate::renderer::scripted::api::output::Output;
 use crate::renderer::scripted::{
     api, MAIN_SCRIPT_NAME, RENDER_FILE_FN_NAME, RENDER_METADATA_FN_NAME, SCRIPT_EXT,
 };
-use crate::renderer::{Renderer, RendererConfig};
-use crate::{DisplayNormalized, CONFIG_FILE_NAME};
+use crate::renderer::{find_existing_config_path, Renderer, RendererConfig};
+use crate::DisplayNormalized;
 
 pub struct ScriptedRenderer {
     engine: Engine,
@@ -76,8 +76,8 @@ impl ScriptedRenderer {
 }
 
 impl Renderer for ScriptedRenderer {
-    fn load(&mut self, input_root: &Path) -> anyhow::Result<()> {
-        self.config = Self::load_config(&input_root.join(CONFIG_FILE_NAME))?;
+    fn load(&mut self, input_root: &Path) -> Result<()> {
+        self.config = Self::load_config(&find_existing_config_path(input_root)?)?;
         let resolver = FileModuleResolver::new_with_path_and_extension(input_root, SCRIPT_EXT);
         self.engine.set_module_resolver(resolver);
         self.main_ast = Some(compile_file(

@@ -1,7 +1,7 @@
 use crate::renderer::context::{FileContext, MetadataContext};
 use crate::renderer::template::{helper, FILE_TEMPLATE_NAME, METADATA_TEMPLATE_NAME, TEMPLATE_EXT};
-use crate::renderer::{Renderer, RendererConfig};
-use crate::{DisplayNormalized, CONFIG_FILE_NAME};
+use crate::renderer::{find_existing_config_path, Renderer, RendererConfig};
+use crate::DisplayNormalized;
 use anyhow::{Context, Result};
 use handlebars::Handlebars;
 use serde::Serialize;
@@ -129,7 +129,7 @@ impl Renderer for TemplateRenderer<'_> {
     /// be used in other templates as partials with the syntax {{> file_name}}.
     /// (See also: https://handlebarsjs.com/guide/partials.html)
     fn load(&mut self, root: &Path) -> Result<()> {
-        self.config = Self::load_config(&root.join(CONFIG_FILE_NAME))?;
+        self.config = Self::load_config(&find_existing_config_path(root)?)?;
         self.load_templates(root)?;
         Ok(())
     }

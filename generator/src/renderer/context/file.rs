@@ -52,6 +52,11 @@ pub struct FileContext {
     /// `protox/proto_options/protos` for more info.
     #[serde(serialize_with = "serialize_file_options", skip_deserializing)]
     options: Option<FileOptions>,
+
+    // Config overlays applied to this File.
+    // Only available in scripted renderer.
+    #[serde(skip)]
+    overlays: HashMap<String, serde_yaml::Value>,
 }
 
 impl FileContext {
@@ -67,6 +72,7 @@ impl FileContext {
             enums: enums(file, config)?,
             messages: messages(file, file.package.as_ref(), config)?,
             options: file.options.clone(),
+            overlays: overlays(&file, config)?,
         };
         Ok(context)
     }
@@ -88,6 +94,13 @@ impl FileContext {
     }
     pub fn options(&self) -> &Option<FileOptions> {
         &self.options
+    }
+
+    pub fn overlay(&self, key: &str) -> serde_yaml::Value {
+        self.overlays
+            .get(key)
+            .map(|x| x.clone())
+            .unwrap_or(serde_yaml::Value::Null)
     }
 }
 
@@ -138,6 +151,17 @@ fn messages(
         messages.push(MessageContext::new(message, package, config)?);
     }
     Ok(messages)
+}
+
+fn overlays(
+    file: &FileDescriptorProto,
+    config: &RendererConfig,
+) -> Result<HashMap<String, serde_yaml::Value>> {
+    Ok(config
+        .overlays
+        .get_all(&source_file(file)?)
+        .map(|x| x.clone())
+        .unwrap_or(HashMap::new()))
 }
 
 macro_rules! insert_file_option {
@@ -358,4 +382,9 @@ mod tests {
         assert_eq!(context.imports[0].file_path(), other_file);
         Ok(())
     }
+
+    // #[test]
+    // fn overlay() -> Result<()> {
+    //     todo!("nyi")
+    // }
 }

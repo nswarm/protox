@@ -1,6 +1,5 @@
 use crate::renderer::option_key_value::get_key_values;
 use prost::{Extendable, ExtensionImpl};
-use rhai;
 use rhai::exported_module;
 use rhai::plugin::*;
 use std::collections::{BTreeMap, HashMap};
@@ -14,7 +13,7 @@ pub fn register(engine: &mut rhai::Engine) {
 }
 
 fn register_context(engine: &mut rhai::Engine) {
-    engine.register_global_module(exported_module!(context).into());
+    engine.register_global_module(exported_module!(api).into());
 }
 
 fn get_str_or_new(opt: Option<&String>) -> String {
@@ -47,9 +46,12 @@ fn hash_to_btree<K: Ord, V>(map: HashMap<K, V>) -> BTreeMap<K, V> {
 }
 
 #[export_module]
-mod context {
+mod api {
     use crate::renderer::context;
+    use crate::renderer::scripted::api::{hash_to_btree, opt_get_kv};
     use crate::util::DisplayNormalized;
+    use log::error;
+    use std::collections::BTreeMap;
 
     use super::get_str_or_new;
 
@@ -67,6 +69,8 @@ mod context {
         }
         return result;
     }
+
+    pub type Value = serde_yaml::Value;
 
     ////////////////////////////////////////////////////
     // Contexts
@@ -113,6 +117,13 @@ mod context {
     #[rhai_fn(get = "options", pure)]
     pub fn file_options(context: &mut FileContext) -> FileOptions {
         context.options().clone().unwrap_or(FileOptions::default())
+    }
+
+    #[rhai_fn(name = "overlay")]
+    pub fn file_overlay(context: &mut FileContext, key: String) -> serde_yaml::Value {
+        // todo yaml value
+        // context.overlays().clone().unwrap_or(FileOptions::default())
+        context.overlay(&key)
     }
 
     ////////////////////////////////////////////////////
@@ -477,5 +488,247 @@ mod context {
     #[rhai_fn(index_get)]
     pub fn field_opt_get_kv(options: &mut FieldOptions, index: String) -> String {
         opt_get_kv(options, index, &proto_options::FIELD_KEY_VALUE)
+    }
+
+    ////////////////////////////////////////////////////
+    // Value
+    #[rhai_fn(name = "is_str", pure)]
+    pub fn yaml_value_is_str(value: &mut Value) -> bool {
+        value.is_string()
+    }
+
+    #[rhai_fn(name = "is_int", pure)]
+    pub fn yaml_value_is_int(value: &mut Value) -> bool {
+        value.is_i64()
+    }
+
+    #[rhai_fn(name = "is_bool", pure)]
+    pub fn yaml_value_is_bool(value: &mut Value) -> bool {
+        value.is_bool()
+    }
+
+    #[rhai_fn(name = "is_array", pure)]
+    pub fn yaml_value_is_array(value: &mut Value) -> bool {
+        value.is_sequence()
+    }
+
+    #[rhai_fn(name = "is_map", pure)]
+    pub fn yaml_value_is_map(value: &mut Value) -> bool {
+        value.is_mapping()
+    }
+
+    #[rhai_fn(name = "as_str", pure)]
+    pub fn yaml_value_as_str(value: &mut Value) -> String {
+        value.as_str().expect("value is not a string").to_owned()
+    }
+
+    #[rhai_fn(name = "as_int", pure)]
+    pub fn yaml_value_as_int(value: &mut Value) -> rhai::INT {
+        value.as_i64().expect("value is not an int")
+    }
+
+    #[rhai_fn(name = "as_bool", pure)]
+    pub fn yaml_value_as_bool(value: &mut Value) -> bool {
+        value.as_bool().expect("value is not a bool")
+    }
+
+    #[rhai_fn(name = "as_array", pure)]
+    pub fn yaml_value_as_array(value: &mut Value) -> rhai::Dynamic {
+        value
+            .as_sequence()
+            .expect("value is not an array")
+            .to_vec()
+            .into()
+    }
+
+    #[rhai_fn(name = "as_map", pure)]
+    pub fn yaml_value_as_map(value: &mut Value) -> rhai::Dynamic {
+        let mut map = BTreeMap::<String, Value>::new();
+        for (key, value) in value.as_mapping().expect("value is not a map") {
+            if !key.is_string() {
+                error!(
+                    "Yaml maps with keys that are not Strings are unsupported. key: {:?}",
+                    key
+                );
+                continue;
+            }
+            map.insert(key.as_str().unwrap().to_owned(), value.clone());
+        }
+        map.into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use rhai::exported_module;
+
+    mod yaml {
+        use crate::renderer::scripted::api::tests::run_test;
+        use anyhow::Result;
+        use std::collections::BTreeMap;
+
+        #[test]
+        fn is_str() -> Result<()> {
+            test_is_x(
+                serde_yaml::Value::String("some_value".to_owned()),
+                "value.is_str()",
+                true,
+            )
+        }
+
+        #[test]
+        fn is_not_str() -> Result<()> {
+            test_is_x(serde_yaml::Value::Number(5.into()), "value.is_str()", false)
+        }
+
+        #[test]
+        fn is_bool() -> Result<()> {
+            test_is_x(serde_yaml::Value::Bool(true), "value.is_bool()", true)
+        }
+
+        #[test]
+        fn is_not_bool() -> Result<()> {
+            test_is_x(
+                serde_yaml::Value::String("some_value".to_owned()),
+                "value.is_bool()",
+                false,
+            )
+        }
+
+        #[test]
+        fn is_int() -> Result<()> {
+            test_is_x(serde_yaml::Value::Number(5.into()), "value.is_int()", true)
+        }
+
+        #[test]
+        fn is_not_int() -> Result<()> {
+            test_is_x(serde_yaml::Value::Bool(true), "value.is_int()", false)
+        }
+
+        #[test]
+        fn is_array() -> Result<()> {
+            test_is_x(
+                serde_yaml::Value::Sequence(serde_yaml::Sequence::new()),
+                "value.is_array()",
+                true,
+            )
+        }
+
+        #[test]
+        fn is_not_array() -> Result<()> {
+            test_is_x(
+                serde_yaml::Value::Number(5.into()),
+                "value.is_array()",
+                false,
+            )
+        }
+
+        #[test]
+        fn is_map() -> Result<()> {
+            test_is_x(
+                serde_yaml::Value::Mapping(serde_yaml::Mapping::new()),
+                "value.is_map()",
+                true,
+            )
+        }
+
+        #[test]
+        fn is_not_map() -> Result<()> {
+            test_is_x(serde_yaml::Value::Number(5.into()), "value.is_map()", false)
+        }
+
+        fn test_is_x(value: serde_yaml::Value, script: &str, expected: bool) -> Result<()> {
+            let actual = run_test::<bool>(value, script)?;
+            assert_eq!(actual, expected);
+            Ok(())
+        }
+
+        #[test]
+        fn as_str() -> Result<()> {
+            let result = run_test::<String>(
+                serde_yaml::Value::String("hello".to_owned()),
+                "value.as_str()",
+            )?;
+            assert_eq!(result, "hello".to_owned());
+            Ok(())
+        }
+
+        #[test]
+        fn as_bool() -> Result<()> {
+            let result = run_test::<bool>(serde_yaml::Value::Bool(true), "value.as_bool()")?;
+            assert!(result);
+            Ok(())
+        }
+
+        #[test]
+        fn as_int() -> Result<()> {
+            let result =
+                run_test::<rhai::INT>(serde_yaml::Value::Number(5.into()), "value.as_int()")?;
+            assert_eq!(result, 5);
+            Ok(())
+        }
+
+        #[test]
+        fn as_array() -> Result<()> {
+            let expected = vec![
+                serde_yaml::Value::Number(1.into()),
+                serde_yaml::Value::Number(2.into()),
+            ];
+            let success = run_test::<bool>(
+                serde_yaml::Value::Sequence(expected.clone()),
+                r#"
+                let arr = value.as_array();
+                arr[0].as_int() == 1
+                && arr[1].as_int() == 2
+                "#,
+            )?;
+            assert!(success);
+            Ok(())
+        }
+
+        #[test]
+        fn as_map() -> Result<()> {
+            let mut expected = BTreeMap::new();
+            expected.insert("a".to_owned(), serde_yaml::Value::Number(1.into()));
+            expected.insert("b".to_owned(), serde_yaml::Value::Number(2.into()));
+            let success = run_test::<bool>(
+                btree_to_mapping(expected.clone()),
+                r#"
+                let map = value.as_map();
+                map.get("a").as_int() == 1
+                && map.get("b").as_int() == 2
+            "#,
+            )?;
+            assert!(success);
+            Ok(())
+        }
+
+        fn btree_to_mapping(map: BTreeMap<String, serde_yaml::Value>) -> serde_yaml::Value {
+            let mut mapping = serde_yaml::Mapping::new();
+            for (k, v) in map {
+                mapping.insert(serde_yaml::Value::String(k), v);
+            }
+            serde_yaml::Value::Mapping(mapping)
+        }
+    }
+
+    fn run_test<T: 'static + Send + Sync + Clone>(
+        value: serde_yaml::Value,
+        script_content: &str,
+    ) -> Result<T> {
+        let mut engine = rhai::Engine::new();
+        engine.register_global_module(exported_module!(super::api).into());
+        let ast = engine.compile(&format!(
+            r#"
+        fn test(value) {{
+            {}
+        }}
+        "#,
+            script_content
+        ))?;
+        let mut scope = rhai::Scope::new();
+        let ret_val: T = engine.call_fn(&mut scope, &ast, "test", (value,))?;
+        Ok(ret_val)
     }
 }

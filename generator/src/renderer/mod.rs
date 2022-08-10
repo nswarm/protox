@@ -15,13 +15,15 @@ use crate::{util, DisplayNormalized};
 mod case;
 mod context;
 mod option_key_value;
+mod overlay_config;
 mod primitive;
 mod proto;
 mod renderer_config;
 pub mod scripted;
 pub mod template;
 
-pub const CONFIG_FILE_NAME: &'static str = "config.json";
+pub const CONFIG_FILE_NAMES: &[&'static str] = &["config.yml", "config.json", "config.yaml"];
+pub const DEFAULT_CONFIG_FILE_NAME: &'static str = CONFIG_FILE_NAMES[0];
 
 const DEFAULT_GENERATED_HEADER: &str = r#"/////////////////////////////////////////////////////
 // *** DO NOT EDIT MANUALLY ***
@@ -55,7 +57,10 @@ pub trait Renderer {
         info!("Loading config from: {}", path.display_normalized());
         let file = fs::File::open(path).context("Failed to read RendererConfig file.")?;
         let buf_reader = io::BufReader::new(file);
-        serde_yaml::from_reader(buf_reader).with_context(|| error_deserialize_config("yaml", &path))
+        let mut config: RendererConfig = serde_yaml::from_reader(buf_reader)
+            .with_context(|| error_deserialize_config("yaml", &path))?;
+        config.overlays.build_cache();
+        Ok(config)
     }
 
     /// Load any necessary files from the `input_root` directory.
@@ -220,6 +225,19 @@ pub trait Renderer {
             Some(file) => self.config().ignored_files.contains(file),
         }
     }
+}
+
+pub fn find_existing_config_path(input_root: &Path) -> Result<PathBuf> {
+    for config_file_name in CONFIG_FILE_NAMES {
+        let path = input_root.join(config_file_name);
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+    Err(anyhow!(
+        "Could not find config file. Must be named one of: {}",
+        CONFIG_FILE_NAMES.join(", ")
+    ))
 }
 
 fn collect_dirs_and_files(
