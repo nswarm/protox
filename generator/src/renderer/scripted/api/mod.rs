@@ -121,8 +121,6 @@ mod api {
 
     #[rhai_fn(name = "overlay")]
     pub fn file_overlay(context: &mut FileContext, key: String) -> serde_yaml::Value {
-        // todo yaml value
-        // context.overlays().clone().unwrap_or(FileOptions::default())
         context.overlay(&key)
     }
 
@@ -492,6 +490,16 @@ mod api {
 
     ////////////////////////////////////////////////////
     // Value
+    #[rhai_fn(name = "is_null", pure)]
+    pub fn yaml_value_is_null(value: &mut Value) -> bool {
+        value.is_null()
+    }
+
+    #[rhai_fn(name = "is_valid", pure)]
+    pub fn yaml_value_is_valid(value: &mut Value) -> bool {
+        !value.is_null()
+    }
+
     #[rhai_fn(name = "is_str", pure)]
     pub fn yaml_value_is_str(value: &mut Value) -> bool {
         value.is_string()
@@ -567,6 +575,36 @@ mod tests {
         use crate::renderer::scripted::api::tests::run_test;
         use anyhow::Result;
         use std::collections::BTreeMap;
+
+        #[test]
+        fn is_valid() -> Result<()> {
+            test_is_x(
+                serde_yaml::Value::String("some_value".to_owned()),
+                "value.is_valid()",
+                true,
+            )?;
+            test_is_x(
+                serde_yaml::Value::Number(5.into()),
+                "value.is_valid()",
+                true,
+            )?;
+            test_is_x(serde_yaml::Value::Null, "value.is_valid()", false)
+        }
+
+        #[test]
+        fn is_null() -> Result<()> {
+            test_is_x(
+                serde_yaml::Value::String("some_value".to_owned()),
+                "value.is_null()",
+                false,
+            )?;
+            test_is_x(
+                serde_yaml::Value::Number(5.into()),
+                "value.is_null()",
+                false,
+            )?;
+            test_is_x(serde_yaml::Value::Null, "value.is_null()", true)
+        }
 
         #[test]
         fn is_str() -> Result<()> {
