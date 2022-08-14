@@ -231,13 +231,14 @@ fn try_insert_option<T: Serialize>(
 #[cfg(test)]
 mod tests {
     use crate::renderer::case::Case;
+    use crate::renderer::context::FileContext;
+    use crate::renderer::overlay_config::OverlayConfig;
+    use crate::renderer::renderer_config::CaseConfig;
+    use crate::renderer::{overlay_config, RendererConfig};
     use anyhow::Result;
     use prost::{Extendable, ExtensionSet};
     use prost_types::{FileDescriptorProto, FileOptions};
-
-    use crate::renderer::context::FileContext;
-    use crate::renderer::renderer_config::CaseConfig;
-    use crate::renderer::RendererConfig;
+    use std::collections::{HashMap, HashSet};
 
     #[test]
     fn source_file() -> Result<()> {
@@ -383,8 +384,24 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn overlay() -> Result<()> {
-    //     todo!("nyi")
-    // }
+    #[test]
+    fn overlay() -> Result<()> {
+        let file = FileDescriptorProto {
+            name: Some("file_name".to_owned()),
+            ..Default::default()
+        };
+        let config = RendererConfig {
+            overlays: OverlayConfig::new(HashMap::from([(
+                "some_key".to_owned(),
+                overlay_config::ValueTargets {
+                    value: serde_yaml::Value::String("some_value".to_owned()),
+                    targets: HashSet::from(["file_name".to_owned()]),
+                },
+            )])),
+            ..Default::default()
+        };
+        let context = FileContext::new(&file, &config)?;
+        assert_eq!(&context.overlays.get("some_key").unwrap(), &"some_value");
+        Ok(())
+    }
 }

@@ -660,7 +660,6 @@ mod field_options {
     opt_test!(FieldOptions, lazy, true);
     opt_test!(FieldOptions, deprecated, true);
     opt_test!(FieldOptions, weak, true);
-
     fn run_test(options: FieldOptions, method: &str, expected_output: &str) -> Result<()> {
         let context = file_context(options)?;
         test_file_script(
