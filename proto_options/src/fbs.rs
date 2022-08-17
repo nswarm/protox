@@ -30,39 +30,6 @@ fn message_type_display(message_type: MessageType) -> String {
 #[export_module]
 pub mod api {
     ////////////////////////////////////////////////////
-    // FileOptions
-    pub type FileOptions = prost_types::FileOptions;
-
-    #[rhai_fn(get = "fbs_file_attributes", pure)]
-    pub fn file_attribute(opt: &mut FileOptions) -> rhai::Dynamic {
-        opt.extension_data(extensions::fbs::FILE_ATTRIBUTE)
-            .map(Clone::clone)
-            .unwrap_or(Vec::new())
-            .into()
-    }
-
-    #[rhai_fn(get = "fbs_file_identifier", pure)]
-    pub fn file_identifier(opt: &mut FileOptions) -> String {
-        opt.extension_data(extensions::fbs::FILE_IDENTIFIER)
-            .map(&String::clone)
-            .unwrap_or(String::new())
-    }
-
-    #[rhai_fn(get = "fbs_file_extension", pure)]
-    pub fn file_extension(opt: &mut FileOptions) -> String {
-        opt.extension_data(extensions::fbs::FILE_EXTENSION)
-            .map(&String::clone)
-            .unwrap_or(String::new())
-    }
-
-    #[rhai_fn(get = "fbs_root_type", pure)]
-    pub fn root_type(opt: &mut FileOptions) -> String {
-        opt.extension_data(extensions::fbs::ROOT_TYPE)
-            .map(&String::clone)
-            .unwrap_or(String::new())
-    }
-
-    ////////////////////////////////////////////////////
     // EnumOptions
     pub type EnumOptions = prost_types::EnumOptions;
 

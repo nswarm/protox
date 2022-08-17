@@ -7,8 +7,6 @@ import "fbs.proto";
 
 package fbs;
 
-option (fbs.file_attribute) = "priority";
-
 enum ByteEnum {
   option (fbs.enum_type) = BYTE;
   Default = 0;
@@ -71,7 +69,3 @@ message Table {
     (fbs.field_attribute) = "attr2"
   ];
 }
-
-option (fbs.file_identifier) = "ABCD";
-option (fbs.file_extension) = "data";
-option (fbs.root_type) = "Table";
