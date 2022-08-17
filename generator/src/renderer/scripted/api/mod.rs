@@ -47,13 +47,12 @@ fn hash_to_btree<K: Ord, V>(map: HashMap<K, V>) -> BTreeMap<K, V> {
 
 #[export_module]
 mod api {
+    use super::get_str_or_new;
     use crate::renderer::context;
     use crate::renderer::scripted::api::{hash_to_btree, opt_get_kv};
     use crate::util::DisplayNormalized;
     use log::error;
     use std::collections::BTreeMap;
-
-    use super::get_str_or_new;
 
     ////////////////////////////////////////////////////
     // Utilities
@@ -525,34 +524,39 @@ mod api {
         value.is_mapping()
     }
 
-    #[rhai_fn(name = "as_str", pure)]
-    pub fn yaml_value_as_str(value: &mut Value) -> String {
-        value.as_str().expect("value is not a string").to_owned()
+    #[rhai_fn(name = "as_str", pure, return_raw)]
+    pub fn yaml_value_as_str(value: &mut Value) -> Result<String, Box<rhai::EvalAltResult>> {
+        Ok(value
+            .as_str()
+            .map(|x| x.to_owned())
+            .ok_or("value is not a string")?)
     }
 
-    #[rhai_fn(name = "as_int", pure)]
-    pub fn yaml_value_as_int(value: &mut Value) -> rhai::INT {
-        value.as_i64().expect("value is not an int")
+    #[rhai_fn(name = "as_int", pure, return_raw)]
+    pub fn yaml_value_as_int(value: &mut Value) -> Result<rhai::INT, Box<rhai::EvalAltResult>> {
+        Ok(value.as_i64().ok_or("value is not an i64")?)
     }
 
-    #[rhai_fn(name = "as_bool", pure)]
-    pub fn yaml_value_as_bool(value: &mut Value) -> bool {
-        value.as_bool().expect("value is not a bool")
+    #[rhai_fn(name = "as_bool", pure, return_raw)]
+    pub fn yaml_value_as_bool(value: &mut Value) -> Result<bool, Box<rhai::EvalAltResult>> {
+        Ok(value.as_bool().ok_or("value is not a bool")?)
     }
 
-    #[rhai_fn(name = "as_array", pure)]
-    pub fn yaml_value_as_array(value: &mut Value) -> rhai::Dynamic {
-        value
+    #[rhai_fn(name = "as_array", pure, return_raw)]
+    pub fn yaml_value_as_array(
+        value: &mut Value,
+    ) -> Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
+        Ok(value
             .as_sequence()
-            .expect("value is not an array")
+            .ok_or("value is not an array")?
             .to_vec()
-            .into()
+            .into())
     }
 
-    #[rhai_fn(name = "as_map", pure)]
-    pub fn yaml_value_as_map(value: &mut Value) -> rhai::Dynamic {
+    #[rhai_fn(name = "as_map", pure, return_raw)]
+    pub fn yaml_value_as_map(value: &mut Value) -> Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
         let mut map = BTreeMap::<String, Value>::new();
-        for (key, value) in value.as_mapping().expect("value is not a map") {
+        for (key, value) in value.as_mapping().ok_or("value is not an i64")? {
             if !key.is_string() {
                 error!(
                     "Yaml maps with keys that are not Strings are unsupported. key: {:?}",
@@ -562,7 +566,7 @@ mod api {
             }
             map.insert(key.as_str().unwrap().to_owned(), value.clone());
         }
-        map.into()
+        Ok(map.into())
     }
 }
 

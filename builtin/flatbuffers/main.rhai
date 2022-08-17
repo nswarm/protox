@@ -23,11 +23,16 @@ fn namespace() {
 }
 
 fn attributes() {
-    if file.options.fbs_file_attributes.len == 0 {
+    let attributes = file.overlay("attribute");
+    if !attributes.is_valid() {
         return;
     }
-    for attr in file.options.fbs_file_attributes {
-        output.line(`attribute "${attr}";`);
+    attributes = attributes.as_array();
+    if attributes.len == 0 {
+        return;
+    }
+    for attr in attributes {
+        output.line(`attribute "${attr.as_str()}";`);
     }
     output.line();
 }
@@ -154,17 +159,20 @@ fn field_separator(field, message_type) {
 }
 
 fn file_identifier() {
-    if file.options.fbs_file_identifier != "" {
-        output.line(`file_identifier "${file.options.fbs_file_identifier}";`);
+    let identifier = file.overlay("identifier");
+    if identifier.is_valid() {
+        output.line(`file_identifier "${identifier.as_str()}";`);
     }
 }
 fn file_extension() {
-    if file.options.fbs_file_extension != "" {
-        output.line(`file_extension "${file.options.fbs_file_extension}";`);
+    let extension = file.overlay("extension");
+    if extension.is_valid() {
+        output.line(`file_extension "${extension.as_str()}";`);
     }
 }
 fn root_type() {
-    if file.options.fbs_root_type != "" {
-        output.line(`root_type ${file.options.fbs_root_type};`);
+    let root_type = file.overlay("root_type");
+    if root_type.is_valid() {
+        output.line(`root_type ${root_type.as_str()};`);
     }
 }

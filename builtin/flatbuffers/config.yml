@@ -44,9 +44,11 @@ scripted:
     indent: 4
     open_on_new_line: false
 overlays:
-  by_key:
-    hellooo:
-      value: "world!"
-      targets:
-        - "flatbuffers.proto"
-        - "middle/middle_file.proto"
+  by_target:
+    flatbuffers.proto:
+      attribute:
+        - priority
+      identifier: ABCD
+      extension: data
+      root_type: Table
+  # todo use priority on a field

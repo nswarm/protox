@@ -12,118 +12,226 @@ pub struct ValueTargets {
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct OverlayConfig {
+    // Config only, not complete after initialization.
+    #[serde(default)]
     by_key: HashMap<Key, ValueTargets>,
 
-    // Runtime cache.
+    // Modified during initialization to include all data from by_key.
+    #[serde(default)]
+    by_target: HashMap<Target, HashMap<Key, serde_yaml::Value>>,
+
     #[serde(skip)]
-    target_to_kv: HashMap<Target, HashMap<Key, serde_yaml::Value>>,
+    is_initialized: bool,
 }
 
 impl OverlayConfig {
     #[cfg(test)]
-    pub fn new(by_key: HashMap<Key, ValueTargets>) -> Self {
+    pub fn new(
+        by_key: HashMap<Key, ValueTargets>,
+        by_target: HashMap<Target, HashMap<Key, serde_yaml::Value>>,
+    ) -> Self {
         let mut config = OverlayConfig {
             by_key,
-            ..Default::default()
+            by_target,
+            is_initialized: false,
         };
-        config.build_cache();
+        config.initialize();
         config
     }
 
-    pub fn get_all(&self, target: &str) -> Option<&HashMap<Key, serde_yaml::Value>> {
-        self.target_to_kv.get(target)
+    pub fn by_target(&self, target: &str) -> Option<&HashMap<Key, serde_yaml::Value>> {
+        self.by_target.get(target)
     }
 
-    pub fn build_cache(&mut self) {
-        if self.is_cache_valid() {
+    pub fn initialize(&mut self) {
+        if self.is_initialized {
             return;
         }
+        self.is_initialized = true;
         for (key, vt) in &self.by_key {
             let value = &vt.value;
             let targets = &vt.targets;
             for target in targets {
-                if !self.target_to_kv.contains_key(target) {
-                    self.target_to_kv.insert(target.clone(), HashMap::new());
+                if !self.by_target.contains_key(target) {
+                    self.by_target.insert(target.clone(), HashMap::new());
                 }
-                self.target_to_kv
-                    .get_mut(target)
-                    .unwrap()
-                    .insert(key.clone(), value.clone());
+                let kv = self.by_target.get_mut(target).unwrap();
+                // Don't overwrite!
+                if !kv.contains_key(key) {
+                    kv.insert(key.clone(), value.clone());
+                }
             }
-        }
-    }
-
-    fn is_cache_valid(&self) -> bool {
-        if self.by_key.is_empty() {
-            true
-        } else {
-            !self.target_to_kv.is_empty()
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::renderer::overlay_config::{Key, OverlayConfig, ValueTargets};
+    use crate::renderer::overlay_config::{Key, OverlayConfig, Target, ValueTargets};
     use std::collections::{HashMap, HashSet};
     use std::iter::FromIterator;
 
-    mod is_cache_valid {
-        use crate::renderer::overlay_config::tests::test_by_key_data;
+    macro_rules! by_key {
+        ( $($e:expr),* ) => {
+            HashMap::from([ $($e,)* ])
+        };
+    }
+
+    macro_rules! by_target {
+        ( $($e:expr),* ) => {
+            HashMap::from([ $($e,)* ])
+        };
+    }
+
+    mod is_initialized {
+        use crate::renderer::overlay_config::tests::{arbitrary_by_key, arbitrary_by_target};
         use crate::renderer::overlay_config::OverlayConfig;
 
         #[test]
-        fn always_true_without_by_key_data() {
-            let mut config = OverlayConfig::default();
-            assert!(config.is_cache_valid());
-            config.build_cache();
-            assert!(config.is_cache_valid());
+        fn true_after_initialize_with_by_key_config() {
+            let mut config = OverlayConfig {
+                by_key: arbitrary_by_key(),
+                ..Default::default()
+            };
+            assert!(!config.is_initialized);
+            config.initialize();
+            assert!(config.is_initialized);
         }
 
         #[test]
-        fn true_after_build_cache_with_by_key_data() {
+        fn true_after_initialize_with_by_target_config() {
             let mut config = OverlayConfig {
-                by_key: test_by_key_data(),
-                target_to_kv: Default::default(),
+                by_target: arbitrary_by_target(),
+                ..Default::default()
             };
-            assert!(!config.is_cache_valid());
-            config.build_cache();
-            assert!(config.is_cache_valid());
+            assert!(!config.is_initialized);
+            config.initialize();
+            assert!(config.is_initialized);
         }
     }
 
     #[test]
-    fn new_builds_cache() {
-        let config = OverlayConfig::new(test_by_key_data());
-        assert!(config.is_cache_valid());
+    fn new_initializes_automatically() {
+        let config = OverlayConfig::new(arbitrary_by_key(), arbitrary_by_target());
+        assert!(config.is_initialized);
     }
 
-    #[test]
-    fn get_all() {
-        let config = OverlayConfig::new(test_by_key_data());
-        assert_eq!(
-            config.get_all("target_0"),
-            Some(&HashMap::from([
-                ("test_key_0".to_string(), string_value("test_value_0")),
-                ("test_key_1".to_string(), string_value("test_value_1")),
-            ]))
-        );
+    mod get_by_target {
+        use crate::renderer::overlay_config::tests::{by_key_entry, by_target_entry, yaml_string};
+        use crate::renderer::overlay_config::OverlayConfig;
+        use std::collections::HashMap;
+
+        #[test]
+        fn from_by_key_data() {
+            let config = OverlayConfig::new(
+                by_key!(
+                    by_key_entry("key0", "value0", &["target0"]),
+                    by_key_entry("key1", "value1", &["target0", "target1"])
+                ),
+                by_target!(),
+            );
+            assert_eq!(
+                config.by_target("target0"),
+                Some(&HashMap::from([
+                    ("key0".to_string(), yaml_string("value0")),
+                    ("key1".to_string(), yaml_string("value1")),
+                ]))
+            );
+            assert_eq!(
+                config.by_target("target1"),
+                Some(&HashMap::from([(
+                    "key1".to_string(),
+                    yaml_string("value1")
+                )]))
+            );
+        }
+
+        #[test]
+        fn from_by_target_data() {
+            let config = OverlayConfig::new(
+                by_key!(),
+                by_target!(
+                    by_target_entry("target0", &[("key0", "value0"), ("key1", "value1")]),
+                    by_target_entry("target1", &[("key0", "value1"), ("key2", "value2")])
+                ),
+            );
+            assert_eq!(
+                config.by_target("target0"),
+                Some(&HashMap::from([
+                    ("key0".to_string(), yaml_string("value0")),
+                    ("key1".to_string(), yaml_string("value1")),
+                ]))
+            );
+            assert_eq!(
+                config.by_target("target1"),
+                Some(&HashMap::from([
+                    // key0 with different value than target0.
+                    ("key0".to_string(), yaml_string("value1")),
+                    ("key2".to_string(), yaml_string("value2")),
+                ]))
+            );
+        }
+
+        #[test]
+        fn both_by_key_and_target() {
+            let config = OverlayConfig::new(
+                by_key!(by_key_entry("key0", "value0", &["target0"])),
+                by_target!(by_target_entry("target0", &[("key1", "value1")])),
+            );
+            assert_eq!(
+                config.by_target("target0"),
+                Some(&HashMap::from([
+                    ("key0".to_string(), yaml_string("value0")),
+                    ("key1".to_string(), yaml_string("value1")),
+                ]))
+            );
+        }
+
+        #[test]
+        fn by_target_overrides_by_key() {
+            let config = OverlayConfig::new(
+                by_key!(by_key_entry("key0", "value0", &["target0"])),
+                by_target!(by_target_entry("target0", &[("key0", "override_value!")])),
+            );
+            assert_eq!(
+                config.by_target("target0"),
+                Some(&HashMap::from([(
+                    "key0".to_string(),
+                    yaml_string("override_value!")
+                ),]))
+            );
+        }
     }
 
-    fn test_by_key_data() -> HashMap<Key, ValueTargets> {
-        HashMap::from([
-            (
-                "test_key_0".to_string(),
-                ValueTargets::new("test_value_0", &["target_0"]),
-            ),
-            (
-                "test_key_1".to_string(),
-                ValueTargets::new("test_value_1", &["target_0", "target_1"]),
-            ),
-        ])
+    fn arbitrary_by_key() -> HashMap<Key, ValueTargets> {
+        by_key!(
+            by_key_entry("key0", "value0", &["target0"]),
+            by_key_entry("key0", "value0", &["target0", "target1"])
+        )
     }
 
-    fn string_value(value: &str) -> serde_yaml::Value {
+    fn arbitrary_by_target() -> HashMap<Target, HashMap<Key, serde_yaml::Value>> {
+        by_target!(
+            by_target_entry("target0", &[("key2", "value2"), ("key3", "value3")]),
+            by_target_entry("target1", &[("key0", "value5")])
+        )
+    }
+
+    fn by_key_entry(key: &str, value: &str, targets: &[&str]) -> (String, ValueTargets) {
+        (key.to_string(), ValueTargets::new(value, targets))
+    }
+
+    fn by_target_entry(
+        target: &str,
+        kv: &[(&str, &str)],
+    ) -> (String, HashMap<Key, serde_yaml::Value>) {
+        (
+            target.to_string(),
+            HashMap::from_iter(kv.into_iter().map(|(k, v)| (k.to_string(), yaml_string(v)))),
+        )
+    }
+
+    fn yaml_string(value: &str) -> serde_yaml::Value {
         serde_yaml::Value::String(value.to_owned())
     }
 

@@ -59,7 +59,7 @@ pub trait Renderer {
         let buf_reader = io::BufReader::new(file);
         let mut config: RendererConfig = serde_yaml::from_reader(buf_reader)
             .with_context(|| error_deserialize_config("yaml", &path))?;
-        config.overlays.build_cache();
+        config.overlays.initialize();
         Ok(config)
     }
 

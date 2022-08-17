@@ -159,7 +159,7 @@ fn overlays(
 ) -> Result<HashMap<String, serde_yaml::Value>> {
     Ok(config
         .overlays
-        .get_all(&source_file(file)?)
+        .by_target(&source_file(file)?)
         .map(|x| x.clone())
         .unwrap_or(HashMap::new()))
 }
@@ -391,13 +391,16 @@ mod tests {
             ..Default::default()
         };
         let config = RendererConfig {
-            overlays: OverlayConfig::new(HashMap::from([(
-                "some_key".to_owned(),
-                overlay_config::ValueTargets {
-                    value: serde_yaml::Value::String("some_value".to_owned()),
-                    targets: HashSet::from(["file_name".to_owned()]),
-                },
-            )])),
+            overlays: OverlayConfig::new(
+                HashMap::from([(
+                    "some_key".to_owned(),
+                    overlay_config::ValueTargets {
+                        value: serde_yaml::Value::String("some_value".to_owned()),
+                        targets: HashSet::from(["file_name".to_owned()]),
+                    },
+                )]),
+                HashMap::new(),
+            ),
             ..Default::default()
         };
         let context = FileContext::new(&file, &config)?;
