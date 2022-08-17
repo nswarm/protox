@@ -13,3 +13,5 @@ mod import;
 mod message;
 mod metadata;
 mod proto_type;
+
+pub mod overlayed;

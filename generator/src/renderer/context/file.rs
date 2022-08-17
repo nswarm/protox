@@ -6,6 +6,7 @@ use prost_types::{FileDescriptorProto, FileOptions};
 use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
+use crate::renderer::context::overlayed::Overlayed;
 use crate::renderer::context::{EnumContext, ImportContext, MessageContext};
 use crate::renderer::option_key_value::insert_custom_options;
 use crate::renderer::proto::TypePath;
@@ -60,19 +61,19 @@ pub struct FileContext {
 }
 
 impl FileContext {
-    pub fn new(file: &FileDescriptorProto, config: &RendererConfig) -> Result<Self> {
+    pub fn new(proto: &FileDescriptorProto, config: &RendererConfig) -> Result<Self> {
         debug!(
             "Creating file context: {}",
-            util::str_or_unknown(&file.name)
+            util::str_or_unknown(&proto.name)
         );
         let context = Self {
-            source_file: source_file(file)?,
-            package: package(file, &config),
-            imports: imports(file, &config.ignored_imports)?,
-            enums: enums(file, config)?,
-            messages: messages(file, file.package.as_ref(), config)?,
-            options: file.options.clone(),
-            overlays: overlays(&file, config)?,
+            source_file: source_file(proto)?,
+            package: package(proto, &config),
+            imports: imports(proto, &config.ignored_imports)?,
+            enums: enums(proto, proto.package.as_ref(), config)?,
+            messages: messages(proto, proto.package.as_ref(), config)?,
+            options: proto.options.clone(),
+            overlays: config.overlays.by_target_opt_clone(&proto.name),
         };
         Ok(context)
     }
@@ -95,12 +96,11 @@ impl FileContext {
     pub fn options(&self) -> &Option<FileOptions> {
         &self.options
     }
+}
 
-    pub fn overlay(&self, key: &str) -> serde_yaml::Value {
-        self.overlays
-            .get(key)
-            .map(|x| x.clone())
-            .unwrap_or(serde_yaml::Value::Null)
+impl Overlayed for FileContext {
+    fn overlays(&self) -> &HashMap<String, serde_yaml::Value> {
+        &self.overlays
     }
 }
 
@@ -133,10 +133,14 @@ fn imports(file: &FileDescriptorProto, ignored_imports: &[String]) -> Result<Vec
     Ok(imports)
 }
 
-fn enums(file: &FileDescriptorProto, config: &RendererConfig) -> Result<Vec<EnumContext>> {
+fn enums(
+    file: &FileDescriptorProto,
+    package: Option<&String>,
+    config: &RendererConfig,
+) -> Result<Vec<EnumContext>> {
     let mut enums = Vec::new();
     for proto in &file.enum_type {
-        enums.push(EnumContext::new(proto, config)?);
+        enums.push(EnumContext::new(proto, package, config)?);
     }
     Ok(enums)
 }
@@ -151,17 +155,6 @@ fn messages(
         messages.push(MessageContext::new(message, package, config)?);
     }
     Ok(messages)
-}
-
-fn overlays(
-    file: &FileDescriptorProto,
-    config: &RendererConfig,
-) -> Result<HashMap<String, serde_yaml::Value>> {
-    Ok(config
-        .overlays
-        .by_target(&source_file(file)?)
-        .map(|x| x.clone())
-        .unwrap_or(HashMap::new()))
 }
 
 macro_rules! insert_file_option {

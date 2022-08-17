@@ -77,8 +77,9 @@ fn enum(enum) {
 }
 
 fn enum_type(enum) {
-    if enum.options.fbs_enum_type != "" {
-        enum.options.fbs_enum_type
+    let enum_type = enum.overlay("type");
+    if enum_type.is_valid() {
+        enum_type.as_string()
     } else {
         "ubyte"
     }

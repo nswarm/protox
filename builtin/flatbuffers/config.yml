@@ -45,10 +45,40 @@ scripted:
     open_on_new_line: false
 overlays:
   by_target:
+    # File.
     flatbuffers.proto:
       attribute:
         - priority
       identifier: ABCD
       extension: data
       root_type: Table
-  # todo use priority on a field
+    # Enum.
+    .fbs.ByteEnum:
+      type: BYTE
+    .fbs.LongEnum:
+      type: LONG
+    # Message.
+    .fbs.Union:
+      type: UNION
+    .fbs.Struct:
+      type: STRUCT
+    # Field.
+    .fbs.Table.bool_value:
+      default: true
+    .fbs.Table.byte_value:
+      type: byte
+    .fbs.Table.ubyte_value:
+      type: ubyte
+    .fbs.Table.short_value:
+      type: short
+    .fbs.Table.ushort_value:
+      type: ushort
+    .fbs.Table.i32_value:
+      default: 1111
+    .fbs.Table.f32_value:
+      default: 1111.2222
+    .fbs.Table.value_with_attrs_and_default:
+      default: 1234
+      attribute:
+        - "priority: 1"
+        - deprecated

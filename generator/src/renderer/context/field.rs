@@ -8,6 +8,7 @@ use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::renderer::context::message;
+use crate::renderer::context::overlayed::Overlayed;
 use crate::renderer::context::proto_type::ProtoType;
 use crate::renderer::option_key_value::insert_custom_options;
 use crate::renderer::RendererConfig;
@@ -84,21 +85,29 @@ pub struct FieldContext {
     /// `protox/proto_options/protos` for more info.
     #[serde(serialize_with = "serialize_field_options", skip_deserializing)]
     options: Option<FieldOptions>,
+
+    // Config overlays applied to this File.
+    // Only available in scripted renderer.
+    #[serde(skip)]
+    overlays: HashMap<String, serde_yaml::Value>,
 }
 
 impl FieldContext {
     pub fn new(
         field: &FieldDescriptorProto,
         package: Option<&String>,
+        message_name: Option<&String>,
         map_data: &message::MapData,
         config: &RendererConfig,
     ) -> Result<Self> {
         log_new_field(&field.name);
         match &field.type_name {
-            None => FieldContext::new_basic(field, package, config),
+            None => FieldContext::new_basic(field, package, message_name, config),
             Some(type_name) => match map_data.get(type_name) {
-                None => FieldContext::new_basic(field, package, config),
-                Some(entry_data) => FieldContext::new_map(field, package, entry_data, config),
+                None => FieldContext::new_basic(field, package, message_name, config),
+                Some(entry_data) => {
+                    FieldContext::new_map(field, package, message_name, entry_data, config)
+                }
             },
         }
     }
@@ -106,6 +115,7 @@ impl FieldContext {
     fn new_basic(
         field: &FieldDescriptorProto,
         package: Option<&String>,
+        message_name: Option<&String>,
         config: &RendererConfig,
     ) -> Result<Self> {
         let type_path = ProtoType::from_field(field)?.to_type_path(config)?;
@@ -122,6 +132,7 @@ impl FieldContext {
             relative_key_type: None,
             relative_value_type: None,
             options: field.options.clone(),
+            overlays: overlays(package, message_name, &field.name, config),
         };
         Ok(context)
     }
@@ -129,6 +140,7 @@ impl FieldContext {
     fn new_map(
         field: &FieldDescriptorProto,
         package: Option<&String>,
+        message_name: Option<&String>,
         entry: &message::MapEntryData,
         config: &RendererConfig,
     ) -> Result<Self> {
@@ -147,6 +159,7 @@ impl FieldContext {
             relative_key_type: Some(key_type_path.relative_to(package, parent_prefix)),
             relative_value_type: Some(value_type_path.relative_to(package, parent_prefix)),
             options: field.options.clone(),
+            overlays: overlays(package, message_name, &field.name, config),
         };
         Ok(context)
     }
@@ -186,8 +199,38 @@ impl FieldContext {
     }
 }
 
+impl Overlayed for FieldContext {
+    fn overlays(&self) -> &HashMap<String, serde_yaml::Value> {
+        &self.overlays
+    }
+}
+
 fn log_new_field(name: &Option<String>) {
     debug!("Creating field context: {}", util::str_or_unknown(name));
+}
+
+fn full_name(
+    package: Option<&String>,
+    message_name: Option<&String>,
+    field_name: &Option<String>,
+) -> Option<String> {
+    Some(format!(
+        "{}.{}.{}",
+        package?,
+        message_name?,
+        field_name.as_ref()?
+    ))
+}
+
+fn overlays(
+    package: Option<&String>,
+    message_name: Option<&String>,
+    field_name: &Option<String>,
+    config: &RendererConfig,
+) -> HashMap<String, serde_yaml::Value> {
+    config
+        .overlays
+        .by_target_opt_clone(&full_name(package, message_name, &field_name))
 }
 
 fn field_name(field: &FieldDescriptorProto, config: &RendererConfig) -> Result<String> {
@@ -234,11 +277,13 @@ mod tests {
     use prost::Extendable;
     use prost_types::field_descriptor_proto::Label;
     use prost_types::{FieldDescriptorProto, FieldOptions};
+    use std::collections::HashMap;
 
     use crate::renderer::case::Case;
     use crate::renderer::context::field::FieldContext;
     use crate::renderer::context::message;
     use crate::renderer::context::message::MapData;
+    use crate::renderer::overlay_config::OverlayConfig;
     use crate::renderer::primitive;
     use crate::renderer::RendererConfig;
 
@@ -246,10 +291,10 @@ mod tests {
     fn field_name() -> Result<()> {
         let config = RendererConfig::default();
         let name = "test_name".to_owned();
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some(name.clone());
         field.type_name = Some(primitive::FLOAT.to_owned());
-        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
         assert_eq!(context.field_name.to_owned(), name);
         Ok(())
     }
@@ -264,10 +309,10 @@ mod tests {
         config
             .field_name_override
             .insert(old_name.clone(), new_name.clone());
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some(old_name);
         field.type_name = Some(primitive::FLOAT.to_owned());
-        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
         assert_eq!(context.field_name.to_owned(), new_name);
         Ok(())
     }
@@ -277,10 +322,10 @@ mod tests {
         let mut config = RendererConfig::default();
         config.case_config.field_name = Case::UpperSnake;
         let name = "testName".to_owned();
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some(name.clone());
         field.type_name = Some(primitive::FLOAT.to_owned());
-        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
         assert_eq!(context.field_name.to_owned(), "TEST_NAME");
         Ok(())
     }
@@ -288,7 +333,7 @@ mod tests {
     #[test]
     fn key_value_options() -> Result<()> {
         let config = RendererConfig::default();
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some("field_name".to_owned());
         field.type_name = Some(primitive::FLOAT.to_owned());
         let mut options = FieldOptions::default();
@@ -298,7 +343,7 @@ mod tests {
         )?;
         field.options = Some(options);
 
-        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
         let json = serde_json::to_string(&context)?;
         println!("{}", json);
         assert!(json.contains(r#""key0":"value0""#));
@@ -310,22 +355,22 @@ mod tests {
     fn native_type_option() -> Result<()> {
         let expected_type = "custom_type";
         let config = RendererConfig::default();
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some("field_name".to_owned());
         field.type_name = Some(primitive::FLOAT.to_owned());
         let mut options = FieldOptions::default();
         options.set_extension_data(&proto_options::NATIVE_TYPE, expected_type.to_owned())?;
         field.options = Some(options);
 
-        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
         assert_eq!(context.relative_type, Some("custom_type".to_owned()));
         Ok(())
     }
 
     mod type_name_from_config {
         use anyhow::Result;
+        use prost_types::FieldDescriptorProto;
 
-        use crate::renderer::context::field::tests::default_field;
         use crate::renderer::context::field::FieldContext;
         use crate::renderer::context::message;
         use crate::renderer::RendererConfig;
@@ -359,10 +404,10 @@ mod tests {
                 proto_type_name.to_owned(),
                 ["Test", proto_type_name].concat(),
             );
-            let mut field = default_field();
+            let mut field = FieldDescriptorProto::default();
             field.name = Some("field_name".to_owned());
             field.type_name = Some(proto_type_name.to_owned());
-            let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+            let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
             assert_eq!(
                 context.fully_qualified_type.as_ref(),
                 config.type_config.get(proto_type_name),
@@ -373,7 +418,7 @@ mod tests {
 
     #[test]
     fn package_separator_replaced_in_types() -> Result<()> {
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some("test".to_owned());
         field.type_name = Some(".root.sub.TypeName".to_owned());
         let mut config = RendererConfig::default();
@@ -381,6 +426,7 @@ mod tests {
         let context = FieldContext::new(
             &field,
             Some(&"root".to_owned()),
+            None,
             &message::MapData::new(),
             &config,
         )?;
@@ -398,18 +444,18 @@ mod tests {
     #[test]
     fn missing_name_errors() {
         let config = RendererConfig::default();
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.type_name = Some(primitive::FLOAT.to_owned());
-        let result = FieldContext::new(&field, None, &message::MapData::new(), &config);
+        let result = FieldContext::new(&field, None, None, &message::MapData::new(), &config);
         assert!(result.is_err());
     }
 
     #[test]
     fn missing_type_name_errors() {
         let config = RendererConfig::default();
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some("field_name".to_owned());
-        let result = FieldContext::new(&field, None, &message::MapData::new(), &config);
+        let result = FieldContext::new(&field, None, None, &message::MapData::new(), &config);
         assert!(result.is_err());
     }
 
@@ -417,10 +463,10 @@ mod tests {
     fn type_name_case() -> Result<()> {
         let mut config = RendererConfig::default();
         config.case_config.message_name = Case::UpperSnake;
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some("field_name".to_owned());
         field.type_name = Some("TypeName".to_owned());
-        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
         assert_eq!(
             context.fully_qualified_type.as_ref().map(String::as_str),
             Some("TYPE_NAME")
@@ -432,10 +478,10 @@ mod tests {
     fn type_name_case_ignored_for_primitives() -> Result<()> {
         let mut config = RendererConfig::default();
         config.case_config.message_name = Case::UpperSnake;
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some("field_name".to_owned());
         field.r#type = Some(2);
-        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
         assert_eq!(
             context.fully_qualified_type,
             Some(primitive::FLOAT.to_ascii_lowercase())
@@ -448,7 +494,7 @@ mod tests {
         let mut field = field_with_required();
         field.label = Some(Label::Repeated as i32);
         let config = RendererConfig::default();
-        let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+        let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
         assert!(context.is_array);
         Ok(())
     }
@@ -479,7 +525,7 @@ mod tests {
             );
 
             let expected_key = primitive_type_name(int_proto_type, &config)?;
-            let context = FieldContext::new(&field, Some(&package), &map_data, &config)?;
+            let context = FieldContext::new(&field, Some(&package), None, &map_data, &config)?;
             assert!(context.is_map);
             assert_eq!(
                 context.fully_qualified_key_type,
@@ -514,7 +560,7 @@ mod tests {
 
             let expected_key = primitive_type_name(int_proto_type, &config)?;
             let expected_value = primitive_type_name(float_proto_type, &config)?;
-            let context = FieldContext::new(&field, None, &map_data, &config)?;
+            let context = FieldContext::new(&field, None, None, &map_data, &config)?;
             assert!(context.is_map);
             assert_eq!(
                 context.fully_qualified_key_type,
@@ -533,7 +579,7 @@ mod tests {
         fn non_map_has_no_map_fields() -> Result<()> {
             let field = field_with_required();
             let config = RendererConfig::default();
-            let context = FieldContext::new(&field, None, &message::MapData::new(), &config)?;
+            let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
             assert!(!context.is_map);
             assert!(context.fully_qualified_key_type.is_none());
             assert!(context.fully_qualified_value_type.is_none());
@@ -556,31 +602,51 @@ mod tests {
         let config = RendererConfig::default();
         let mut field = field_with_required();
         field.oneof_index = Some(0);
-        let context = FieldContext::new(&field, None, &MapData::new(), &config)?;
+        let context = FieldContext::new(&field, None, None, &MapData::new(), &config)?;
         assert!(context.is_oneof);
         Ok(())
     }
 
+    #[test]
+    fn overlay() -> Result<()> {
+        let proto = FieldDescriptorProto {
+            name: Some("field_name".to_owned()),
+            r#type: Some(2),
+            ..Default::default()
+        };
+        let package = ".some.package".to_owned();
+        let message_name = "MessageName".to_owned();
+        let config = RendererConfig {
+            overlays: OverlayConfig::new(
+                HashMap::new(),
+                HashMap::from([(
+                    ".some.package.MessageName.field_name".to_owned(),
+                    HashMap::from([(
+                        "some_key".to_owned(),
+                        serde_yaml::Value::String("some_value".to_owned()),
+                    )]),
+                )]),
+            ),
+            ..Default::default()
+        };
+        let context = FieldContext::new(
+            &proto,
+            Some(&package),
+            Some(&message_name),
+            &message::MapData::default(),
+            &config,
+        )?;
+        assert_eq!(
+            &context.overlays.get("some_key").expect("key did not exist"),
+            &"some_value"
+        );
+        Ok(())
+    }
+
     fn field_with_required() -> FieldDescriptorProto {
-        let mut field = default_field();
+        let mut field = FieldDescriptorProto::default();
         field.name = Some("field_name".to_owned());
         field.r#type = Some(2);
         field
-    }
-
-    fn default_field() -> FieldDescriptorProto {
-        FieldDescriptorProto {
-            name: None,
-            number: None,
-            label: None,
-            r#type: None,
-            type_name: None,
-            extendee: None,
-            default_value: None,
-            oneof_index: None,
-            json_name: None,
-            options: None,
-            proto3_optional: None,
-        }
     }
 }

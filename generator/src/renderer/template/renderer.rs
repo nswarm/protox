@@ -261,8 +261,8 @@ mod tests {
         let msg_name = "MsgName".to_owned();
         let field0 = fake_field("field0", primitive::FLOAT);
         let field1 = fake_field("field1", primitive::BOOL);
-        let field0_rendered = render_field(&renderer, &field0, None)?;
-        let field1_rendered = render_field(&renderer, &field1, None)?;
+        let field0_rendered = render_field(&renderer, &field0, None, None)?;
+        let field1_rendered = render_field(&renderer, &field1, None, None)?;
         let message = fake_message(&msg_name, vec![field0, field1]);
 
         let result = render_message(&mut renderer, &message)?;
@@ -289,7 +289,12 @@ mod tests {
         )?;
 
         let field = fake_field("field-name", primitive::FLOAT);
-        let result = render_field(&mut renderer, &field, Some(&".test.package".to_owned()))?;
+        let result = render_field(
+            &mut renderer,
+            &field,
+            Some(&".test.package".to_owned()),
+            None,
+        )?;
         assert_eq!(result, [field_name, separator, &type_name].concat());
         Ok(())
     }
@@ -471,7 +476,7 @@ mod tests {
     ) -> Result<String> {
         renderer.render_to_string(
             ENUM_TEMPLATE_NAME,
-            &EnumContext::new(&enum_proto, &renderer.config)?,
+            &EnumContext::new(&enum_proto, None, &renderer.config)?,
         )
     }
 
@@ -489,8 +494,15 @@ mod tests {
         renderer: &TemplateRenderer,
         field: &FieldDescriptorProto,
         package: Option<&String>,
+        message_name: Option<&String>,
     ) -> Result<String> {
-        let context = FieldContext::new(field, package, &HashMap::new(), &renderer.config)?;
+        let context = FieldContext::new(
+            field,
+            package,
+            message_name,
+            &HashMap::new(),
+            &renderer.config,
+        )?;
         renderer.render_to_string(FIELD_TEMPLATE_NAME, &context)
     }
 }

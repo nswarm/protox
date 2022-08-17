@@ -43,6 +43,19 @@ impl OverlayConfig {
         self.by_target.get(target)
     }
 
+    pub fn by_target_opt_clone(
+        &self,
+        target: &Option<String>,
+    ) -> HashMap<String, serde_yaml::Value> {
+        if let Some(name) = target {
+            self.by_target(name)
+                .map(Clone::clone)
+                .unwrap_or(HashMap::new())
+        } else {
+            HashMap::new()
+        }
+    }
+
     pub fn initialize(&mut self) {
         if self.is_initialized {
             return;

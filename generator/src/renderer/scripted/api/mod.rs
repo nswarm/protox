@@ -1,3 +1,4 @@
+use crate::renderer::context::overlayed::Overlayed;
 use crate::renderer::option_key_value::get_key_values;
 use prost::{Extendable, ExtensionImpl};
 use rhai::exported_module;
@@ -157,6 +158,11 @@ mod api {
         context.options().clone().unwrap_or(EnumOptions::default())
     }
 
+    #[rhai_fn(name = "overlay")]
+    pub fn enum_overlay(context: &mut EnumContext, key: String) -> serde_yaml::Value {
+        context.overlay(&key)
+    }
+
     ////////////////////////////////////////////////////
     // EnumValueContext
     #[rhai_fn(get = "name", pure)]
@@ -177,6 +183,11 @@ mod api {
             .unwrap_or(EnumValueOptions::default())
     }
 
+    #[rhai_fn(name = "overlay")]
+    pub fn enum_value_overlay(context: &mut EnumValueContext, key: String) -> serde_yaml::Value {
+        context.overlay(&key)
+    }
+
     ////////////////////////////////////////////////////
     // MessageContext
     #[rhai_fn(get = "name", pure)]
@@ -195,6 +206,11 @@ mod api {
             .options()
             .clone()
             .unwrap_or(MessageOptions::default())
+    }
+
+    #[rhai_fn(name = "overlay")]
+    pub fn message_overlay(context: &mut MessageContext, key: String) -> serde_yaml::Value {
+        context.overlay(&key)
     }
 
     ////////////////////////////////////////////////////
@@ -255,6 +271,11 @@ mod api {
             .options()
             .map(FieldOptions::clone)
             .unwrap_or(FieldOptions::default())
+    }
+
+    #[rhai_fn(name = "overlay")]
+    pub fn field_overlay(context: &mut FieldContext, key: String) -> serde_yaml::Value {
+        context.overlay(&key)
     }
 
     ////////////////////////////////////////////////////

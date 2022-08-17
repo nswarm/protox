@@ -7,6 +7,7 @@ use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::renderer::case::Case;
+use crate::renderer::context::overlayed::Overlayed;
 use crate::renderer::context::proto_type::ProtoType;
 use crate::renderer::context::FieldContext;
 use crate::renderer::option_key_value::insert_custom_options;
@@ -47,6 +48,11 @@ pub struct MessageContext {
     /// `protox/proto_options/protos` for more info.
     #[serde(serialize_with = "serialize_message_options", skip_deserializing)]
     options: Option<MessageOptions>,
+
+    // Config overlays applied to this File.
+    // Only available in scripted renderer.
+    #[serde(skip)]
+    overlays: HashMap<String, serde_yaml::Value>,
 }
 
 impl MessageContext {
@@ -60,6 +66,9 @@ impl MessageContext {
             name: name(message, config.case_config.message_name)?,
             fields: fields(message, package, config)?,
             options: message.options.clone(),
+            overlays: config
+                .overlays
+                .by_target_opt_clone(&full_name(package, &message.name)),
         };
         Ok(context)
     }
@@ -75,6 +84,12 @@ impl MessageContext {
     }
 }
 
+impl Overlayed for MessageContext {
+    fn overlays(&self) -> &HashMap<String, serde_yaml::Value> {
+        &self.overlays
+    }
+}
+
 pub type MapData = HashMap<String, MapEntryData>;
 pub struct MapEntryData {
     pub key: ProtoType,
@@ -83,6 +98,10 @@ pub struct MapEntryData {
 
 fn log_new_message(name: &Option<String>) {
     debug!("Creating message context: {}", util::str_or_unknown(name));
+}
+
+fn full_name(package: Option<&String>, name: &Option<String>) -> Option<String> {
+    Some(format!("{}.{}", package?, name.as_ref()?))
 }
 
 fn name(message: &DescriptorProto, case: Case) -> Result<String> {
@@ -98,7 +117,13 @@ fn fields(
     let map_data = collect_map_data(message, package)?;
     let mut fields = Vec::new();
     for field in &message.field {
-        fields.push(FieldContext::new(field, package, &map_data, config)?);
+        fields.push(FieldContext::new(
+            field,
+            package,
+            message.name.as_ref(),
+            &map_data,
+            config,
+        )?);
     }
     Ok(fields)
 }
@@ -206,16 +231,18 @@ mod tests {
     use anyhow::Result;
     use prost::Extendable;
     use prost_types::{DescriptorProto, FieldDescriptorProto, MessageOptions};
+    use std::collections::HashMap;
 
     use crate::renderer::case::Case;
     use crate::renderer::context::message::MessageContext;
+    use crate::renderer::overlay_config::OverlayConfig;
     use crate::renderer::RendererConfig;
 
     #[test]
     fn name() -> Result<()> {
         let config = RendererConfig::default();
         let msg_name = "MsgName".to_owned();
-        let mut message = default_message();
+        let mut message = DescriptorProto::default();
         message.name = Some(msg_name.clone());
         let context = MessageContext::new(&message, None, &config)?;
         assert_eq!(context.name, msg_name);
@@ -227,7 +254,7 @@ mod tests {
         let mut config = RendererConfig::default();
         config.case_config.message_name = Case::UpperSnake;
         let msg_name = "msgName".to_owned();
-        let mut message = default_message();
+        let mut message = DescriptorProto::default();
         message.name = Some(msg_name.clone());
         let context = MessageContext::new(&message, None, &config)?;
         assert_eq!(context.name, "MSG_NAME");
@@ -237,7 +264,7 @@ mod tests {
     #[test]
     fn missing_name_errors() {
         let config = RendererConfig::default();
-        let message = default_message();
+        let message = DescriptorProto::default();
         let result = MessageContext::new(&message, None, &config);
         assert!(result.is_err());
     }
@@ -245,7 +272,7 @@ mod tests {
     #[test]
     fn creates_fields_from_proto() -> Result<()> {
         let config = RendererConfig::default();
-        let mut proto = default_message();
+        let mut proto = DescriptorProto::default();
         proto.name = Some("enum_name".to_owned());
         proto.field.push(field("field0"));
         proto.field.push(field("field1"));
@@ -258,7 +285,7 @@ mod tests {
     #[test]
     fn key_value_options() -> Result<()> {
         let config = RendererConfig::default();
-        let mut message = default_message();
+        let mut message = DescriptorProto::default();
         message.name = Some("MessageName".to_owned());
         let mut options = MessageOptions::default();
         options.set_extension_data(
@@ -275,6 +302,34 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn overlay() -> Result<()> {
+        let proto = DescriptorProto {
+            name: Some("MessageName".to_owned()),
+            ..Default::default()
+        };
+        let package = ".some.package".to_owned();
+        let config = RendererConfig {
+            overlays: OverlayConfig::new(
+                HashMap::new(),
+                HashMap::from([(
+                    ".some.package.MessageName".to_owned(),
+                    HashMap::from([(
+                        "some_key".to_owned(),
+                        serde_yaml::Value::String("some_value".to_owned()),
+                    )]),
+                )]),
+            ),
+            ..Default::default()
+        };
+        let context = MessageContext::new(&proto, Some(&package), &config)?;
+        assert_eq!(
+            &context.overlays.get("some_key").expect("key did not exist"),
+            &"some_value"
+        );
+        Ok(())
+    }
+
     fn field(name: impl ToString) -> FieldDescriptorProto {
         FieldDescriptorProto {
             name: Some(name.to_string()),
@@ -288,21 +343,6 @@ mod tests {
             json_name: None,
             options: None,
             proto3_optional: None,
-        }
-    }
-
-    fn default_message() -> DescriptorProto {
-        DescriptorProto {
-            name: None,
-            field: vec![],
-            extension: vec![],
-            nested_type: vec![],
-            enum_type: vec![],
-            extension_range: vec![],
-            oneof_decl: vec![],
-            options: None,
-            reserved_range: vec![],
-            reserved_name: vec![],
         }
     }
 }

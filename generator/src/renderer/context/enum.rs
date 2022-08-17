@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
+use crate::renderer::context::overlayed::Overlayed;
 use crate::renderer::option_key_value::insert_custom_options;
 use anyhow::{anyhow, Result};
 use log::debug;
-use prost_types::{EnumDescriptorProto, EnumOptions, EnumValueOptions};
+use prost_types::{EnumDescriptorProto, EnumOptions, EnumValueDescriptorProto, EnumValueOptions};
 use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
@@ -43,6 +44,11 @@ pub struct EnumContext {
     /// `protox/proto_options/protos` for more info.
     #[serde(serialize_with = "serialize_enum_options", skip_deserializing)]
     options: Option<EnumOptions>,
+
+    // Config overlays applied to this File.
+    // Only available in scripted renderer.
+    #[serde(skip)]
+    overlays: HashMap<String, serde_yaml::Value>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -53,15 +59,27 @@ pub struct EnumValueContext {
     /// Currently only supported in scripted renderer.
     #[serde(skip)]
     options: Option<EnumValueOptions>,
+
+    // Config overlays applied to this File.
+    // Only available in scripted renderer.
+    #[serde(skip)]
+    overlays: HashMap<String, serde_yaml::Value>,
 }
 
 impl EnumContext {
-    pub fn new(proto: &EnumDescriptorProto, config: &RendererConfig) -> Result<Self> {
+    pub fn new(
+        proto: &EnumDescriptorProto,
+        package: Option<&String>,
+        config: &RendererConfig,
+    ) -> Result<Self> {
         log_new_enum(&proto.name);
         let context = Self {
             name: name(&proto, config)?,
-            values: values(&proto, config)?,
+            values: values(&proto, package, config)?,
             options: proto.options.clone(),
+            overlays: config
+                .overlays
+                .by_target_opt_clone(&full_name(package, &proto.name)),
         };
         Ok(context)
     }
@@ -78,6 +96,26 @@ impl EnumContext {
 }
 
 impl EnumValueContext {
+    pub fn new(
+        proto: &EnumValueDescriptorProto,
+        message_full_name: Option<&String>,
+        config: &RendererConfig,
+    ) -> Result<Self> {
+        let (name, number) = match (proto.name.clone(), proto.number) {
+            (Some(name), Some(number)) => (name, number),
+            _ => return Err(error_invalid_value(&proto.name)),
+        };
+        let case = &config.case_config.enum_value_name;
+        Ok(EnumValueContext {
+            name: case.rename(&name),
+            number,
+            options: proto.options.clone(),
+            overlays: config
+                .overlays
+                .by_target_opt_clone(&full_name(message_full_name, &proto.name)),
+        })
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -89,8 +127,24 @@ impl EnumValueContext {
     }
 }
 
+impl Overlayed for EnumContext {
+    fn overlays(&self) -> &HashMap<String, serde_yaml::Value> {
+        &self.overlays
+    }
+}
+
+impl Overlayed for EnumValueContext {
+    fn overlays(&self) -> &HashMap<String, serde_yaml::Value> {
+        &self.overlays
+    }
+}
+
 fn log_new_enum(name: &Option<String>) {
     debug!("Creating message context: {}", util::str_or_unknown(name));
+}
+
+fn full_name(package: Option<&String>, name: &Option<String>) -> Option<String> {
+    Some(format!("{}.{}", package?, name.as_ref()?))
 }
 
 fn name(proto: &EnumDescriptorProto, config: &RendererConfig) -> Result<String> {
@@ -98,19 +152,19 @@ fn name(proto: &EnumDescriptorProto, config: &RendererConfig) -> Result<String> 
     Ok(config.case_config.enum_name.rename(name))
 }
 
-fn values(proto: &EnumDescriptorProto, config: &RendererConfig) -> Result<Vec<EnumValueContext>> {
+fn values(
+    proto: &EnumDescriptorProto,
+    package: Option<&String>,
+    config: &RendererConfig,
+) -> Result<Vec<EnumValueContext>> {
     let mut values = Vec::new();
-    for value in &proto.value {
-        let (name, number) = match (value.name.clone(), value.number) {
-            (Some(name), Some(number)) => (name, number),
-            _ => return Err(error_invalid_value(&value.name)),
-        };
-        let case = &config.case_config.enum_value_name;
-        values.push(EnumValueContext {
-            name: case.rename(&name),
-            number,
-            options: value.options.clone(),
-        });
+    for proto_value in &proto.value {
+        let message_full_name = full_name(package, &proto.name);
+        values.push(EnumValueContext::new(
+            proto_value,
+            message_full_name.as_ref(),
+            config,
+        )?);
     }
     Ok(values)
 }
@@ -142,18 +196,20 @@ mod tests {
     use anyhow::Result;
     use prost::Extendable;
     use prost_types::{EnumDescriptorProto, EnumOptions, EnumValueDescriptorProto};
+    use std::collections::HashMap;
 
     use crate::renderer::case::Case;
-    use crate::renderer::context::EnumContext;
+    use crate::renderer::context::{EnumContext, EnumValueContext};
+    use crate::renderer::overlay_config::OverlayConfig;
     use crate::renderer::RendererConfig;
 
     #[test]
     fn name() -> Result<()> {
         let config = RendererConfig::default();
         let enum_name = "MsgName".to_owned();
-        let mut proto = default_enum();
+        let mut proto = EnumDescriptorProto::default();
         proto.name = Some(enum_name.clone());
-        let context = EnumContext::new(&proto, &config)?;
+        let context = EnumContext::new(&proto, None, &config)?;
         assert_eq!(context.name, enum_name);
         Ok(())
     }
@@ -163,9 +219,9 @@ mod tests {
         let mut config = RendererConfig::default();
         config.case_config.enum_name = Case::UpperSnake;
         let enum_name = "MsgName".to_owned();
-        let mut proto = default_enum();
+        let mut proto = EnumDescriptorProto::default();
         proto.name = Some(enum_name.clone());
-        let context = EnumContext::new(&proto, &config)?;
+        let context = EnumContext::new(&proto, None, &config)?;
         assert_eq!(context.name, "MSG_NAME");
         Ok(())
     }
@@ -173,19 +229,19 @@ mod tests {
     #[test]
     fn missing_name_errors() {
         let config = RendererConfig::default();
-        let proto = default_enum();
-        let result = EnumContext::new(&proto, &config);
+        let proto = EnumDescriptorProto::default();
+        let result = EnumContext::new(&proto, None, &config);
         assert!(result.is_err());
     }
 
     #[test]
     fn values() -> Result<()> {
         let config = RendererConfig::default();
-        let mut proto = default_enum();
+        let mut proto = EnumDescriptorProto::default();
         proto.name = Some("EnumName".to_owned());
         proto.value.push(enum_value(1));
         proto.value.push(enum_value(2));
-        let context = EnumContext::new(&proto, &config)?;
+        let context = EnumContext::new(&proto, None, &config)?;
         assert_eq!(context.values[0].name, "1");
         assert_eq!(context.values[0].number, 1);
         assert_eq!(context.values[1].name, "2");
@@ -197,11 +253,11 @@ mod tests {
     fn values_with_case() -> Result<()> {
         let mut config = RendererConfig::default();
         config.case_config.enum_value_name = Case::UpperSnake;
-        let mut proto = default_enum();
+        let mut proto = EnumDescriptorProto::default();
         proto.name = Some("EnumName".to_owned());
         proto.value.push(named_enum_value("ValueName1", 1));
         proto.value.push(named_enum_value("ValueName2", 2));
-        let context = EnumContext::new(&proto, &config)?;
+        let context = EnumContext::new(&proto, None, &config)?;
         assert_eq!(context.values[0].name, "VALUE_NAME1");
         assert_eq!(context.values[0].number, 1);
         assert_eq!(context.values[1].name, "VALUE_NAME2");
@@ -212,7 +268,7 @@ mod tests {
     #[test]
     fn key_value_options() -> Result<()> {
         let config = RendererConfig::default();
-        let mut proto = default_enum();
+        let mut proto = EnumDescriptorProto::default();
         proto.name = Some("EnumName".to_owned());
         let mut options = EnumOptions::default();
         options.set_extension_data(
@@ -221,11 +277,64 @@ mod tests {
         )?;
         proto.options = Some(options);
 
-        let context = EnumContext::new(&proto, &config)?;
+        let context = EnumContext::new(&proto, None, &config)?;
         let json = serde_json::to_string(&context)?;
         println!("{}", json);
         assert!(json.contains(r#""key0":"value0""#));
         assert!(json.contains(r#""key1":"value1""#));
+        Ok(())
+    }
+
+    #[test]
+    fn overlay_enum() -> Result<()> {
+        let proto = EnumDescriptorProto {
+            name: Some("EnumName".to_owned()),
+            ..Default::default()
+        };
+        let package = ".some.package".to_owned();
+        let config = RendererConfig {
+            overlays: OverlayConfig::new(
+                HashMap::new(),
+                HashMap::from([(
+                    ".some.package.EnumName".to_owned(),
+                    HashMap::from([(
+                        "some_key".to_owned(),
+                        serde_yaml::Value::String("some_value".to_owned()),
+                    )]),
+                )]),
+            ),
+            ..Default::default()
+        };
+        let context = EnumContext::new(&proto, Some(&package), &config)?;
+        assert_eq!(
+            &context.overlays.get("some_key").expect("key did not exist"),
+            &"some_value"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn overlay_enum_value() -> Result<()> {
+        let proto = named_enum_value("ValueName", 1);
+        let message_name = ".some.package.EnumName".to_owned();
+        let config = RendererConfig {
+            overlays: OverlayConfig::new(
+                HashMap::new(),
+                HashMap::from([(
+                    ".some.package.EnumName.ValueName".to_owned(),
+                    HashMap::from([(
+                        "some_key".to_owned(),
+                        serde_yaml::Value::String("some_value".to_owned()),
+                    )]),
+                )]),
+            ),
+            ..Default::default()
+        };
+        let context = EnumValueContext::new(&proto, Some(&message_name), &config)?;
+        assert_eq!(
+            &context.overlays.get("some_key").expect("key did not exist"),
+            &"some_value"
+        );
         Ok(())
     }
 
@@ -242,16 +351,6 @@ mod tests {
             name: Some(name.to_owned()),
             number: Some(number),
             options: None,
-        }
-    }
-
-    fn default_enum() -> EnumDescriptorProto {
-        EnumDescriptorProto {
-            name: None,
-            value: vec![],
-            options: None,
-            reserved_range: vec![],
-            reserved_name: vec![],
         }
     }
 }
