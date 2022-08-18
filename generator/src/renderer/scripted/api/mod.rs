@@ -1,5 +1,3 @@
-use crate::renderer::option_key_value::get_key_values;
-use prost::{Extendable, ExtensionImpl};
 use rhai::exported_module;
 use rhai::plugin::*;
 use std::collections::{BTreeMap, HashMap};
@@ -20,23 +18,6 @@ fn get_str_or_new(opt: Option<&String>) -> String {
     opt.map(&String::clone).unwrap_or(String::new())
 }
 
-fn opt_get_kv<T: Extendable>(
-    options: &T,
-    index: String,
-    ext: &ExtensionImpl<Vec<String>>,
-) -> String {
-    let kv = match get_key_values(options, &ext) {
-        Err(err) => panic!("Error getting kv option '{}': {}", index, err),
-        Ok(kv) => kv,
-    };
-    for (key, value) in kv {
-        if key == index {
-            return value.to_owned();
-        }
-    }
-    String::new()
-}
-
 fn hash_to_btree<K: Ord, V>(map: HashMap<K, V>) -> BTreeMap<K, V> {
     let mut btree = BTreeMap::<K, V>::new();
     for (k, v) in map {
@@ -50,7 +31,7 @@ mod api {
     use super::get_str_or_new;
     use crate::renderer::context;
     use crate::renderer::context::overlayed::Overlayed;
-    use crate::renderer::scripted::api::{hash_to_btree, opt_get_kv};
+    use crate::renderer::scripted::api::hash_to_btree;
     use crate::util::DisplayNormalized;
     use log::error;
     use std::collections::BTreeMap;
@@ -420,12 +401,6 @@ mod api {
         get_str_or_new(opt.objc_class_prefix.as_ref())
     }
 
-    // Key-value custom proto options.
-    #[rhai_fn(index_get)]
-    pub fn file_opt_get_kv(options: &mut FileOptions, index: String) -> String {
-        opt_get_kv(options, index, &proto_options::FILE_KEY_VALUE)
-    }
-
     ////////////////////////////////////////////////////
     // EnumOptions
     #[rhai_fn(get = "allow_alias", pure)]
@@ -435,12 +410,6 @@ mod api {
     #[rhai_fn(get = "deprecated", pure)]
     pub fn enum_opt_deprecated(opt: &mut EnumOptions) -> bool {
         opt.deprecated.unwrap_or(false)
-    }
-
-    // Key-value custom proto options.
-    #[rhai_fn(index_get)]
-    pub fn enum_opt_get_kv(options: &mut EnumOptions, index: String) -> String {
-        opt_get_kv(options, index, &proto_options::ENUM_KEY_VALUE)
     }
 
     ////////////////////////////////////////////////////
@@ -469,12 +438,6 @@ mod api {
         opt.map_entry.unwrap_or(false)
     }
 
-    // Key-value custom proto options.
-    #[rhai_fn(index_get)]
-    pub fn message_opt_get_kv(options: &mut MessageOptions, index: String) -> String {
-        opt_get_kv(options, index, &proto_options::MSG_KEY_VALUE)
-    }
-
     ////////////////////////////////////////////////////
     // FieldOptions
     #[rhai_fn(get = "ctype", pure)]
@@ -500,12 +463,6 @@ mod api {
     #[rhai_fn(get = "weak", pure)]
     pub fn field_opt_weak(opt: &mut FieldOptions) -> bool {
         opt.weak.unwrap_or(false)
-    }
-
-    // Key-value custom proto options.
-    #[rhai_fn(index_get)]
-    pub fn field_opt_get_kv(options: &mut FieldOptions, index: String) -> String {
-        opt_get_kv(options, index, &proto_options::FIELD_KEY_VALUE)
     }
 
     ////////////////////////////////////////////////////

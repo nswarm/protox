@@ -464,7 +464,6 @@ macro_rules! opt_test {
 
 mod file_options {
     use anyhow::Result;
-    use prost::Extendable;
     use prost_types::FileOptions;
 
     use crate::renderer::scripted::integration_tests::{file_with_options, test_file_script};
@@ -489,21 +488,6 @@ mod file_options {
     opt_test!(FileOptions, py_generic_services, true);
     opt_test!(FileOptions, objc_class_prefix, "some value".to_owned());
 
-    #[test]
-    fn kv_option() -> Result<()> {
-        let mut options = FileOptions::default();
-        options.set_extension_data(
-            proto_options::FILE_KEY_VALUE,
-            vec!["test_key=some_value".to_owned()],
-        )?;
-        let context = file_with_options(options)?;
-        test_file_script(
-            context,
-            "output.append(context.options[\"test_key\"]);",
-            "some_value",
-        )
-    }
-
     fn run_test(options: FileOptions, method: &str, expected_output: &str) -> Result<()> {
         let context = file_with_options(options)?;
         test_file_script(
@@ -516,7 +500,6 @@ mod file_options {
 
 mod enum_options {
     use anyhow::Result;
-    use prost::Extendable;
     use prost_types::EnumOptions;
 
     use crate::renderer::context::FileContext;
@@ -526,21 +509,6 @@ mod enum_options {
 
     opt_test!(EnumOptions, deprecated, true);
     opt_test!(EnumOptions, allow_alias, true);
-
-    #[test]
-    fn kv_option() -> Result<()> {
-        let mut options = EnumOptions::default();
-        options.set_extension_data(
-            proto_options::ENUM_KEY_VALUE,
-            vec!["test_key=some_value".to_owned()],
-        )?;
-        let context = file_context(options)?;
-        test_file_script(
-            context,
-            "output.append(context.enums[0].options[\"test_key\"]);",
-            "some_value",
-        )
-    }
 
     fn run_test(options: EnumOptions, method: &str, expected_output: &str) -> Result<()> {
         let context = file_context(options)?;
@@ -597,7 +565,6 @@ mod enum_value_options {
 
 mod message_options {
     use anyhow::Result;
-    use prost::Extendable;
     use prost_types::MessageOptions;
 
     use crate::renderer::context::FileContext;
@@ -609,21 +576,6 @@ mod message_options {
     opt_test!(MessageOptions, no_standard_descriptor_accessor, true);
     opt_test!(MessageOptions, deprecated, true);
     opt_test!(MessageOptions, map_entry, true);
-
-    #[test]
-    fn kv_option() -> Result<()> {
-        let mut options = MessageOptions::default();
-        options.set_extension_data(
-            proto_options::MSG_KEY_VALUE,
-            vec!["test_key=some_value".to_owned()],
-        )?;
-        let context = file_context(options)?;
-        test_file_script(
-            context,
-            "output.append(context.messages[0].options[\"test_key\"]);",
-            "some_value",
-        )
-    }
 
     fn run_test(options: MessageOptions, method: &str, expected_output: &str) -> Result<()> {
         let context = file_context(options)?;
@@ -646,7 +598,6 @@ mod message_options {
 
 mod field_options {
     use anyhow::Result;
-    use prost::Extendable;
     use prost_types::FieldOptions;
 
     use crate::renderer::context::FileContext;
@@ -669,21 +620,6 @@ mod field_options {
                 method
             ),
             expected_output,
-        )
-    }
-
-    #[test]
-    fn kv_option() -> Result<()> {
-        let mut options = FieldOptions::default();
-        options.set_extension_data(
-            proto_options::FIELD_KEY_VALUE,
-            vec!["test_key=some_value".to_owned()],
-        )?;
-        let context = file_context(options)?;
-        test_file_script(
-            context,
-            "output.append(context.messages[0].fields[0].options[\"test_key\"]);",
-            "some_value",
         )
     }
 

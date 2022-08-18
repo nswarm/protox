@@ -14,7 +14,6 @@ use crate::{util, DisplayNormalized};
 
 mod case;
 mod context;
-mod option_key_value;
 mod overlay_config;
 mod primitive;
 mod proto;

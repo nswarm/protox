@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize, Serializer};
 
 use crate::renderer::context::overlayed::Overlayed;
 use crate::renderer::context::{EnumContext, ImportContext, MessageContext};
-use crate::renderer::option_key_value::insert_custom_options;
 use crate::renderer::proto::TypePath;
 use crate::renderer::RendererConfig;
 use crate::util;
@@ -174,8 +173,6 @@ fn serialize_file_options<S: Serializer>(
     let mut map = HashMap::new();
     insert_builtin_file_options(&mut map, options)
         .map_err(|err| S::Error::custom(file_options_error(err)))?;
-    insert_custom_options(&mut map, options, &proto_options::FILE_KEY_VALUE)
-        .map_err(|err| S::Error::custom(err.to_string()))?;
     debug!("Serializing file options: {:?}", map);
     serializer.collect_map(map)
 }
@@ -229,7 +226,7 @@ mod tests {
     use crate::renderer::renderer_config::CaseConfig;
     use crate::renderer::{overlay_config, RendererConfig};
     use anyhow::Result;
-    use prost::{Extendable, ExtensionSet};
+    use prost::ExtensionSet;
     use prost_types::{FileDescriptorProto, FileOptions};
     use std::collections::{HashMap, HashSet};
 
@@ -329,27 +326,6 @@ mod tests {
         assert!(json.contains(r#""php_namespace":"php_namespace""#));
         assert!(json.contains(r#""php_metadata_namespace":"php_metadata_namespace""#));
         assert!(json.contains(r#""ruby_package":"ruby_package""#));
-        Ok(())
-    }
-
-    #[test]
-    fn key_value_options() -> Result<()> {
-        let mut options = FileOptions::default();
-        options.set_extension_data(
-            &proto_options::FILE_KEY_VALUE,
-            vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
-        )?;
-        let file = FileDescriptorProto {
-            name: Some("file_name".to_owned()),
-            options: Some(options),
-            ..Default::default()
-        };
-
-        let context = FileContext::new(&file, &RendererConfig::default())?;
-        let json = serde_json::to_string(&context)?;
-        println!("{}", json);
-        assert!(json.contains(r#""key0":"value0""#));
-        assert!(json.contains(r#""key1":"value1""#));
         Ok(())
     }
 

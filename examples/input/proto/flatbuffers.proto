@@ -2,8 +2,6 @@
 
 syntax = "proto3";
 
-import "protox.proto";
-
 package fbs;
 
 enum ByteEnum {

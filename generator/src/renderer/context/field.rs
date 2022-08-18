@@ -4,13 +4,11 @@ use anyhow::Result;
 use log::debug;
 use prost_types::field_descriptor_proto::Label;
 use prost_types::{FieldDescriptorProto, FieldOptions};
-use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::renderer::context::message;
 use crate::renderer::context::overlayed::Overlayed;
 use crate::renderer::context::proto_type::ProtoType;
-use crate::renderer::option_key_value::insert_custom_options;
 use crate::renderer::RendererConfig;
 use crate::util;
 
@@ -257,16 +255,15 @@ fn is_oneof(field: &FieldDescriptorProto) -> bool {
 }
 
 fn serialize_field_options<S: Serializer>(
-    options: &Option<FieldOptions>,
+    _options: &Option<FieldOptions>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
-    let options = match options {
-        None => return serializer.serialize_none(),
-        Some(options) => options,
-    };
-    let mut map = HashMap::new();
-    insert_custom_options(&mut map, options, &proto_options::FIELD_KEY_VALUE)
-        .map_err(|err| S::Error::custom(err.to_string()))?;
+    // let options = match options {
+    //     None => return serializer.serialize_none(),
+    //     Some(options) => options,
+    // };
+    let map = HashMap::<String, String>::new();
+    // todo builtin options
     debug!("Serializing field options: {:?}", map);
     serializer.collect_map(map)
 }
@@ -327,27 +324,6 @@ mod tests {
         field.type_name = Some(primitive::FLOAT.to_owned());
         let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
         assert_eq!(context.field_name.to_owned(), "TEST_NAME");
-        Ok(())
-    }
-
-    #[test]
-    fn key_value_options() -> Result<()> {
-        let config = RendererConfig::default();
-        let mut field = FieldDescriptorProto::default();
-        field.name = Some("field_name".to_owned());
-        field.type_name = Some(primitive::FLOAT.to_owned());
-        let mut options = FieldOptions::default();
-        options.set_extension_data(
-            &proto_options::FIELD_KEY_VALUE,
-            vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
-        )?;
-        field.options = Some(options);
-
-        let context = FieldContext::new(&field, None, None, &message::MapData::new(), &config)?;
-        let json = serde_json::to_string(&context)?;
-        println!("{}", json);
-        assert!(json.contains(r#""key0":"value0""#));
-        assert!(json.contains(r#""key1":"value1""#));
         Ok(())
     }
 

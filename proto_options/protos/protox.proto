@@ -11,69 +11,7 @@ import "google/protobuf/descriptor.proto";
 
 package protox;
 
-extend google.protobuf.FileOptions {
-  // A user defined key-value pair in the format:
-  //    key=value
-  // In templates, the value can be retrieved using {{options.<key>}}.
-  //
-  // For example:
-  //    option (protox.file_key_value) = "my_key=my_value";
-  // in a template file:
-  //    My value is {{options.my_key}}!
-  // would produce:
-  //    My value is my_value!
-  //
-  // The option can be repeated for additional kv pairs.
-  repeated string file_key_value = 91000;
-}
-
-extend google.protobuf.EnumOptions {
-  // A user defined key-value pair in the format:
-  //    key=value
-  // In templates, the value can be retrieved using {{options.<key>}}.
-  //
-  // For example:
-  //    option (protox.enum_key_value) = "my_key=my_value";
-  // in a template file:
-  //    My value is {{options.my_key}}!
-  // would produce:
-  //    My value is my_value!
-  //
-  // The option can be repeated for additional kv pairs.
-  repeated string enum_key_value = 91000;
-}
-
-extend google.protobuf.MessageOptions {
-  // A user defined key-value pair in the format:
-  //    key=value
-  // In templates, the value can be retrieved using {{options.<key>}}.
-  //
-  // For example:
-  //    option (protox.msg_key_value) = "my_key=my_value";
-  // in a template file:
-  //    My value is {{options.my_key}}!
-  // would produce:
-  //    My value is my_value!
-  //
-  // The option can be repeated for additional kv pairs.
-  repeated string msg_key_value = 91000;
-}
-
 extend google.protobuf.FieldOptions {
-  // A user defined key-value pair in the format:
-  //    key=value
-  // In templates, the value can be retrieved using {{options.<key>}}.
-  //
-  // For example:
-  //    option (protox.field_key_value) = "my_key=my_value";
-  // in a template file:
-  //    My value is {{options.my_key}}!
-  // would produce:
-  //    My value is my_value!
-  //
-  // The option can be repeated for additional kv pairs.
-  repeated string field_key_value = 91000;
-
   // When parsing this type in templates, use this value instead of the
   // protobuf type. This allows you to differentiate between types that are the same
   // in protobuf, but you want to interpret differently in your generated code.
@@ -84,5 +22,5 @@ extend google.protobuf.FieldOptions {
   //    {{relative_type}} {{field_name}};
   // would produce:
   //    IdType my_id;
-  string native_type = 91001;
+  string native_type = 91000;
 }

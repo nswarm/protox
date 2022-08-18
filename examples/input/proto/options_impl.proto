@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-import "protox.proto";
-
-package opt;
-
-option (protox.file_key_value) = "specialkey=specialvalue";

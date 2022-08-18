@@ -56,28 +56,6 @@ See the `examples/run-examples.sh` script for various ways of using protox.
 
 ### Built-in
 
-`file_key_value` `enum_key_value` `msg_key_value` `field_key_value`
-
-These options exist as a seam for you to specify anything you need from your proto files without editing protox. If you want to use your own custom proto options, see [below](#using-your-own).
-
-**Example**
-```
-// proto
-option (protox.file_key_value) = "my_key=my_value";"
-
-// script
-output.append(`My value is: ${file.options.my_key}!`);
-
-// template
-My value is {{file.options.my_key}}!
-
-// output
-My value is my_value!
-            ^^^^^^^^
-```
-
-These are repeatable.
-
 `native_type`
 
 This defines a string to _completely replace_ the usage of a type in the output.
@@ -131,13 +109,6 @@ pub fn file_my_proto_option(opt: &mut FileOptions) -> String {
         .unwrap_or(String::new())
 }
 ```
-
-#### Examples
-
-Follow how the flatbuffers/fbs protos options are registered.
-
-##### Example
-The flatbuffers scripted output has a number of custom options similar to how you'll need to declare yours.
 
 ## Scripts
 

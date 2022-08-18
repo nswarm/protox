@@ -3,14 +3,12 @@ use std::collections::HashMap;
 use anyhow::{anyhow, Context, Result};
 use log::debug;
 use prost_types::{DescriptorProto, FieldDescriptorProto, MessageOptions};
-use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::renderer::case::Case;
 use crate::renderer::context::overlayed::Overlayed;
 use crate::renderer::context::proto_type::ProtoType;
 use crate::renderer::context::FieldContext;
-use crate::renderer::option_key_value::insert_custom_options;
 use crate::renderer::proto::PACKAGE_SEPARATOR;
 use crate::renderer::RendererConfig;
 use crate::util;
@@ -212,16 +210,15 @@ fn error_context_failed_collect_map_data(
 }
 
 fn serialize_message_options<S: Serializer>(
-    options: &Option<MessageOptions>,
+    _options: &Option<MessageOptions>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
-    let options = match options {
-        None => return serializer.serialize_none(),
-        Some(options) => options,
-    };
-    let mut map = HashMap::new();
-    insert_custom_options(&mut map, options, &proto_options::MSG_KEY_VALUE)
-        .map_err(|err| S::Error::custom(err.to_string()))?;
+    // let options = match options {
+    //     None => return serializer.serialize_none(),
+    //     Some(options) => options,
+    // };
+    let map = HashMap::<String, String>::new();
+    // todo builtin options
     debug!("Serializing message options: {:?}", map);
     serializer.collect_map(map)
 }
@@ -229,8 +226,7 @@ fn serialize_message_options<S: Serializer>(
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use prost::Extendable;
-    use prost_types::{DescriptorProto, FieldDescriptorProto, MessageOptions};
+    use prost_types::{DescriptorProto, FieldDescriptorProto};
     use std::collections::HashMap;
 
     use crate::renderer::case::Case;
@@ -279,26 +275,6 @@ mod tests {
         let context = MessageContext::new(&proto, None, &config)?;
         assert_eq!(context.fields.get(0).map(|f| f.name()), Some("field0"));
         assert_eq!(context.fields.get(1).map(|f| f.name()), Some("field1"));
-        Ok(())
-    }
-
-    #[test]
-    fn key_value_options() -> Result<()> {
-        let config = RendererConfig::default();
-        let mut message = DescriptorProto::default();
-        message.name = Some("MessageName".to_owned());
-        let mut options = MessageOptions::default();
-        options.set_extension_data(
-            &proto_options::MSG_KEY_VALUE,
-            vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
-        )?;
-        message.options = Some(options);
-
-        let context = MessageContext::new(&message, None, &config)?;
-        let json = serde_json::to_string(&context)?;
-        println!("{}", json);
-        assert!(json.contains(r#""key0":"value0""#));
-        assert!(json.contains(r#""key1":"value1""#));
         Ok(())
     }
 

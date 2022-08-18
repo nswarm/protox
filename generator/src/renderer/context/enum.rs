@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
 use crate::renderer::context::overlayed::Overlayed;
-use crate::renderer::option_key_value::insert_custom_options;
 use anyhow::{anyhow, Result};
 use log::debug;
 use prost_types::{EnumDescriptorProto, EnumOptions, EnumValueDescriptorProto, EnumValueOptions};
-use serde::ser::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::renderer::RendererConfig;
@@ -177,16 +175,15 @@ fn error_invalid_value(name: &Option<String>) -> anyhow::Error {
 }
 
 fn serialize_enum_options<S: Serializer>(
-    options: &Option<EnumOptions>,
+    _options: &Option<EnumOptions>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
-    let options = match options {
-        None => return serializer.serialize_none(),
-        Some(options) => options,
-    };
-    let mut map = HashMap::new();
-    insert_custom_options(&mut map, options, &proto_options::ENUM_KEY_VALUE)
-        .map_err(|err| S::Error::custom(err.to_string()))?;
+    // let options = match options {
+    //     None => return serializer.serialize_none(),
+    //     Some(options) => options,
+    // };
+    let map = HashMap::<String, String>::new();
+    // todo builtin options
     debug!("Serializing enum options: {:?}", map);
     serializer.collect_map(map)
 }
@@ -194,8 +191,7 @@ fn serialize_enum_options<S: Serializer>(
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use prost::Extendable;
-    use prost_types::{EnumDescriptorProto, EnumOptions, EnumValueDescriptorProto};
+    use prost_types::{EnumDescriptorProto, EnumValueDescriptorProto};
     use std::collections::HashMap;
 
     use crate::renderer::case::Case;
@@ -262,26 +258,6 @@ mod tests {
         assert_eq!(context.values[0].number, 1);
         assert_eq!(context.values[1].name, "VALUE_NAME2");
         assert_eq!(context.values[1].number, 2);
-        Ok(())
-    }
-
-    #[test]
-    fn key_value_options() -> Result<()> {
-        let config = RendererConfig::default();
-        let mut proto = EnumDescriptorProto::default();
-        proto.name = Some("EnumName".to_owned());
-        let mut options = EnumOptions::default();
-        options.set_extension_data(
-            &proto_options::ENUM_KEY_VALUE,
-            vec!["key0=value0".to_owned(), "key1=value1".to_owned()],
-        )?;
-        proto.options = Some(options);
-
-        let context = EnumContext::new(&proto, None, &config)?;
-        let json = serde_json::to_string(&context)?;
-        println!("{}", json);
-        assert!(json.contains(r#""key0":"value0""#));
-        assert!(json.contains(r#""key1":"value1""#));
         Ok(())
     }
 
