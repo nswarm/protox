@@ -23,7 +23,7 @@ fn namespace() {
 }
 
 fn attributes() {
-    let attributes = file.overlay("attribute");
+    let attributes = file.overlay("attributes");
     if !attributes.is_valid() {
         return;
     }
@@ -96,8 +96,9 @@ fn message(message) {
 }
 
 fn message_type(message) {
-    if message.options.fbs_message_type != "" {
-        message.options.fbs_message_type
+    let message_type = message.overlay("type");
+    if message_type.is_valid() {
+        message_type.as_string()
     } else {
         "table"
     }
@@ -120,34 +121,43 @@ fn field(field, message_type) {
 }
 
 fn field_type(field) {
-    if field.options.fbs_field_type != "" {
-        field.options.fbs_field_type
+    let field_type = field.overlay("type");
+    if field_type.is_valid() {
+        field_type.as_string()
     } else {
         field.relative_type
     }
 }
 
 fn field_default() {
-    let value = "";
-    if field.options.fbs_bool_default != false {
-        value = field.options.fbs_bool_default.to_string();
-    } else if field.options.fbs_int_default != 0 {
-        value = field.options.fbs_int_default.to_string();
-    } else if field.options.fbs_float_default != 0.0 {
-        value = field.options.fbs_float_default.to_string();
+    let value = field.overlay("default");
+    if !value.is_valid() {
+        return;
     }
-    if value != "" {
-        output.append(` = ${value}`);
+    if value.is_string() {
+        value = value.as_string();
+    } else if value.is_int() {
+        value = value.as_int();
+    } else if value.is_bool() {
+        value = value.as_bool();
+    } else if value.is_float() {
+        value = value.as_float();
     }
+    output.append(` = ${value}`);
 }
 
 fn field_attributes() {
-    if field.options.fbs_field_attributes.len == 0 {
+    let attributes = field.overlay("attributes");
+    if !attributes.is_valid() {
+        return;
+    }
+    attributes = attributes.as_array();
+    if attributes.len == 0 {
         return;
     }
     output.space();
     output.append("(");
-    output.append(field.options.fbs_field_attributes.join(", "));
+    output.append(attributes.map(|x| x.as_string()).join(", "));
     output.append(")")
 }
 

@@ -3,17 +3,14 @@
 syntax = "proto3";
 
 import "protox.proto";
-import "fbs.proto";
 
 package fbs;
 
 enum ByteEnum {
-  option (fbs.enum_type) = BYTE;
   Default = 0;
 }
 
 enum LongEnum {
-  option (fbs.enum_type) = LONG;
   Unused = 0;
 }
 
@@ -32,27 +29,25 @@ message OtherTableB {
 }
 
 message Union {
-  option (fbs.message_type) = UNION;
   OtherTableA a = 1;
   OtherTableA b = 2;
 }
 
 message Struct {
-  option (fbs.message_type) = STRUCT;
   float x = 1;
   float y = 2;
   float z = 3;
 }
 
 message Table {
-  bool bool_value = 1 [(fbs.bool_default) = true];
-  int32 byte_value = 2 [(fbs.field_type) = "byte"];
-  int32 ubyte_value = 3 [(fbs.field_type) = "ubyte"];
-  int32 short_value = 4 [(fbs.field_type) = "short"];
-  int32 ushort_value = 5 [(fbs.field_type) = "ushort"];
-  int32 i32_value = 6 [(fbs.int_default) = 1111];
+  bool bool_value = 1;
+  int32 byte_value = 2;
+  int32 ubyte_value = 3;
+  int32 short_value = 4;
+  int32 ushort_value = 5;
+  int32 i32_value = 6;
   uint32 u32_value = 7;
-  float f32_value = 8 [(fbs.float_default) = 1111.2222];
+  float f32_value = 8;
   int64 i64_value = 9;
   uint64 u64_value = 10;
   double f64_value = 11;
@@ -62,10 +57,5 @@ message Table {
   OtherTableA table_value = 15;
   Union union_value = 16;
 
-  int32 value_with_attrs_and_default = 17 [
-    (fbs.int_default) = 1234,
-    (fbs.field_attribute) = "attr0",
-    (fbs.field_attribute) = "attr1",
-    (fbs.field_attribute) = "attr2"
-  ];
+  int32 value_with_attrs_and_default = 17;
 }

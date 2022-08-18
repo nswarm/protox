@@ -47,38 +47,38 @@ overlays:
   by_target:
     # File.
     flatbuffers.proto:
-      attribute:
+      attributes:
         - priority
       identifier: ABCD
       extension: data
       root_type: Table
     # Enum.
-    .fbs.ByteEnum:
-      type: BYTE
-    .fbs.LongEnum:
-      type: LONG
-    # Message.
-    .fbs.Union:
-      type: UNION
-    .fbs.Struct:
-      type: STRUCT
-    # Field.
-    .fbs.Table.bool_value:
-      default: true
-    .fbs.Table.byte_value:
+    fbs.ByteEnum:
       type: byte
-    .fbs.Table.ubyte_value:
+    fbs.LongEnum:
+      type: long
+    # Message.
+    fbs.Union:
+      type: union
+    fbs.Struct:
+      type: struct
+    # Field.
+    fbs.Table.bool_value:
+      default: true
+    fbs.Table.byte_value:
+      type: byte
+    fbs.Table.ubyte_value:
       type: ubyte
-    .fbs.Table.short_value:
+    fbs.Table.short_value:
       type: short
-    .fbs.Table.ushort_value:
+    fbs.Table.ushort_value:
       type: ushort
-    .fbs.Table.i32_value:
+    fbs.Table.i32_value:
       default: 1111
-    .fbs.Table.f32_value:
+    fbs.Table.f32_value:
       default: 1111.2222
-    .fbs.Table.value_with_attrs_and_default:
+    fbs.Table.value_with_attrs_and_default:
       default: 1234
-      attribute:
+      attributes:
         - "priority: 1"
         - deprecated

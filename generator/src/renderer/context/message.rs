@@ -308,12 +308,12 @@ mod tests {
             name: Some("MessageName".to_owned()),
             ..Default::default()
         };
-        let package = ".some.package".to_owned();
+        let package = "some.package".to_owned();
         let config = RendererConfig {
             overlays: OverlayConfig::new(
                 HashMap::new(),
                 HashMap::from([(
-                    ".some.package.MessageName".to_owned(),
+                    "some.package.MessageName".to_owned(),
                     HashMap::from([(
                         "some_key".to_owned(),
                         serde_yaml::Value::String("some_value".to_owned()),

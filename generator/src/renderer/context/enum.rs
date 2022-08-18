@@ -291,12 +291,12 @@ mod tests {
             name: Some("EnumName".to_owned()),
             ..Default::default()
         };
-        let package = ".some.package".to_owned();
+        let package = "some.package".to_owned();
         let config = RendererConfig {
             overlays: OverlayConfig::new(
                 HashMap::new(),
                 HashMap::from([(
-                    ".some.package.EnumName".to_owned(),
+                    "some.package.EnumName".to_owned(),
                     HashMap::from([(
                         "some_key".to_owned(),
                         serde_yaml::Value::String("some_value".to_owned()),
@@ -316,12 +316,12 @@ mod tests {
     #[test]
     fn overlay_enum_value() -> Result<()> {
         let proto = named_enum_value("ValueName", 1);
-        let message_name = ".some.package.EnumName".to_owned();
+        let message_name = "some.package.EnumName".to_owned();
         let config = RendererConfig {
             overlays: OverlayConfig::new(
                 HashMap::new(),
                 HashMap::from([(
-                    ".some.package.EnumName.ValueName".to_owned(),
+                    "some.package.EnumName.ValueName".to_owned(),
                     HashMap::from([(
                         "some_key".to_owned(),
                         serde_yaml::Value::String("some_value".to_owned()),

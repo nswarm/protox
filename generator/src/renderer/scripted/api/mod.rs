@@ -1,4 +1,3 @@
-use crate::renderer::context::overlayed::Overlayed;
 use crate::renderer::option_key_value::get_key_values;
 use prost::{Extendable, ExtensionImpl};
 use rhai::exported_module;
@@ -7,13 +6,13 @@ use std::collections::{BTreeMap, HashMap};
 
 pub mod output;
 
-pub fn register(engine: &mut rhai::Engine) {
+pub fn register(engine: &mut Engine) {
     output::register(engine);
     register_context(engine);
     proto_options::register_script_apis(engine);
 }
 
-fn register_context(engine: &mut rhai::Engine) {
+fn register_context(engine: &mut Engine) {
     engine.register_global_module(exported_module!(api).into());
 }
 
@@ -50,6 +49,7 @@ fn hash_to_btree<K: Ord, V>(map: HashMap<K, V>) -> BTreeMap<K, V> {
 mod api {
     use super::get_str_or_new;
     use crate::renderer::context;
+    use crate::renderer::context::overlayed::Overlayed;
     use crate::renderer::scripted::api::{hash_to_btree, opt_get_kv};
     use crate::util::DisplayNormalized;
     use log::error;
@@ -70,7 +70,7 @@ mod api {
         return result;
     }
 
-    pub type Value = serde_yaml::Value;
+    pub type YamlValue = serde_yaml::Value;
 
     ////////////////////////////////////////////////////
     // Contexts
@@ -159,7 +159,7 @@ mod api {
     }
 
     #[rhai_fn(name = "overlay")]
-    pub fn enum_overlay(context: &mut EnumContext, key: String) -> serde_yaml::Value {
+    pub fn enum_overlay(context: &mut EnumContext, key: String) -> YamlValue {
         context.overlay(&key)
     }
 
@@ -184,7 +184,7 @@ mod api {
     }
 
     #[rhai_fn(name = "overlay")]
-    pub fn enum_value_overlay(context: &mut EnumValueContext, key: String) -> serde_yaml::Value {
+    pub fn enum_value_overlay(context: &mut EnumValueContext, key: String) -> YamlValue {
         context.overlay(&key)
     }
 
@@ -209,7 +209,7 @@ mod api {
     }
 
     #[rhai_fn(name = "overlay")]
-    pub fn message_overlay(context: &mut MessageContext, key: String) -> serde_yaml::Value {
+    pub fn message_overlay(context: &mut MessageContext, key: String) -> YamlValue {
         context.overlay(&key)
     }
 
@@ -274,7 +274,7 @@ mod api {
     }
 
     #[rhai_fn(name = "overlay")]
-    pub fn field_overlay(context: &mut FieldContext, key: String) -> serde_yaml::Value {
+    pub fn field_overlay(context: &mut FieldContext, key: String) -> YamlValue {
         context.overlay(&key)
     }
 
@@ -511,42 +511,60 @@ mod api {
     ////////////////////////////////////////////////////
     // Value
     #[rhai_fn(name = "is_null", pure)]
-    pub fn yaml_value_is_null(value: &mut Value) -> bool {
+    pub fn yaml_value_is_null(value: &mut YamlValue) -> bool {
         value.is_null()
     }
 
     #[rhai_fn(name = "is_valid", pure)]
-    pub fn yaml_value_is_valid(value: &mut Value) -> bool {
+    pub fn yaml_value_is_valid(value: &mut YamlValue) -> bool {
         !value.is_null()
     }
 
     #[rhai_fn(name = "is_str", pure)]
-    pub fn yaml_value_is_str(value: &mut Value) -> bool {
+    pub fn yaml_value_is_str(value: &mut YamlValue) -> bool {
+        value.is_string()
+    }
+
+    #[rhai_fn(name = "is_string", pure)]
+    pub fn yaml_value_is_string(value: &mut YamlValue) -> bool {
         value.is_string()
     }
 
     #[rhai_fn(name = "is_int", pure)]
-    pub fn yaml_value_is_int(value: &mut Value) -> bool {
+    pub fn yaml_value_is_int(value: &mut YamlValue) -> bool {
         value.is_i64()
     }
 
+    #[rhai_fn(name = "is_float", pure)]
+    pub fn yaml_value_is_float(value: &mut YamlValue) -> bool {
+        value.is_f64()
+    }
+
     #[rhai_fn(name = "is_bool", pure)]
-    pub fn yaml_value_is_bool(value: &mut Value) -> bool {
+    pub fn yaml_value_is_bool(value: &mut YamlValue) -> bool {
         value.is_bool()
     }
 
     #[rhai_fn(name = "is_array", pure)]
-    pub fn yaml_value_is_array(value: &mut Value) -> bool {
+    pub fn yaml_value_is_array(value: &mut YamlValue) -> bool {
         value.is_sequence()
     }
 
     #[rhai_fn(name = "is_map", pure)]
-    pub fn yaml_value_is_map(value: &mut Value) -> bool {
+    pub fn yaml_value_is_map(value: &mut YamlValue) -> bool {
         value.is_mapping()
     }
 
     #[rhai_fn(name = "as_str", pure, return_raw)]
-    pub fn yaml_value_as_str(value: &mut Value) -> Result<String, Box<rhai::EvalAltResult>> {
+    pub fn yaml_value_as_str(value: &mut YamlValue) -> Result<String, Box<rhai::EvalAltResult>> {
+        Ok(value
+            .as_str()
+            .map(|x| x.to_owned())
+            .ok_or("value is not a string")?)
+    }
+
+    #[rhai_fn(name = "as_string", pure, return_raw)]
+    pub fn yaml_value_as_string(value: &mut YamlValue) -> Result<String, Box<rhai::EvalAltResult>> {
         Ok(value
             .as_str()
             .map(|x| x.to_owned())
@@ -554,18 +572,25 @@ mod api {
     }
 
     #[rhai_fn(name = "as_int", pure, return_raw)]
-    pub fn yaml_value_as_int(value: &mut Value) -> Result<rhai::INT, Box<rhai::EvalAltResult>> {
+    pub fn yaml_value_as_int(value: &mut YamlValue) -> Result<rhai::INT, Box<rhai::EvalAltResult>> {
         Ok(value.as_i64().ok_or("value is not an i64")?)
     }
 
+    #[rhai_fn(name = "as_float", pure, return_raw)]
+    pub fn yaml_value_as_float(
+        value: &mut YamlValue,
+    ) -> Result<rhai::FLOAT, Box<rhai::EvalAltResult>> {
+        Ok(value.as_f64().ok_or("value is not an f64")?)
+    }
+
     #[rhai_fn(name = "as_bool", pure, return_raw)]
-    pub fn yaml_value_as_bool(value: &mut Value) -> Result<bool, Box<rhai::EvalAltResult>> {
+    pub fn yaml_value_as_bool(value: &mut YamlValue) -> Result<bool, Box<rhai::EvalAltResult>> {
         Ok(value.as_bool().ok_or("value is not a bool")?)
     }
 
     #[rhai_fn(name = "as_array", pure, return_raw)]
     pub fn yaml_value_as_array(
-        value: &mut Value,
+        value: &mut YamlValue,
     ) -> Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
         Ok(value
             .as_sequence()
@@ -575,8 +600,10 @@ mod api {
     }
 
     #[rhai_fn(name = "as_map", pure, return_raw)]
-    pub fn yaml_value_as_map(value: &mut Value) -> Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
-        let mut map = BTreeMap::<String, Value>::new();
+    pub fn yaml_value_as_map(
+        value: &mut YamlValue,
+    ) -> Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
+        let mut map = BTreeMap::<String, YamlValue>::new();
         for (key, value) in value.as_mapping().ok_or("value is not an i64")? {
             if !key.is_string() {
                 error!(
@@ -729,6 +756,14 @@ mod tests {
             let result =
                 run_test::<rhai::INT>(serde_yaml::Value::Number(5.into()), "value.as_int()")?;
             assert_eq!(result, 5);
+            Ok(())
+        }
+
+        #[test]
+        fn as_float() -> Result<()> {
+            let result =
+                run_test::<rhai::FLOAT>(serde_yaml::Value::Number(5.5.into()), "value.as_float()")?;
+            assert_eq!(result, 5.5);
             Ok(())
         }
 
