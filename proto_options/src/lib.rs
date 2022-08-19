@@ -6,9 +6,12 @@ pub use extensions::*;
 
 pub(crate) mod extensions {
     include!(concat!(env!("OUT_DIR"), "/protox.rs"));
-    pub mod fbs {
-        include!(concat!(env!("OUT_DIR"), "/fbs.rs"));
-    }
+
+    // Example:
+    //
+    // pub mod my_mod {
+    //     include!(concat!(env!("OUT_DIR"), "/my_mod.rs"));
+    // }
 
     // --- user generated file includes ---
     // ------------------------------------
