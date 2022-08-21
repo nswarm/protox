@@ -1,5 +1,5 @@
 # Flatbuffers Generator
-This generator creates [flatbuffers](https://google.github.io/flatbuffers/) IDL files. For the most part it will "just work" (excluding the [Missing Features](#missing-features)), but if you want to fine-tune your output to be more idiomatic, or use features in flatbuffers that don't exist in proto, the following options may help.
+This generator creates [flatbuffers](https://google.github.io/flatbuffers/) IDL files. For the most part it will "just work" (excluding the [Missing Features](#missing-features)), but if you want to fine-tune your output to be more idiomatic, or use features in flatbuffers that don't exist in proto, the following overlays may help.
 
 See [Writing a (Flatbuffers) Schema](https://google.github.io/flatbuffers/flatbuffers_guide_writing_schema.html) for more information.
 
@@ -7,43 +7,52 @@ See [Writing a (Flatbuffers) Schema](https://google.github.io/flatbuffers/flatbu
 
 **File Attributes**
 
-(Repeatable)
-
+```yaml
+# overlay
+attributes:
+    - priority
+    - deprecated
 ```
-// proto
-option (fbs.file_attribute) = "my_attr";
 
-// output
-attribute "my_attr";
+```flatbuffers
+// output.fbs
+attribute "priority";
+attribute "deprecated";
 ```
 
 **File Identifier**
 
+```yaml
+# overlay.yaml
+identifier: ABCD
 ```
-// proto
-option (fbs.file_identifier) = "ABCD";
 
-// output
+```flatbuffers
+// output.fbs
 file_identifier "ABCD";
 ```
 
 **File Extension**
 
+```yaml
+# overlay.yaml
+extension: data
 ```
-// proto
-option (fbs.file_extension) = "data";
 
-// output
+```flatbuffers
+// output.fbs
 file_extension "data";
 ```
 
 **Root Type**
 
+```yaml
+# overlay.yaml
+root_type: SomeTable
 ```
-// proto
-option (fbs.root_type) = "SomeTable";
 
-// output
+```flatbuffers
+// output.fbs
 root_type SomeTable;
 ```
 
@@ -51,81 +60,91 @@ root_type SomeTable;
 
 **Enum Type**
 
-Protobuf doesn't support different underlying types for enums like fbs does. Use this option to specify what you need. Default is `byte`.
+Protobuf doesn't support different underlying types for enums like fbs does. Use this option to specify what you need. Default is `ubyte`.
 
+```yaml
+# overlay.yaml
+type: uint
 ```
-// proto
-enum SomeEnum {
-    option (fbs.enum_type) = UINT;
-}
 
-// output
-enum SomeEnum : uint {...}
-                ^^^^
+```flatbuffers
+// output.fbs
+enum SomeEnum : uint {}
+              //^^^^
 ```
 
 ## Message Options
 
-Protobuf has only one message type. Use this option to specify between the default `table` and `struct`.
+Protobuf has only one message type. Use this option to specify between the default `table` and `struct`. Default is `table`.
 
+```yaml
+# overlay.yaml
+type: struct
 ```
-// proto
-message SomeMsg {
-    option (fbs.message_type) = STRUCT;
-}
 
-// output
-struct SomeMsg : uint {}
-^^^^^^
+```flatbuffers
+// output.fbs
+struct SomeMsg {}
+//^^^^
 ```
 
 ## Field Options
 
-Flatbuffers has more scalar types than protobuf. Use this option to specify the specific type for your scalar field.
+Flatbuffers has more scalar types than protobuf. Use this overlay to specify the specific type for your scalar field.
 
+```yaml
+# overlay.yaml
+type: ushort
 ```
-// proto
-int32 some_field [(fbs.field_type) = USHORT];
 
-// output
-some_field: ushort;
-             ^^^^^^
+```flatbuffers
+// output.fbs
+table Asdf {
+    some_field: ushort;
+              //^^^^^^
+}
 ```
 
 ## Field Defaults
 
-Flatbuffers supports default values for scalar types; protobuf does not. Use these three options to specify defaults.
+Flatbuffers supports default values for scalar types; protobuf does not. Use this overlay to specify a default.
 
+```yaml
+# overlay.yaml
+default: 1234
 ```
-// proto
-bool some_bool [(fbs.bool_default) = true];
-int32 some_int [(fbs.int_default) = 1234];
-float some_float [(fbs.float_default) = 12.34];
 
-// output
-some_bool: bool = true;
-                ^^^^^^
-some_float: float32 = 12.34;
-                    ^^^^^^^
-some_int: int32 = 1234;
-                ^^^^^^
+```flatbuffers
+// output.fbs
+table Asdf {
+    some_int: int32 = 1234;
+                    //^^^^
+}
 ```
+
 
 ## Field Attributes
 
-Flatbuffers supports a number of different field attributes. Use this option to specify them directly.
+Flatbuffers supports a number of different field attributes. Use this overlay to specify them directly.
 
+```yaml
+# overlay.yaml
+attributes:
+- "priority: 1"
+- deprecated
 ```
-// proto
-int32 some_field [(fbs.field_attribute) = "required", (fbs.field_attribute) = "priority: 1"];
 
-// output
-some_field: int32 (required, priority: 1);
-                  ^^^^^^^^^^^^^^^^^^^^^^^
+```flatbuffers
+// output.fbs
+table Asdf {
+    some_int: int32 = 1234 (priority: 1, deprecated);
+                          //^^^^^^^^^^^  ^^^^^^^^^^
+}
 ```
 
 ## Examples
-See `examples/input/proto/flatbuffers.proto` for an example of all implemented fbs options being used.
+
+See the example flatbuffers overlays file: [fbs_overlays.yml](examples/input/fbs_overlays.yml) for examples of using every overlay.
 
 ## Missing Features
 
