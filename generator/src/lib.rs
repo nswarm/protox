@@ -12,6 +12,7 @@ mod lang_config;
 mod protoc;
 mod render;
 mod renderer;
+mod script_config;
 mod util;
 
 use crate::dir_init::{initialize_script_dir, initialize_template_dir};

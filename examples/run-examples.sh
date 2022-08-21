@@ -39,5 +39,5 @@ cargo run -- \
   --template-root examples/input/templates \
   --template rust-example rust-example \
   --script-root builtin \
-  --script flatbuffers flatbuffers
+  --script flatbuffers
 

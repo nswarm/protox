@@ -41,6 +41,10 @@ impl<'a> InOutGenerator<ScriptedRenderer> for Generator<'a> {
     }
 
     fn in_out_configs(&self) -> Vec<InOutConfig> {
-        self.app_config().scripts.clone()
+        self.app_config()
+            .scripts
+            .iter()
+            .map(|x| x.into())
+            .collect::<Vec<InOutConfig>>()
     }
 }
