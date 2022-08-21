@@ -2,27 +2,27 @@
 
 # protox
 
-protox is an executable that generates code, type definitions, or related output based on the [Protobuf IDL](https://developers.google.com/protocol-buffers/docs/reference/proto3-spec). Output is formatted using [rhai](https://rhai.rs/book/) scripts _or_ [handlebars](https://handlebarsjs.com/) templates.
+`protox` is an executable that generates code, type definitions, or related output based on the [Protobuf IDL](https://developers.google.com/protocol-buffers/docs/reference/proto3-spec). Output is formatted using [rhai](https://rhai.rs/book/) scripts or [handlebars](https://handlebarsjs.com/) templates.
 
-protox is built to generate output based on a set of types or APIs. protox can eliminate the need to write IDL parsing logic or a protobuf compiler plugin by letting you get straight to writing much simpler scripts or templates.
+`protox` is built to generate output based on a set of types or APIs. `protox` can eliminate the need to write IDL parsing logic or a protobuf compiler plugin by letting you get straight to writing much simpler scripts or templates.
 
 You as a user provide:
 - A set of files written in a supported Google's protobuf IDL.
 - A configuration file that defines the specifics of your output, e.g. naming conventions of your output.
 - A set of either rhai script files or handlebars template files that define how the data should be structured when rendering.
 
-protox produces:
+`protox` produces:
 - A set of files based on the proto definitions. For example equivalent type definitions across multiple languages or another IDL entirely.
 
 ## Installation
 
-Currently protox must be cloned/downloaded from source and built with `cargo build`. Then you can run it with `cargo run -- <protox args go here>`.
+Currently `protox` must be cloned/downloaded from source and built with `cargo build`. Then you can run it with `cargo run -- <protox args go here>` or by invoking the built executable directly.
 
 ## Usage
 
 Run `protox --help` to get information on the command line usage.
 
-Take a look at `examples/run-examples.sh` which runs protox on the input inside `examples/input` and will produce sets of output in `examples/output`.
+Take a look at `examples/run-examples.sh` which runs `protox` on the input inside `examples/input` and will produce sets of output in `examples/output`.
 
 See [Scripts](#scripts) below for getting started with the scripted renderer.
 
@@ -36,7 +36,7 @@ In practice the scripted renderer is simple as well, as you will mostly only use
 
 ### Built-in Support
 
-protox only supports protobuf as the input IDL.
+`protox` only supports protobuf as the input IDL.
 
 **Script**
 - Flatbuffers IDL
@@ -50,89 +50,32 @@ See the `builtin` folder for more information on each built-in script and templa
 - All [supported protobuf languages](https://developers.google.com/protocol-buffers) via the protobuf compiler itself (protoc)
 - Rust via [prost](https://github.com/tokio-rs/prost)
 
-See the `examples/run-examples.sh` script for various ways of using protox.
-
-## Proto Options
-
-### Built-in
-
-`native_type`
-
-This defines a string to _completely replace_ the usage of a type in the output.
-
-**Example**
-```
-// proto
-string special_string [(protox.native_type) = "Special"]
-string normal_string;
-
-// script (also works in templates)
-output.append(`${field.relative_type} ${field.name};`)
-
-// output
-Special special_string;
-String normal_string;
-```
-
-### Using your Own
-
-You can add support for custom proto options, but you'll need to build from source. The following steps assuming a working directory of `proto_options`.
-
-This only works for the Scripted Renderer.
-
-Note that the `user` functions mentioned below are meant for you to use so that protox updates do not cause merge conflicts.
-
-#### Setup
-
-- Create a proto file with a custom package name in `protos`.
-- Add the generated file as an include at the top of `src/lib.rs`.
-- Create an API file in `src`.
-  - This file should have a [rhai plugin](https://rhai.rs/book/plugins/module.html).
-- Register the API's rhai plugin module in `src/lib.rs::register_user_script_apis`.
-
-#### Adding Custom Options
-
-- Add new option definitions to your proto file.
-- Register the extension in `src/lib.rs::register_user_extensions`.
-  - e.g. `registry.register(extensions::my_proto_options::MY_PROTO_OPTION);`
-- Add a script accessor to your api file that reads the extension data from the appropriate
-
-```rust
-// Take special note of:
-// - The rhai_fn definition defines what is used to access the value _in script_.
-// - The fn name is irrelevant.
-// - Ensure the *Options type is correct!
-#[rhai_fn(get = "my_proto_option", pure)]
-pub fn file_my_proto_option(opt: &mut FileOptions) -> String {
-    opt.extension_data(extensions::my_proto_options::MY_PROTO_OPTION)
-        .map(&String::clone)
-        .unwrap_or(String::new())
-}
-```
+See the `examples/run-examples.sh` script for various ways of using `protox`.
 
 ## Scripts
 
-Scripted output is rendered using [rhai](https://rhai.rs/book/). In practice, you likely won't use much beyond the basic syntax, but it's there if you need it.
+Scripted output is rendered using [rhai](https://rhai.rs/book/). In practice, you likely won't use much in the language itself beyond the basic syntax, but it's there if you need it.
 
 ### Setup
 
-protox requires only a couple files. `main.rhai` is the root of all scripts. `config.json` is how you configure the data available in the context when rendering.
+`protox` requires only a couple files. `main.rhai` is the root of all scripts. `config.json` or `config.yaml` is how you configure the data available in the context when rendering.
 
 **Note:** You can quickly initialize a directory with default files using `protox --init-script`.
 
 Required:
-- config.json
+- config.{json,yaml}
 - main.rhai
 
 Optional:
 - metadata.hbs
 - As many other `.rhai` scripts as you need
+- Additional configuration [overlays](#overlays)
 
 `main.rhai` must have the function `fn render_file(file, output)` which is the primary entrypoint that will be called for each output file.
 
 ### Configuration
 
-`config.json` defines how the protox renderer contexts are filled with data. The best source for information on what each field does is the [renderer_config.rs](https://github.com/nswarm/protox/blob/main/generator/src/renderer/renderer_config.rs).
+`config.json` or `config.yaml` defines how the `protox` renderer contexts are filled with data. The best source for information on what each field does is the [renderer_config.rs](generator/src/renderer/renderer_config.rs).
 
 ### Data Context
 
@@ -142,7 +85,7 @@ All context data structures can be seen [here](https://github.com/nswarm/protox/
 
 ### Directory Metadata - `render_metadata` function
 
-protox supports generating an additional metadata file for each directory that has information about the generated files. By including a `fn render_metadata(file, output)` in your `main.rhai` script file, a `metadata` file will be generated using the [MetadataContext](https://github.com/nswarm/protox/blob/main/generator/src/renderer/context/metadata.rs) within each generated directory.
+`protox` supports generating an additional metadata file for each directory that has information about the generated files. By including a `fn render_metadata(file, output)` in your `main.rhai` script file, a `metadata` file will be generated using the [MetadataContext](https://github.com/nswarm/protox/blob/main/generator/src/renderer/context/metadata.rs) within each generated directory.
 
 ### `render_file` and `render_metadata` Entrypoints
 
@@ -181,18 +124,77 @@ to_strings and joins each element of `<array>`, separated by the string `<separa
 [0, 1, 2].join("::") // "0::1::2"
 ```
 
+### Overlays
+
+#### What & Why
+
+When converting from proto, often you'll run into situations where you need to annotate a specific field or message type to generate code in a different way for different output targets. The typical `protoc` way of doing this is to use [protobuf options](https://developers.google.com/protocol-buffers/docs/proto#options).
+
+The downside with options are:
+1. You need to modify the base proto file itself
+   1. for example the option `csharp_namespace` is irrelevant to everything except the csharp generator, but still muddies your original proto file.
+2. If you want to add custom options, you need to compile that into a custom plugin. 
+   1. In the case of `protox`, this would mean forcing users to compile their own version of the cli in order to use those options.
+
+Instead, `protox` supports a unique feature called **Overlays**.
+
+Overlays are key-value pairs that apply to specific `targets`, where a target can be a file, enum, enum value, message, or field. They are defined in configuration and evaluated at runtime.
+
+#### Setup
+
+Overlays can be added in two ways:
+1. As a field directly in the `config.{json,yaml}` file.
+   1. This option is better for overlays that should apply to everything generated with this script set.
+2. As an external `yaml` or `json` file at a path you specify with `--script-overlay`.
+   1. This option is better for overlays that apply 
+
+#### Configuration
+
+Overlays support two methods of configuration: `by_key` and `by_target`. These are the same whether they are in the main `config.{json,yaml}` or an external overlay file.
+
+`by_target` takes a map of targets to key-value pairs.
+
+```yaml
+by_target:
+  some/file.proto:
+    priority: 5
+  some/other/file.proto:
+    priority: 1
+```
+
+`by_key` takes a map of keys to value and list of targets. This option is useful if you want a single value across a bunch of targets, and want the targets together.
+
+```yaml
+by_key:
+  high_priority:
+    value: true
+    targets:
+      - some/file.proto
+      - some/other/file.proto
+```
+
+#### Targeting
+
+- **Files**: Use the proto path relative to the input root.
+- **Enums/Messages**: Use the fully qualified proto path, e.g. `my.package.name.MessageName`
+- **Enum Values and Fields**: Use the fully qualified proto path of the owning enum or message, plus the field or enum value name, e.g. `my.package.name.MessageName.field_name`
+
+#### Examples
+
+See `examples/run-examples.sh` for an example of using an external overlay to generate flatbuffers. It uses the external overlay [fbs_overlay.yml](examples/input/fbs_overlays.yml). 
+
 ## Templates
 
-Templates are rendered using [Handlebars](https://handlebarsjs.com/). Specifically protox uses [handlebars-rust](https://github.com/sunng87/handlebars-rust) which supports the majority of handlebars functionality.
+Templates are rendered using [Handlebars](https://handlebarsjs.com/). Specifically `protox` uses [handlebars-rust](https://github.com/sunng87/handlebars-rust) which supports the majority of handlebars functionality.
 
 ### Setup
 
-protox requires only a couple files. `file.hbs` is the root of all templates. `config.json` is how you configure the data available in the context when rendering templates.
+`protox` requires only a couple files. `file.hbs` is the root of all templates. `config.json` or `config.yaml` is how you configure the data available in the context when rendering templates.
 
 **Note:** You can quickly initialize a directory with default files using `protox --init-template`.
 
 Required:
-- config.json
+- config.{json,yaml}
 - file.hbs
 
 Optional:
@@ -201,7 +203,7 @@ Optional:
 
 ### Configuration
 
-`config.json` defines how the protox renderer contexts are filled with data. The best source for information on what each field does is the [renderer_config.rs](https://github.com/nswarm/protox/blob/main/generator/src/renderer/renderer_config.rs).
+`config.{json,yaml}` defines how the `protox` renderer contexts are filled with data. The best source for information on what each field does is the [renderer_config.rs](https://github.com/nswarm/protox/blob/main/generator/src/renderer/renderer_config.rs).
 
 ### Data Context
 
@@ -211,7 +213,7 @@ All context data structures can be seen [here](https://github.com/nswarm/protox/
 
 ### Directory Metadata - `metadata.hbs`
 
-protox supports generating an additional metadata file for each directory that has information about the generated files. By including a `metadata.hbs` in your template source directory, a `metadata` file will be generated using the [MetadataContext](https://github.com/nswarm/protox/blob/main/generator/src/renderer/context/metadata.rs) within each generated directory.
+`protox` supports generating an additional metadata file for each directory that has information about the generated files. By including a `metadata.hbs` in your template source directory, a `metadata` file will be generated using the [MetadataContext](https://github.com/nswarm/protox/blob/main/generator/src/renderer/context/metadata.rs) within each generated directory.
 
 ### Using Other Template Files
 
@@ -248,7 +250,7 @@ Fairly self-explanatory:
 
 #### `indent` Helper for Partials
 
-There's a small bug in the template library that does not respect callsite indentation in [partials](https://handlebarsjs.com/guide/partials.html), e.g. `{{> other_template_name}}`. protox contains a workaround helper for this feature that can be used like so:
+There's a small bug in the template library that does not respect callsite indentation in [partials](https://handlebarsjs.com/guide/partials.html), e.g. `{{> other_template_name}}`. `protox` contains a workaround helper for this feature that can be used like so:
 ```handlebars
 {{#indent 4}}
 {{> package_tree_node}}
@@ -257,23 +259,81 @@ There's a small bug in the template library that does not respect callsite inden
 
 This will indent all content rendered by the partial by 4 spaces. If you're only using the partial once you may as well indent inside the partial itself, but this solves for recursive partials where the callsite indentation is important.
 
+## Proto Options
+
+### Built-in
+
+`native_type`
+
+This defines a string to _completely replace_ the usage of a type in the output.
+
+**Example**
+```
+// proto
+string special_string [(protox.native_type) = "Special"]
+string normal_string;
+
+// script (also works in templates)
+output.append(`${field.relative_type} ${field.name};`)
+
+// output
+Special special_string;
+String normal_string;
+```
+
+### Using your Own
+
+You can add support for custom proto options, but you'll need to build from source. The following steps assuming a working directory of `proto_options`.
+
+This only works for the Scripted Renderer.
+
+Note that the `user` functions mentioned below are meant for you to use so that `protox` updates do not cause merge conflicts.
+
+#### Setup
+
+- Create a proto file with a custom package name in `protos`.
+- Add the generated file as an include at the top of `src/lib.rs`.
+- Create an API file in `src`.
+  - This file should have a [rhai plugin](https://rhai.rs/book/plugins/module.html).
+- Register the API's rhai plugin module in `src/lib.rs::register_user_script_apis`.
+
+#### Adding Custom Options
+
+- Add new option definitions to your proto file.
+- Register the extension in `src/lib.rs::register_user_extensions`.
+  - e.g. `registry.register(extensions::my_proto_options::MY_PROTO_OPTION);`
+- Add a script accessor to your api file that reads the extension data from the appropriate
+
+```rust
+// Take special note of:
+// - The rhai_fn definition defines what is used to access the value _in script_.
+// - The fn name is irrelevant.
+// - Ensure the *Options type is correct!
+#[rhai_fn(get = "my_proto_option", pure)]
+pub fn file_my_proto_option(opt: &mut FileOptions) -> String {
+    opt.extension_data(extensions::my_proto_options::MY_PROTO_OPTION)
+        .map(&String::clone)
+        .unwrap_or(String::new())
+}
+```
+
 ## Roadmap
 
-While protox is largely functional, there's a few things it does not yet support, and a few quality of life features I intend on adding. 
+While `protox` is largely functional, there's a few things it does not yet support, and a few quality of life features I intend on adding. 
 
 - Retain comments from source protos.
 - Protobuf `oneof` types.
 - Protobuf nested types.
 - Support for always using the fully qualified type name.
 - Filtering input descriptor set based on e.g. message options.
-- Validation tests, so users can specify the expected output of their set of templates to verify nothing breaks e.g. when upgrading protox's version.
+- Verifications tests, so users can specify the expected output of their scripts/templates to verify nothing breaks e.g. when upgrading `protox`'s version.
 
 ## Architecture
 
-protox operates in three main stages:
+`protox` operates in three main stages:
 1. IDL -> Protobuf.
-2. Protobuf -> Template Contexts.
-3. Template Contexts -> Rendered Templates.
+2. Protobuf -> Script/Template Contexts.
+3. Script/Template Contexts -> Rendered Templates.
 
 ### 1. IDL -> Protobuf
 
@@ -281,7 +341,7 @@ Google's protobuf compiler `protoc` already can compile `.proto` files to a "des
 
 ### 2. Protobuf -> Contexts
 
-The major thing protox does is convert a protobuf descriptor set into a hierarchy of "Context" objects.
+The major thing `protox` does is convert a protobuf descriptor set into a hierarchy of "Context" objects.
 
 ### 3. Contexts -> Rendered Templates.
 
@@ -291,7 +351,7 @@ The scripted renderer uses [rhai](https://rhai.rs/book/) to bind directly to the
 
 **Template Renderer**
 
-The [Handlebars template library](https://handlebarsjs.com/) (specifically, protox uses [handlebars-rust](https://github.com/sunng87/handlebars-rust)) takes in objects defined in json which can be directly referenced within the template. This step serializes the context objects into json, and writes out files using the user-defined templates with the context as data sources.
+The [Handlebars template library](https://handlebarsjs.com/) (specifically, `protox` uses [handlebars-rust](https://github.com/sunng87/handlebars-rust)) takes in objects defined in json which can be directly referenced within the template. This step serializes the context objects into json, and writes out files using the user-defined templates with the context as data sources.
 
 ### Examples
 
@@ -329,7 +389,7 @@ Would be parsed into a `MessageContext` and two `FieldContexts` that would look 
 
 The above json is a simplification, you can see all the provided values inside the `generator/src/renderer/context` structs.
 
-protox takes a `config.json` file alongside the template files that can customize the styles, name casing, and more that are provided in the context objects. The intent is to simplify the template files themselves as much as possible, within reason. protox is built to grow to new use cases over time, expanding its flexibility through configuration.
+`protox` takes a `config.json` or `config.yaml` file alongside the template files that can customize the styles, name casing, and more that are provided in the context objects. The intent is to simplify the template files themselves as much as possible, within reason. `protox` is built to grow to new use cases over time, expanding its flexibility through configuration.
 
 **_Option: Script_**
 
@@ -378,18 +438,18 @@ Check out `builtin` and `examples/input/templates` for complete examples of scri
 ### Crates 
 - cli: Thin wrapper to run the main library as a binary.
 - generator: The core library that does the IDL -> code generation.
+- proto_options: Custom protobuf options used to customize renderer output.
 
 ### Key Modules
 - generator: Handles command line parsing into a `Config` class used by the other modules.
 - protoc: Handles running the protobuf compiler `protoc` to generate the descriptor set file. It can also run protoc directly to generate protobuf code for various languages (See Built-in Support above).
 - context: Template context objects serialized to json for the rendering process.
-- proto_options: Custom protobuf options used to customize renderer output.
 - renderer/scripted_renderer: Handles converting a protobuf descriptor set file to a set of template context objects, and rendering those templates to files.
 - renderer/template_renderer: Handles converting a protobuf descriptor set file to a set of template context objects, and rendering those templates to files.
 
 ### Protobuf Compiler
 
-The way that **protoc**, the protobuf compiler, works is it is an executable that can run another executable as a plugin, passing it data on stdin and receiving results on stdout. For this to work inside of protox, we have the **cli** executable call the protoc executable with our **protoc-plugin** executable. **protoc-plugin** then calls into our **core** library code.
+The way that **protoc**, the protobuf compiler, works is it is an executable that can run another executable as a plugin, passing it data on stdin and receiving results on stdout. For this to work inside of `protox`, we have the **cli** executable call the protoc executable with our **protoc-plugin** executable. **protoc-plugin** then calls into our **core** library code.
 
 The **protoc** executable is assumed to be on your PATH. You can directly specify which protoc to use by setting the environment variable `PROTOC_EXE` to the path of the executable.
 
