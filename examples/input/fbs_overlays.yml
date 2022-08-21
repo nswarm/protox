@@ -1,0 +1,38 @@
+by_target:
+  # File.
+  flatbuffers.proto:
+    attributes:
+      - priority
+    identifier: ABCD
+    extension: data
+    root_type: Table
+  # Enum.
+  fbs.ByteEnum:
+    type: byte
+  fbs.LongEnum:
+    type: long
+  # Message.
+  fbs.Union:
+    type: union
+  fbs.Struct:
+    type: struct
+  # Field.
+  fbs.Table.bool_value:
+    default: true
+  fbs.Table.byte_value:
+    type: byte
+  fbs.Table.ubyte_value:
+    type: ubyte
+  fbs.Table.short_value:
+    type: short
+  fbs.Table.ushort_value:
+    type: ushort
+  fbs.Table.i32_value:
+    default: 1111
+  fbs.Table.f32_value:
+    default: 1111.2222
+  fbs.Table.value_with_attrs_and_default:
+    default: 1234
+    attributes:
+      - "priority: 1"
+      - deprecated

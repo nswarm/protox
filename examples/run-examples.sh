@@ -39,5 +39,6 @@ cargo run -- \
   --template-root examples/input/templates \
   --template rust-example rust-example \
   --script-root builtin \
-  --script flatbuffers
+  --script flatbuffers \
+  --script-overlay flatbuffers "$(pwd)/examples/input/fbs_overlays.yml"
 

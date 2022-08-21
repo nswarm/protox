@@ -440,7 +440,7 @@ fn parse_script_configs(
             .ok_or(anyhow!("--{} is missing NAME", SCRIPT))?;
         let script_in = get_grouped_values_by_name(args, SCRIPT_IN, name);
         let script_out = get_grouped_values_by_name(args, SCRIPT_OUT, name);
-        let overlays = get_grouped_values_by_name(args, SCRIPT_OUT, name);
+        let overlays = get_grouped_values_by_name(args, SCRIPT_OVERLAY, name);
         configs.push(ScriptConfig::from_config(
             name,
             script_in.get(0).map(|x| *x),

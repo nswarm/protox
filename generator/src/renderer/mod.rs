@@ -64,6 +64,7 @@ pub trait Renderer {
 
     fn load_overlays(base: &mut OverlayConfig, paths: &[PathBuf]) -> Result<()> {
         for path in paths {
+            info!("Loading overlay config from: {}", path.display_normalized());
             let overlay = deserialize_yaml_file(path).context("OverlayConfig")?;
             base.merge(overlay);
         }
