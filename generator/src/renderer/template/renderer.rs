@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use handlebars::Handlebars;
 use serde::Serialize;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Renders final output files by using:
@@ -128,8 +128,8 @@ impl Renderer for TemplateRenderer<'_> {
     /// Any other `*.hbs` files will also be loaded as templates based on the file name, and can
     /// be used in other templates as partials with the syntax {{> file_name}}.
     /// (See also: https://handlebarsjs.com/guide/partials.html)
-    fn load(&mut self, root: &Path) -> Result<()> {
-        self.config = Self::load_config(&find_existing_config_path(root)?)?;
+    fn load(&mut self, root: &Path, _: &[PathBuf]) -> Result<()> {
+        self.config = Self::load_config(&find_existing_config_path(root)?, &[])?;
         self.load_templates(root)?;
         Ok(())
     }

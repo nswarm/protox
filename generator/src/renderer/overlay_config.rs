@@ -4,13 +4,13 @@ use std::collections::{HashMap, HashSet};
 pub type Target = String;
 pub type Key = String;
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default, Eq, PartialEq, Debug)]
 pub struct ValueTargets {
     pub value: serde_yaml::Value,
     pub targets: HashSet<Target>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default, Eq, PartialEq, Debug)]
 pub struct OverlayConfig {
     // Config only, not complete after initialization.
     #[serde(default)]
@@ -30,13 +30,70 @@ impl OverlayConfig {
         by_key: HashMap<Key, ValueTargets>,
         by_target: HashMap<Target, HashMap<Key, serde_yaml::Value>>,
     ) -> Self {
-        let mut config = OverlayConfig {
+        let mut config = Self {
             by_key,
             by_target,
             is_initialized: false,
         };
         config.initialize();
         config
+    }
+
+    #[cfg(test)]
+    pub fn uninit_by_key(by_key: HashMap<Key, ValueTargets>) -> Self {
+        Self {
+            by_key,
+            by_target: Default::default(),
+            is_initialized: false,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn uninit_by_target(by_target: HashMap<Target, HashMap<Key, serde_yaml::Value>>) -> Self {
+        Self {
+            by_key: Default::default(),
+            by_target,
+            is_initialized: false,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn is_initialized(&self) -> bool {
+        self.is_initialized
+    }
+
+    pub fn merge(&mut self, other: Self) {
+        assert!(
+            !self.is_initialized && !other.is_initialized,
+            "Merging should only be done before initialization."
+        );
+        for (k, v) in other.by_key {
+            self.merge_by_key(k, v);
+        }
+        for (k, v) in other.by_target {
+            self.merge_by_target(k, v);
+        }
+    }
+
+    fn merge_by_key(&mut self, key: Key, override_vt: ValueTargets) {
+        if let Some(vt) = self.by_key.get_mut(&key) {
+            vt.value = override_vt.value;
+            for target in override_vt.targets {
+                vt.targets.insert(target);
+            }
+        } else {
+            self.by_key.insert(key, override_vt);
+        }
+    }
+
+    fn merge_by_target(&mut self, target: Target, override_kv: HashMap<Key, serde_yaml::Value>) {
+        if let Some(kv) = self.by_target.get_mut(&target) {
+            for (key, value) in override_kv {
+                kv.insert(key, value);
+            }
+        } else {
+            self.by_target.insert(target, override_kv);
+        }
     }
 
     pub fn by_target(&self, target: &str) -> Option<&HashMap<Key, serde_yaml::Value>> {
@@ -213,6 +270,155 @@ mod tests {
                     yaml_string("override_value!")
                 ),]))
             );
+        }
+    }
+
+    mod merge {
+        mod by_key {
+            use crate::renderer::overlay_config::tests::by_key_entry;
+            use crate::renderer::OverlayConfig;
+            use std::collections::HashMap;
+
+            #[test]
+            fn keeps_non_overridden() {
+                let mut original = OverlayConfig::uninit_by_key(by_key!(by_key_entry(
+                    "key0",
+                    "value0",
+                    &["target0"]
+                )));
+                let other = OverlayConfig::uninit_by_key(by_key!(by_key_entry(
+                    "key1",
+                    "value1",
+                    &["target1"]
+                )));
+
+                original.merge(other);
+                assert_eq!(
+                    original,
+                    OverlayConfig::uninit_by_key(by_key!(
+                        by_key_entry("key0", "value0", &["target0"]),
+                        by_key_entry("key1", "value1", &["target1"])
+                    ),)
+                );
+            }
+
+            #[test]
+            fn uses_new_value() {
+                let mut original = OverlayConfig::uninit_by_key(by_key!(by_key_entry(
+                    "key0",
+                    "value0",
+                    &["target0"]
+                )));
+                let other = OverlayConfig::uninit_by_key(by_key!(by_key_entry(
+                    "key0",
+                    "overridden_value",
+                    &["target0"]
+                )));
+
+                original.merge(other);
+                assert_eq!(
+                    original,
+                    OverlayConfig::uninit_by_key(by_key!(by_key_entry(
+                        "key0",
+                        "overridden_value",
+                        &["target0"]
+                    )),)
+                );
+            }
+
+            #[test]
+            fn uses_union_of_old_and_new_targets() {
+                let mut original = OverlayConfig::uninit_by_key(by_key!(by_key_entry(
+                    "key0",
+                    "value0",
+                    &["target0"]
+                )));
+                let other = OverlayConfig::uninit_by_key(by_key!(by_key_entry(
+                    "key0",
+                    "value0",
+                    &["target1", "target2"]
+                )));
+
+                original.merge(other);
+                assert_eq!(
+                    original,
+                    OverlayConfig::uninit_by_key(by_key!(by_key_entry(
+                        "key0",
+                        "value0",
+                        &["target0", "target1", "target2"]
+                    )))
+                );
+            }
+        }
+
+        mod by_target {
+            use crate::renderer::overlay_config::tests::by_target_entry;
+            use crate::renderer::OverlayConfig;
+            use std::collections::HashMap;
+
+            #[test]
+            fn keeps_existing_values_for_non_overridden_keys() {
+                let mut original = OverlayConfig::uninit_by_target(by_target!(by_target_entry(
+                    "target0",
+                    &[("key0", "value0"), ("key1", "value1")]
+                )));
+                let other =
+                    OverlayConfig::uninit_by_target(by_target!(by_target_entry("target0", &[])));
+
+                original.merge(other);
+                assert_eq!(
+                    original,
+                    OverlayConfig::uninit_by_target(by_target!(by_target_entry(
+                        "target0",
+                        &[("key0", "value0"), ("key1", "value1")]
+                    )))
+                );
+            }
+
+            #[test]
+            fn uses_new_value_for_overridden_keys() {
+                let mut original = OverlayConfig::uninit_by_target(by_target!(by_target_entry(
+                    "target0",
+                    &[("key0", "value0"), ("key1", "value1")]
+                )));
+                let other = OverlayConfig::uninit_by_target(by_target!(by_target_entry(
+                    "target0",
+                    &[("key0", "override!")]
+                )));
+
+                original.merge(other);
+                assert_eq!(
+                    original,
+                    OverlayConfig::uninit_by_target(by_target!(by_target_entry(
+                        "target0",
+                        &[("key0", "override!"), ("key1", "value1")]
+                    )))
+                );
+            }
+
+            #[test]
+            fn adds_new_key_values() {
+                let mut original = OverlayConfig::uninit_by_target(by_target!(by_target_entry(
+                    "target0",
+                    &[("key0", "value0"), ("key1", "value1")]
+                )));
+                let other = OverlayConfig::uninit_by_target(by_target!(
+                    by_target_entry("target0", &[("key2", "value2")]),
+                    by_target_entry("target1", &[("key0", "value111")])
+                ));
+
+                original.merge(other);
+                assert_eq!(
+                    original,
+                    OverlayConfig::uninit_by_target(by_target!(
+                        by_target_entry(
+                            "target0",
+                            &[("key0", "value0"), ("key1", "value1"), ("key2", "value2")]
+                        ),
+                        by_target_entry("target1", &[("key0", "value111")])
+                    ))
+                );
+            }
         }
     }
 

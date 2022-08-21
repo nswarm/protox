@@ -26,8 +26,8 @@ pub trait InOutGenerator<R: Render> {
             return Ok(());
         }
         for config in &self.in_out_configs() {
-            log_render_start(self.name(), config);
-            self.renderer().load(&config.input)?;
+            log_render_start(self.name(), &config);
+            self.renderer().load(&config.input, &config.overlays)?;
             util::create_dir_or_error(&config.output)
                 .with_context(|| error_context(self.name()))?;
             util::check_dir_is_empty(&config.output).with_context(|| error_context(self.name()))?;
@@ -58,7 +58,7 @@ mod tests {
     use anyhow::Result;
     use prost_types::{FileDescriptorProto, FileDescriptorSet};
     use std::fs;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use tempfile::tempdir;
 
     #[test]
@@ -114,7 +114,7 @@ mod tests {
 
     struct TestRenderer {}
     impl Render for TestRenderer {
-        fn load(&mut self, _input_root: &Path) -> anyhow::Result<()> {
+        fn load(&mut self, _input_root: &Path, _overlays: &[PathBuf]) -> Result<()> {
             Ok(())
         }
 
@@ -144,6 +144,7 @@ mod tests {
                     .map(|path| InOutConfig {
                         input: input.join(path),
                         output: output.join(path),
+                        overlays: vec![],
                     })
                     .collect::<Vec<InOutConfig>>(),
             }

@@ -5,7 +5,9 @@ use std::{fs, io};
 use anyhow::{anyhow, Context, Result};
 use log::{debug, info};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
+use serde::de::DeserializeOwned;
 
+pub use overlay_config::OverlayConfig;
 pub use renderer_config::RendererConfig;
 
 use crate::render::Render;
@@ -33,8 +35,8 @@ const DEFAULT_GENERATED_HEADER: &str = r#"//////////////////////////////////////
 
 // Delegate public Render impl to internal Renderer impl.
 impl<R: Renderer> Render for R {
-    fn load(&mut self, input_root: &Path) -> Result<()> {
-        Renderer::load(self, input_root)
+    fn load(&mut self, input_root: &Path, overlays: &[PathBuf]) -> Result<()> {
+        Renderer::load(self, input_root, overlays)
     }
     fn reset(&mut self) {
         Renderer::reset(self)
@@ -52,18 +54,24 @@ impl<R: Renderer> Render for R {
 }
 
 pub trait Renderer {
-    fn load_config(path: &Path) -> Result<RendererConfig> {
+    fn load_config(path: &Path, overlays: &[PathBuf]) -> Result<RendererConfig> {
         info!("Loading config from: {}", path.display_normalized());
-        let file = fs::File::open(path).context("Failed to read RendererConfig file.")?;
-        let buf_reader = io::BufReader::new(file);
-        let mut config: RendererConfig = serde_yaml::from_reader(buf_reader)
-            .with_context(|| error_deserialize_config("yaml", &path))?;
+        let mut config: RendererConfig = deserialize_yaml_file(path).context("RendererConfig")?;
+        Self::load_overlays(&mut config.overlays, overlays)?;
         config.overlays.initialize();
         Ok(config)
     }
 
-    /// Load any necessary files from the `input_root` directory.
-    fn load(&mut self, input_root: &Path) -> Result<()>;
+    fn load_overlays(base: &mut OverlayConfig, paths: &[PathBuf]) -> Result<()> {
+        for path in paths {
+            let overlay = deserialize_yaml_file(path).context("OverlayConfig")?;
+            base.merge(overlay);
+        }
+        Ok(())
+    }
+
+    /// Load any necessary files from the `input_root` directory and overlays as specified.
+    fn load(&mut self, input_root: &Path, overlays: &[PathBuf]) -> Result<()>;
 
     /// Reset is called between runs with different input/outputs.
     fn reset(&mut self);
@@ -226,6 +234,12 @@ pub trait Renderer {
     }
 }
 
+fn deserialize_yaml_file<T: DeserializeOwned>(path: &Path) -> Result<T> {
+    let file = fs::File::open(path).context("Failed to read file.")?;
+    let buf_reader = io::BufReader::new(file);
+    serde_yaml::from_reader(buf_reader).with_context(|| error_deserialize_config("yaml", &path))
+}
+
 pub fn find_existing_config_path(input_root: &Path) -> Result<PathBuf> {
     for config_file_name in CONFIG_FILE_NAMES {
         let path = input_root.join(config_file_name);
@@ -365,10 +379,70 @@ mod tests {
             let config_file_path = test_dir.path().join(file_name);
             File::create(&config_file_path)?.write_all(content.as_bytes())?;
 
-            let config = FakeRenderer::load_config(&config_file_path)?;
+            let config = FakeRenderer::load_config(&config_file_path, &[])?;
             assert_eq!(config.file_extension, "rawr");
 
             Ok(())
+        }
+    }
+
+    mod load_overlays {
+        use crate::renderer::tests::FakeRenderer;
+        use crate::renderer::{OverlayConfig, Renderer, RendererConfig};
+        use anyhow::Result;
+        use serde::Serialize;
+        use std::collections::HashMap;
+        use std::fs::File;
+        use std::io::Write;
+        use std::path::Path;
+        use tempfile::tempdir;
+
+        #[test]
+        fn loads_overlays_from_various_paths() -> Result<()> {
+            let test_dir = tempdir()?;
+            let mut base_config = RendererConfig::default();
+            let config_path = test_dir.path().join("config.yaml");
+            write_file(&config_path, &base_config)?;
+
+            let overlay_dir = tempdir()?;
+            let mut overlay_paths = Vec::new();
+            for i in 0..3 {
+                let overlay = overlay(0);
+                let path = overlay_dir.path().join(format!("{}.yml", i));
+                write_file(&path, &overlay)?;
+                overlay_paths.push(path);
+                base_config.overlays.merge(overlay);
+            }
+
+            let loaded_config = FakeRenderer::load_config(&config_path, &overlay_paths)?;
+            base_config.overlays.initialize();
+            assert_eq!(loaded_config.overlays, base_config.overlays);
+
+            Ok(())
+        }
+
+        #[test]
+        fn initializes_config() -> Result<()> {
+            let test_dir = tempdir()?;
+            let config_file_path = test_dir.path().join("config.yaml");
+            write_file(&config_file_path, RendererConfig::default())?;
+            let config = FakeRenderer::load_config(&config_file_path, &[])?;
+            assert!(config.overlays.is_initialized());
+            Ok(())
+        }
+
+        fn write_file<T: Serialize>(path: &Path, content: T) -> Result<()> {
+            Ok(File::create(path)?.write_all(serde_json::to_string(&content)?.as_bytes())?)
+        }
+
+        fn overlay(i: u64) -> OverlayConfig {
+            OverlayConfig::uninit_by_target(HashMap::from([(
+                format!("target{}", i),
+                HashMap::from([(
+                    format!("key{}", i),
+                    serde_yaml::Value::String(format!("value{}", i)),
+                )]),
+            )]))
         }
     }
 
@@ -802,7 +876,7 @@ mod tests {
     }
 
     impl Renderer for FakeRenderer {
-        fn load(&mut self, _input_root: &Path) -> Result<()> {
+        fn load(&mut self, _input_root: &Path, _overlays: &[PathBuf]) -> Result<()> {
             Ok(())
         }
 

@@ -37,6 +37,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     config.templates.push(InOutConfig {
         input: input_dir.join("templates").join("rust-example"),
         output: template_out,
+        overlays: vec![],
     });
 
     std::env::set_var("RUST_LOG", "info,handlebars=off");

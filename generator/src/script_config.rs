@@ -36,6 +36,7 @@ impl From<ScriptConfig> for InOutConfig {
         InOutConfig {
             input: x.input,
             output: x.output,
+            overlays: x.overlays,
         }
     }
 }
@@ -45,6 +46,7 @@ impl From<&ScriptConfig> for InOutConfig {
         InOutConfig {
             input: x.input.clone(),
             output: x.output.clone(),
+            overlays: x.overlays.clone(),
         }
     }
 }

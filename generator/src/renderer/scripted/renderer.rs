@@ -31,7 +31,6 @@ impl ScriptedRenderer {
 
     fn create_engine() -> Engine {
         let mut engine = Engine::new();
-        // todo go through & set options
         engine.on_print(|msg| info!("[script] {}", msg));
         engine.on_debug(|msg, _, pos| debug!("[script] {}: {}", pos, msg));
         engine.set_max_expr_depths(128, 64);
@@ -76,8 +75,8 @@ impl ScriptedRenderer {
 }
 
 impl Renderer for ScriptedRenderer {
-    fn load(&mut self, input_root: &Path) -> Result<()> {
-        self.config = Self::load_config(&find_existing_config_path(input_root)?)?;
+    fn load(&mut self, input_root: &Path, overlays: &[PathBuf]) -> Result<()> {
+        self.config = Self::load_config(&find_existing_config_path(input_root)?, overlays)?;
         let resolver = FileModuleResolver::new_with_path_and_extension(input_root, SCRIPT_EXT);
         self.engine.set_module_resolver(resolver);
         self.main_ast = Some(compile_file(
